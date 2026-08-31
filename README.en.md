@@ -49,22 +49,21 @@ npm run check
 npm run pack:plugin
 ```
 
-The package is emitted as `ash-qw-dsh-theme-prts-0.1.91.tgz`. Its GitHub Packages distribution name is `@ash-qw/dsh-theme-prts`; both `cordis.patch.yml` and the client ModuleLoader ID use that package name while the internal runtime plugin ID remains `dsh-theme-prts`.
+The package is emitted as `ash-qw-dsh-theme-prts-0.1.92.tgz`. Its npm distribution name is `@ash-qw/dsh-theme-prts`; both `cordis.patch.yml` and the client ModuleLoader ID use that package name while the internal runtime plugin ID remains `dsh-theme-prts`.
 
-## Private GitHub Packages
+## Public npm package
 
-Pushing a tag that matches `package.json` triggers the publish workflow. For the current release:
+The installable tarball can be downloaded directly from npmjs.org without a GitHub login or access token:
 
 ```bash
-git tag v0.1.91
-git push origin v0.1.91
+npm pack @ash-qw/dsh-theme-prts@0.1.92
 ```
 
-A consumer with `read:packages` can authenticate and download the installable tarball:
+When a maintainer pushes a tag matching `package.json` to the public repository, GitHub Actions publishes through npm Trusted Publishing (OIDC) with provenance. The workflow does not publish from the private mirror. For example:
 
 ```bash
-npm login --scope=@ash-qw --auth-type=legacy --registry=https://npm.pkg.github.com
-npm pack @ash-qw/dsh-theme-prts@0.1.91 --registry=https://npm.pkg.github.com
+git tag v0.1.92
+git push public v0.1.92
 ```
 
 Version `0.1.35` came from an outdated code branch and shipped an incorrect package name in `cordis.patch.yml`. Version `0.1.66` fixed the Host patch but not the client ModuleLoader ID, `0.1.67` aligned all three package names, `0.1.68` kept the base theme active while Operations Shell mounting was deferred, and `0.1.69` stopped occupying the host's shared details sidebar. Version `0.1.70` added workspace city silhouettes, the session recording waveform, refresh startup takeover, and structure-complete orthogonal particle emblems. Version `0.1.73` retains general floating-surface takeover and composer overflow, applies startup-animation theme styles immediately, and defers non-startup work such as particle fields and interface adapters until native boot completes.
@@ -72,8 +71,8 @@ Version `0.1.35` came from an outdated code branch and shipped an incorrect pack
 ## Docker install
 
 ```bash
-docker cp ash-qw-dsh-theme-prts-0.1.91.tgz deepseek-harness:/workspace/
-docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.91.tgz
+docker cp ash-qw-dsh-theme-prts-0.1.92.tgz deepseek-harness:/workspace/
+docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.92.tgz
 docker restart deepseek-harness
 ```
 

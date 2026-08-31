@@ -33,11 +33,24 @@ test('declares the rc.2 DSH client bundle contract', async () => {
   assert.equal(lock.version, pkg.version)
   assert.equal(lock.packages[''].version, pkg.version)
   assert.equal(pkg.private, false)
-  assert.deepEqual(pkg.publishConfig, { registry: 'https://npm.pkg.github.com' })
+  assert.deepEqual(pkg.publishConfig, {
+    access: 'public',
+    provenance: true,
+    registry: 'https://registry.npmjs.org',
+  })
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.exports['./client'].default, './lib/client.js')
+
+  const workflow = await readText('../.github/workflows/publish-package.yml')
+  assert.ok(workflow, 'npm publish workflow should exist')
+  assert.match(workflow, /id-token:\s*write/)
+  assert.match(workflow, /github\.repository == 'ash-qw\/dsh-theme-prts'/)
+  assert.match(workflow, /node-version:\s*24/)
+  assert.match(workflow, /registry-url:\s*https:\/\/registry\.npmjs\.org/)
+  assert.match(workflow, /npm publish --access public --provenance/)
+  assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN|npm\.pkg\.github\.com|packages:\s*write/)
 
   const patch = await readText('../cordis.patch.yml')
   assert.ok(patch, 'cordis.patch.yml should exist')

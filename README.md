@@ -49,22 +49,21 @@ npm run check
 npm run pack:plugin
 ```
 
-成功后会生成 `ash-qw-dsh-theme-prts-0.1.91.tgz`。GitHub Packages 分发名是 `@ash-qw/dsh-theme-prts`；`cordis.patch.yml` 包名和客户端 ModuleLoader ID 都与它保持一致，内部运行时插件 ID 仍为 `dsh-theme-prts`。
+成功后会生成 `ash-qw-dsh-theme-prts-0.1.92.tgz`。npm 分发名是 `@ash-qw/dsh-theme-prts`；`cordis.patch.yml` 包名和客户端 ModuleLoader ID 都与它保持一致，内部运行时插件 ID 仍为 `dsh-theme-prts`。
 
-## 私有 GitHub Packages
+## 公共 npm 包
 
-推送与 `package.json` 版本一致的标签会触发发布工作流。例如发布当前版本：
+可从 npmjs.org 直接下载可安装的 tarball，无需 GitHub 登录或访问令牌：
 
 ```bash
-git tag v0.1.91
-git push origin v0.1.91
+npm pack @ash-qw/dsh-theme-prts@0.1.92
 ```
 
-具有 `read:packages` 权限的用户可登录并下载可安装的 tarball：
+维护者向公开仓库推送与 `package.json` 版本一致的标签后，GitHub Actions 会通过 npm Trusted Publishing（OIDC）发布并生成 provenance；工作流不会从私有镜像仓库发布。例如：
 
 ```bash
-npm login --scope=@ash-qw --auth-type=legacy --registry=https://npm.pkg.github.com
-npm pack @ash-qw/dsh-theme-prts@0.1.91 --registry=https://npm.pkg.github.com
+git tag v0.1.92
+git push public v0.1.92
 ```
 
 `0.1.35` 来自旧代码分支，发布产物中的 `cordis.patch.yml` 包名错误；`0.1.66` 修复了 Host patch，但客户端 ModuleLoader ID 未同步；`0.1.67` 对齐了三处包名；`0.1.68` 修复了 Operations Shell 延迟挂载；`0.1.69` 不再占用宿主共享右侧栏。`0.1.70` 加入工作区城市剪影、会话录音声纹、刷新启动接管及结构完整正交粒子徽记；`0.1.73` 保留常规浮层接管与 composer 越界显示，让启动动画主题样式立即生效，并把粒子场和界面适配器等非启动初始化延后到原生 boot 结束。
@@ -74,8 +73,8 @@ npm pack @ash-qw/dsh-theme-prts@0.1.91 --registry=https://npm.pkg.github.com
 以下命令针对容器名 `deepseek-harness`：
 
 ```bash
-docker cp ash-qw-dsh-theme-prts-0.1.91.tgz deepseek-harness:/workspace/
-docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.91.tgz
+docker cp ash-qw-dsh-theme-prts-0.1.92.tgz deepseek-harness:/workspace/
+docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.92.tgz
 docker restart deepseek-harness
 ```
 

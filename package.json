@@ -1,6 +1,6 @@
 {
   "name": "@ash-qw/dsh-theme-prts",
-  "version": "0.1.91",
+  "version": "0.1.92",
   "private": false,
   "type": "module",
   "description": "Unofficial personal non-commercial Arknights P.R.T.S. fan UI for DeepSeek Harness",
@@ -14,7 +14,9 @@
     "url": "https://github.com/ash-qw/dsh-theme-prts/issues"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org"
   },
   "dsh": {
     "client": {
