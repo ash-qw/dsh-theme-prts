@@ -1,9 +1,18 @@
 {
   "name": "@ash-qw/dsh-theme-prts",
-  "version": "0.1.92",
+  "version": "0.1.93",
   "private": false,
   "type": "module",
-  "description": "Unofficial personal non-commercial Arknights P.R.T.S. fan UI for DeepSeek Harness",
+  "description": "Unofficial Arknights P.R.T.S.-inspired UI theme for DeepSeek Harness Web",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "theme",
+    "ui",
+    "arknights",
+    "prts"
+  ],
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
@@ -44,6 +53,7 @@
     "cordis.patch.yml",
     "README.md",
     "README.en.md",
+    "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],

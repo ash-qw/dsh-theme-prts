@@ -13,6 +13,19 @@ A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harne
 
 Target: `deepseek-harness:0.1.1-rc.2`. The theme is disabled by default.
 
+## Install and update
+
+The package is published publicly on npm and requires no GitHub login or access token. If DeepSeek Harness runs in a Docker container named `deepseek-harness`, use the same commands to install or update:
+
+```bash
+docker exec deepseek-harness dsh plugin --profile web add @ash-qw/dsh-theme-prts
+docker restart deepseek-harness
+```
+
+This installs the npm `latest` version. To pin a release, append a specific version to the package name, such as `@ash-qw/dsh-theme-prts@<version>`. If `dsh` runs directly on the host, omit `docker exec deepseek-harness` from the first command.
+
+Open `http://<NAS-IP>:3080`, enable the theme under “Settings → Plugins → P.R.T.S.,” then use the upper-left Rhodes Island emblem for the complete appearance controls. In Docker deployments, the plugin persists under `/data/profiles/web` and survives normal container recreation.
+
 ## Current feature set
 
 - Facility-style P.R.T.S. surfaces with complete SVG contours, distinct workspace/session spines, and compact right-edge actions;
@@ -39,44 +52,16 @@ The theme owns only P.R.T.S. UI and Harness surfaces that are stably linked to r
 
 A third-party plugin may explicitly opt in by setting `data-prts-surface="menu|listbox|popover|dialog"` on the surface or its Portal root. Adding, changing, and removing the attribute is supported at runtime. `menu`, `listbox`, and `popover` may use the selected glass level; `dialog` always uses an opaque panel without live backdrop blur to avoid jank on large right-side surfaces. `data-prts-preserve-popup-style` remains available as an explicit opt-out for one compatibility cycle.
 
-## Build
+## Development checks
 
 Node.js 18 or newer is required:
 
 ```bash
 npm ci
 npm run check
-npm run pack:plugin
 ```
 
-The package is emitted as `ash-qw-dsh-theme-prts-0.1.92.tgz`. Its npm distribution name is `@ash-qw/dsh-theme-prts`; both `cordis.patch.yml` and the client ModuleLoader ID use that package name while the internal runtime plugin ID remains `dsh-theme-prts`.
-
-## Public npm package
-
-The installable tarball can be downloaded directly from npmjs.org without a GitHub login or access token:
-
-```bash
-npm pack @ash-qw/dsh-theme-prts@0.1.92
-```
-
-When a maintainer pushes a tag matching `package.json` to the public repository, GitHub Actions publishes through npm Trusted Publishing (OIDC) with provenance. The workflow does not publish from the private mirror. For example:
-
-```bash
-git tag v0.1.92
-git push public v0.1.92
-```
-
-Version `0.1.35` came from an outdated code branch and shipped an incorrect package name in `cordis.patch.yml`. Version `0.1.66` fixed the Host patch but not the client ModuleLoader ID, `0.1.67` aligned all three package names, `0.1.68` kept the base theme active while Operations Shell mounting was deferred, and `0.1.69` stopped occupying the host's shared details sidebar. Version `0.1.70` added workspace city silhouettes, the session recording waveform, refresh startup takeover, and structure-complete orthogonal particle emblems. Version `0.1.73` retains general floating-surface takeover and composer overflow, applies startup-animation theme styles immediately, and defers non-startup work such as particle fields and interface adapters until native boot completes.
-
-## Docker install
-
-```bash
-docker cp ash-qw-dsh-theme-prts-0.1.92.tgz deepseek-harness:/workspace/
-docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.92.tgz
-docker restart deepseek-harness
-```
-
-Enable the theme from “Settings → Plugins → P.R.T.S.,” then use the upper-left Rhodes Island emblem for the complete appearance controls. The plugin persists under `/data/profiles/web`.
+The npm distribution name is `@ash-qw/dsh-theme-prts`; both `cordis.patch.yml` and the client ModuleLoader ID use that package name while the internal runtime plugin ID remains `dsh-theme-prts`. Maintainer release instructions are in [RELEASING.md](https://github.com/ash-qw/dsh-theme-prts/blob/main/RELEASING.md).
 
 ## Read-only live acceptance
 
@@ -96,6 +81,10 @@ docker restart deepseek-harness
 ```
 
 Other installed skins are not modified. Avoid enabling multiple full-page themes at once because their CSS may conflict.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Rights
 

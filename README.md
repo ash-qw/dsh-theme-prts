@@ -13,6 +13,19 @@
 
 目标环境：`deepseek-harness:0.1.1-rc.2`。主题安装后默认关闭，不会立即改变页面。
 
+## 安装与更新
+
+包已公开发布到 npm，无需 GitHub 登录或访问令牌。若 DeepSeek Harness 运行在名为 `deepseek-harness` 的 Docker 容器中，安装或更新均使用：
+
+```bash
+docker exec deepseek-harness dsh plugin --profile web add @ash-qw/dsh-theme-prts
+docker restart deepseek-harness
+```
+
+命令默认安装 npm `latest` 版本；如需锁定版本，可在包名后追加具体版本号，例如 `@ash-qw/dsh-theme-prts@<版本号>`。若 `dsh` 直接运行在宿主机上，去掉命令开头的 `docker exec deepseek-harness` 即可。
+
+打开 `http://<NAS-IP>:3080`，进入“Settings → 插件 → P.R.T.S.”启用主题；启用后通过左上罗德岛徽记调整完整外观。Docker 环境中的插件保存在持久化的 `/data/profiles/web`，正常重建容器不会丢失。
+
 ## 当前特性
 
 - P.R.T.S. / Rhodes Island / RIIC 设施化视觉，工作区与会话采用完整 SVG 轮廓、差异化侧脊和紧凑右侧操作按钮；
@@ -39,46 +52,16 @@ Harness 的“Settings → 插件 → P.R.T.S.”仅保留主题总开关和启�
 
 第三方插件如需主动使用 P.R.T.S. 浮层材质，可在浮层本身或其 Portal 根节点声明 `data-prts-surface="menu|listbox|popover|dialog"`；运行时支持动态添加、修改和移除该属性。`menu`、`listbox` 与 `popover` 可使用当前玻璃档位，`dialog` 始终使用不含实时模糊的实色面板，以避免大面积右侧弹窗卡顿。兼容属性 `data-prts-preserve-popup-style` 在一个版本周期内继续作为明确退出开关。
 
-## 构建
+## 开发验证
 
 需要 Node.js 18 或更高版本：
 
 ```bash
 npm ci
 npm run check
-npm run pack:plugin
 ```
 
-成功后会生成 `ash-qw-dsh-theme-prts-0.1.92.tgz`。npm 分发名是 `@ash-qw/dsh-theme-prts`；`cordis.patch.yml` 包名和客户端 ModuleLoader ID 都与它保持一致，内部运行时插件 ID 仍为 `dsh-theme-prts`。
-
-## 公共 npm 包
-
-可从 npmjs.org 直接下载可安装的 tarball，无需 GitHub 登录或访问令牌：
-
-```bash
-npm pack @ash-qw/dsh-theme-prts@0.1.92
-```
-
-维护者向公开仓库推送与 `package.json` 版本一致的标签后，GitHub Actions 会通过 npm Trusted Publishing（OIDC）发布并生成 provenance；工作流不会从私有镜像仓库发布。例如：
-
-```bash
-git tag v0.1.92
-git push public v0.1.92
-```
-
-`0.1.35` 来自旧代码分支，发布产物中的 `cordis.patch.yml` 包名错误；`0.1.66` 修复了 Host patch，但客户端 ModuleLoader ID 未同步；`0.1.67` 对齐了三处包名；`0.1.68` 修复了 Operations Shell 延迟挂载；`0.1.69` 不再占用宿主共享右侧栏。`0.1.70` 加入工作区城市剪影、会话录音声纹、刷新启动接管及结构完整正交粒子徽记；`0.1.73` 保留常规浮层接管与 composer 越界显示，让启动动画主题样式立即生效，并把粒子场和界面适配器等非启动初始化延后到原生 boot 结束。
-
-## Docker 安装
-
-以下命令针对容器名 `deepseek-harness`：
-
-```bash
-docker cp ash-qw-dsh-theme-prts-0.1.92.tgz deepseek-harness:/workspace/
-docker exec deepseek-harness dsh plugin --profile web add /workspace/ash-qw-dsh-theme-prts-0.1.92.tgz
-docker restart deepseek-harness
-```
-
-打开 `http://<NAS-IP>:3080`，进入“Settings → 插件 → P.R.T.S.”启用主题；启用后通过左上罗德岛徽记调整完整外观。插件安装在持久化的 `/data/profiles/web` 中，正常重建容器不会丢失。
+项目的 npm 分发名是 `@ash-qw/dsh-theme-prts`；`cordis.patch.yml` 包名和客户端 ModuleLoader ID 都与它保持一致，内部运行时插件 ID 仍为 `dsh-theme-prts`。维护者发布步骤见 [RELEASING.md](https://github.com/ash-qw/dsh-theme-prts/blob/main/RELEASING.md)。
 
 ## 只读真实环境验收
 
@@ -100,6 +83,10 @@ docker restart deepseek-harness
 ```
 
 卸载不会删除浏览器偏好，也不会修改其他已安装皮肤。多个全局主题可能发生 CSS 冲突，建议一次只启用一个完整 UI 主题。
+
+## 变更记录
+
+版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 权利说明
 

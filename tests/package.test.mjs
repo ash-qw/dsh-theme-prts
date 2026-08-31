@@ -179,7 +179,7 @@ test('build bundles the real browser plugin and settings modules', async () => {
   assert.doesNotMatch(client, /^export /m)
 })
 
-test('package manifest exposes only the installable plugin and rights documentation', async () => {
+test('package manifest exposes only the installable plugin and user-facing documentation', async () => {
   const pkg = JSON.parse(await readText('../package.json'))
   assert.deepEqual(pkg.files, [
     'lib',
@@ -187,6 +187,7 @@ test('package manifest exposes only the installable plugin and rights documentat
     'cordis.patch.yml',
     'README.md',
     'README.en.md',
+    'CHANGELOG.md',
     'LICENSE',
     'THIRD_PARTY_NOTICES.md',
   ])
@@ -204,6 +205,7 @@ test('package manifest exposes only the installable plugin and rights documentat
     '../src/assets/prts-original-avatar.png',
     '../README.md',
     '../README.en.md',
+    '../CHANGELOG.md',
     '../LICENSE',
     '../THIRD_PARTY_NOTICES.md',
   ]) assert.ok(await readBytes(required), `package file missing ${required}`)
