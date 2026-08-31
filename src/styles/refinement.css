@@ -1,0 +1,429 @@
+/* P.R.T.S. post-stabilization refinement */
+html[data-dsh-prts] {
+  --prts-hero-mark-base: clamp(320px, 42%, 580px);
+  --prts-hero-mark-size: min(var(--prts-hero-mark-base), 42dvh);
+}
+
+/* The native frame remains the sole authority for session width. */
+html[data-dsh-prts] [data-prts-region="frame"] {
+  position: relative;
+}
+
+html[data-dsh-prts] [data-prts-region="frame"] > [data-shell-overlay] {
+  position: absolute !important;
+  z-index: 120;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-prts-region="frame"] > [data-shell-overlay] > * {
+  pointer-events: auto;
+}
+
+/* Restore the host Settings entry. The Rhodes mark remains the theme-only entry. */
+html[data-dsh-prts] [data-prts-region="sessions"] [data-slot="sidebar.settings"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+html[data-dsh-prts] [data-prts-region="sessions"] [data-slot="sidebar.settings"] > button {
+  color: var(--prts-ink) !important;
+}
+
+/* Workspace hierarchy: remove only the folder glyph and retain the disclosure control. */
+html[data-dsh-prts] [data-prts-workspace-icon] {
+  display: none !important;
+}
+
+html[data-dsh-prts] [data-prts-workspace-disclosure] {
+  position: relative;
+  z-index: 4;
+  width: 14px;
+  flex: 0 0 14px;
+  display: grid;
+  place-items: center;
+  margin-left: calc(var(--prts-spine-width) + 4px);
+  color: var(--prts-muted);
+  transform: translate3d(var(--prts-row-shift), 0, 0);
+  transition: transform 220ms var(--prts-ease-spring), color 160ms ease;
+}
+
+/* Docked facility geometry follows the slender reference silhouette. */
+html[data-dsh-prts] [data-prts-workspace-row]::before,
+html[data-dsh-prts] [data-prts-session-row]::before {
+  clip-path: polygon(
+    1px 0, calc(100% - 1px) 0, 100% 1px,
+    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
+    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+  ) !important;
+}
+
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]) [data-prts-facility-face] {
+  right: var(--prts-row-end-reserve) !important;
+}
+
+html[data-dsh-prts] [data-prts-facility-face] {
+  border: 0 !important;
+  background: var(--prts-line-strong) !important;
+  clip-path: polygon(
+    1px 0,
+    calc(50% - 25px) 0, calc(50% - 20px) 3.333px, calc(50% + 20px) 3.333px, calc(50% + 25px) 0,
+    calc(100% - 1px) 0, 100% 1px,
+    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
+    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+  ) !important;
+}
+
+html[data-dsh-prts] [data-prts-facility-face]::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: var(--prts-panel-raised);
+  clip-path: polygon(
+    0 0,
+    calc(50% - 24px) 0, calc(50% - 19px) 3.333px, calc(50% + 19px) 3.333px, calc(50% + 24px) 0,
+    100% 0,
+    100% calc(50% - 4px), calc(100% - 2px) calc(50% - 2px), calc(100% - 2px) calc(50% + 2px), 100% calc(50% + 4px),
+    100% 100%, 0 100%,
+    0 calc(50% + 4px), 2px calc(50% + 2px), 2px calc(50% - 2px), 0 calc(50% - 4px)
+  );
+}
+
+html[data-dsh-prts] [data-prts-workspace-actions] {
+  width: 57px !important;
+}
+
+html[data-dsh-prts] [data-prts-session-actions] {
+  width: 28px !important;
+}
+
+html[data-dsh-prts] [data-prts-workspace-actions] button,
+html[data-dsh-prts] [data-prts-session-actions] button {
+  width: 28px !important;
+  min-width: 28px !important;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--prts-line) !important;
+  clip-path: polygon(
+    1px 0, calc(100% - 1px) 0, 100% 1px,
+    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
+    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+  ) !important;
+}
+
+html[data-dsh-prts] [data-prts-workspace-actions] button::before,
+html[data-dsh-prts] [data-prts-session-actions] button::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  background: var(--prts-panel-raised);
+  clip-path: polygon(
+    0 0, 100% 0,
+    100% calc(50% - 4px), calc(100% - 2px) calc(50% - 2px), calc(100% - 2px) calc(50% + 2px), 100% calc(50% + 4px),
+    100% 100%, 0 100%,
+    0 calc(50% + 4px), 2px calc(50% + 2px), 2px calc(50% - 2px), 0 calc(50% - 4px)
+  );
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-prts-workspace-actions] button:is(:hover, :focus-visible),
+html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible) {
+  background: var(--prts-yellow) !important;
+}
+
+html[data-dsh-prts] [data-prts-session-time] {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  margin-right: 39px;
+  padding-left: 8px;
+  transform: translate3d(var(--prts-row-shift), 0, 0);
+  transition: opacity 120ms ease, transform 220ms var(--prts-ease-spring);
+}
+
+html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-session-time] {
+  opacity: 0;
+}
+
+/* Restore the notched P.R.T.S. composer with one complete layered contour. */
+html[data-dsh-prts] [data-composer-card],
+html[data-dsh-prts] [data-prts-composer-fallback] {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-dsh-prts] [data-composer-card]::before,
+html[data-dsh-prts] [data-prts-composer-fallback]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--prts-line-strong);
+  clip-path: polygon(
+    3px 0,
+    calc(50% - 42px) 0, calc(50% - 37px) 5px, calc(50% + 37px) 5px, calc(50% + 42px) 0,
+    calc(100% - 3px) 0, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) 100%,
+    3px 100%, 0 calc(100% - 3px), 0 3px
+  );
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .18);
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-composer-card]::after,
+html[data-dsh-prts] [data-prts-composer-fallback]::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 1px 1px 3px;
+  background: var(--prts-composer-surface, var(--prts-active-glass));
+  clip-path: polygon(
+    2px 0,
+    calc(50% - 41px) 0, calc(50% - 36px) 5px, calc(50% + 36px) 5px, calc(50% + 41px) 0,
+    calc(100% - 2px) 0, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) 100%,
+    2px 100%, 0 calc(100% - 2px), 0 2px
+  );
+  backdrop-filter: var(--prts-active-glass-filter);
+  -webkit-backdrop-filter: var(--prts-active-glass-filter);
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-composer-card] > :not([data-prts-composer-signal]),
+html[data-dsh-prts] [data-prts-composer-fallback] > :not([data-prts-composer-signal]) {
+  position: relative;
+  z-index: 2;
+}
+
+html[data-dsh-prts] [data-prts-composer-signal] {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-prts-composer-signal]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  background: var(--prts-yellow);
+  opacity: .82;
+  pointer-events: none;
+  transition: transform 160ms var(--prts-ease-snap), opacity 160ms ease;
+}
+
+html[data-dsh-prts] [data-prts-composer-signal]::before {
+  bottom: 0;
+  width: calc(100% - 6px);
+  height: 3px;
+  transform: translateX(-50%) scaleX(.16);
+}
+
+html[data-dsh-prts] [data-composer-card]:focus-within,
+html[data-dsh-prts] [data-prts-composer-fallback]:focus-within {
+  --prts-composer-surface: color-mix(in srgb, var(--prts-active-glass) 94%, var(--prts-ink) 6%);
+}
+
+html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback]):focus-within [data-prts-composer-signal]::before {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+html[data-dsh-prts] [data-composer-card] textarea:focus-visible,
+html[data-dsh-prts] [data-prts-composer-fallback] textarea:focus-visible {
+  outline: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-prts] [data-prts-composer-signal]::before {
+    transition: none;
+  }
+}
+
+
+html[data-dsh-prts] [data-prts-theme-settings] :is(input, textarea, select):focus-visible,
+html[data-dsh-prts] [data-prts-floating-input]:focus-visible {
+  outline: none !important;
+  border-color: var(--prts-yellow) !important;
+  box-shadow: 0 0 0 1px var(--prts-yellow) !important;
+}
+
+html[data-dsh-prts] [data-prts-conversation-control="header"] {
+  height: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+html[data-dsh-prts] [data-prts-conversation-control="header"] svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button[aria-label*="send" i],
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button[type="submit"] {
+  min-width: 40px !important;
+  padding: 0 !important;
+  font-size: 11px;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control="action"] {
+  width: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  flex: 0 0 36px;
+}
+
+/* Chamfered controls use their own polygonal outline and inset material layer. */
+html[data-dsh-prts] :is(
+  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-glass-control],
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
+  [data-produced-files-row] > button[type="button"]
+) {
+  --prts-control-outline: var(--prts-line);
+  --prts-control-surface: var(--prts-panel-raised);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--prts-control-outline) !important;
+  color: var(--prts-ink) !important;
+  clip-path: polygon(
+    3px 0, calc(100% - 3px) 0, 100% 3px,
+    100% calc(100% - 3px), calc(100% - 3px) 100%,
+    3px 100%, 0 calc(100% - 3px), 0 3px
+  ) !important;
+}
+
+html[data-dsh-prts] :is(
+  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-glass-control],
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
+  [data-produced-files-row] > button[type="button"]
+)::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  background: var(--prts-control-surface);
+  clip-path: polygon(
+    2px 0, calc(100% - 2px) 0, 100% 2px,
+    100% calc(100% - 2px), calc(100% - 2px) 100%,
+    2px 100%, 0 calc(100% - 2px), 0 2px
+  );
+  pointer-events: none;
+}
+
+html[data-dsh-prts] :is(
+  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-glass-control],
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
+  [data-produced-files-row] > button[type="button"]
+):is(:hover, :focus-visible) {
+  --prts-control-outline: var(--prts-yellow);
+}
+
+html[data-dsh-prts] :is(
+  [data-prts-glass-control="model"],
+  [data-prts-glass-control="permission"],
+  [data-prts-glass-control="preset"],
+  [data-prts-conversation-control="utility"],
+  [data-produced-files-row] > button[type="button"]
+) {
+  --prts-control-surface: var(--prts-active-glass) !important;
+}
+
+html[data-dsh-prts] [data-composer-card] button[aria-label*="send" i],
+html[data-dsh-prts] [data-composer-card] button[type="submit"],
+html[data-dsh-prts] [data-prts-conversation-control="cta"] {
+  font-size: 11px;
+  --prts-control-outline: var(--prts-yellow) !important;
+  --prts-control-surface: var(--prts-yellow) !important;
+  color: var(--prts-yellow-ink) !important;
+}
+
+html[data-dsh-prts] [data-prts-conversation-control="danger"] {
+  --prts-control-outline: var(--prts-red) !important;
+  --prts-control-surface: color-mix(in srgb, var(--prts-red) 14%, var(--prts-panel-raised)) !important;
+  color: var(--prts-red) !important;
+}
+
+/* Empty session: emblem owns the upper field, composer anchors in the lower third. */
+html[data-dsh-prts] [data-prts-hero-active] {
+  --prts-hero-narrow-spacer: clamp(24px, 8dvh, 72px);
+  --prts-hero-wide-spacer: clamp(96px, 22dvh, 340px);
+  min-height: 100%;
+  height: calc(100% - 48px) !important;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto min(
+    var(--prts-hero-wide-spacer),
+    max(var(--prts-hero-narrow-spacer), calc(var(--prts-hero-narrow-spacer) + 63vw - 403.2px))
+  );
+  align-content: stretch;
+  gap: clamp(24px, calc(5vw - 8px), 40px);
+  padding: clamp(18px, calc(1.875vw + 6px), 24px) clamp(12px, 3vw, 42px) 0 clamp(18px, 3vw, 42px);
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card],
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] {
+  width: 100%;
+  margin-inline: auto;
+  padding: 10px 12px;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] textarea,
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textarea {
+  min-height: 64px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button,
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control] {
+  min-height: 36px;
+}
+
+html[data-dsh-prts] [data-prts-hero-active]::before {
+  margin-top: calc(var(--prts-hero-mark-size) + 44px);
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-phase="hero"] {
+  grid-row: 1;
+  min-height: 0;
+  align-self: stretch;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-seat] {
+  grid-row: 2;
+  width: min(calc(780px + 32px), 100%);
+  min-width: 0 !important;
+  align-self: end;
+  justify-self: center;
+}

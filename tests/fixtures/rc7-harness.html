@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><title>DeepSeek Harness rc.7 Fixture</title>
+  <style>
+    .projectRow,
+    .sessionRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .projectRow {
+      box-sizing: border-box;
+      height: 34px;
+    }
+    .sessionRow {
+      box-sizing: border-box;
+      height: 32px;
+    }
+    .projectRow .rowActions { height: 20px; }
+    .projectText {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+    }
+    .title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rowActions {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .projectRow:hover .rowActions,
+    .sessionRow:hover .rowActions,
+    .projectRow.menuOpen .rowActions,
+    .sessionRow.menuOpen .rowActions {
+      display: inline-flex;
+    }
+    .sessionRow:is(:hover, .menuOpen) > .sessionTime { display: none; }
+    .pI_x6G_frame[data-sidebar-collapsed] > .pI_x6G_sidebarCol {
+      overflow: hidden;
+    }
+    .pI_x6G_frame {
+      display: grid;
+      width: 100vw;
+      min-height: 100vh;
+    }
+    .fixture_aiActions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .fixture_aiActionLabel { display: inline; }
+    @media (max-width: 720px) {
+      .fixture_aiActionLabel { display: none; }
+    }
+    [data-message-role],
+    [data-chat-flow-kind] {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 748px;
+      margin: 0 auto 24px;
+    }
+    [data-composer-seat] {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .fixture_userStack {
+      max-width: min(525px, 82%);
+      margin-left: auto;
+    }
+    .fixture_bubble { padding: 10px 14px; }
+    [data-chat-flow-kind="assistant-step"] button {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div data-slot="root">
+      <div class="pI_x6G_frame" data-details-collapsed="true" style="grid-template-columns:280px minmax(0px,1fr) 0px">
+        <div class="pI_x6G_sidebarCol">
+          <div data-slot="sidebar" style="display:contents"><div data-rc7-sidebar-root style="width:100%;height:100%;background-color:#f9fafb">
+            <button type="button" aria-label="New session">New Session</button>
+            <div data-slot="sidebar.workspaces">
+              <div role="tree" aria-label="Sessions">
+                <div role="treeitem" aria-expanded="true" class="projectRow">
+                  <span aria-hidden="true">◇</span><span aria-hidden="true">⌄</span><span class="projectText"><span class="title">PRTS 工作区</span></span>
+                  <span class="rowActions">
+                    <span><button type="button" aria-label="Workspace actions">…</button></span>
+                    <button type="button" aria-label="New workspace session">＋</button>
+                  </span>
+                </div>
+                <div role="treeitem" aria-selected="true" data-session-id="op-06" class="sessionRow">
+                  <span aria-hidden="true">●</span><span class="title">P.R.T.S. UI 重构</span><span class="sessionTime">刚刚</span>
+                  <span class="rowActions"><span><button type="button" aria-label="Session row actions">…</button></span></span>
+                </div>
+              </div>
+            </div>
+            <div data-slot="sidebar.settings"><button type="button">Settings</button></div>
+          </div>
+          </div>
+        </div>
+        <div class="pI_x6G_centerCol">
+          <div data-slot="conversation">
+            <div data-slot="conversation.session.header">
+              <strong data-session-code>OP-06</strong>
+              <button type="button" class="nL4_yW_sessionLogButton"><span>Session log</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10"></path></svg></button>
+            </div>
+            <div data-conversation-scroll>
+              <article data-message-role="assistant">这是 Harness 原生长文本。切换语言后，插件不能替换这段内容。</article>
+              <pre><code>const nativeText = 'must remain readable'</code></pre>
+              <div data-composer-seat>
+                <div data-slot="conversation.composer">
+                  <div data-composer-card>
+                    <textarea aria-label="Send a message">准备执行</textarea>
+                    <button type="button" aria-label="Send message" style="inline-size:36px;display:grid;flex:0 0 auto;padding:0">Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pI_x6G_detailsCol" style="width:0"><div data-slot="details" style="display:contents"></div></div>
+        <div class="pI_x6G_overlayLayer" data-shell-overlay><div data-slot="shell.overlay"></div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

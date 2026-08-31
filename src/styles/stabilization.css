@@ -1,0 +1,161 @@
+/* P.R.T.S. 0.1.53 stabilization layer */
+html[data-dsh-prts] {
+  --prts-hero-mark-base: clamp(300px, 38%, 520px);
+  --prts-hero-mark-size: min(var(--prts-hero-mark-base), 32dvh);
+}
+
+/* The native Harness new-session and sidebar collapse controls remain authoritative. */
+html[data-dsh-prts] [data-prts-region="sessions"] > * > [data-slot="sidebar"] > :first-child > button[aria-label*="new session" i] {
+  min-height: 40px;
+  display: grid !important;
+  place-items: center;
+  margin: 0 0 14px;
+  border: 1px solid var(--prts-line) !important;
+  border-radius: var(--prts-radius-card) !important;
+  background: var(--prts-panel-raised) !important;
+  color: var(--prts-ink) !important;
+}
+
+/* Rail controls: stable contrast in both schemes, labels never consume rail space. */
+html[data-dsh-prts] [data-prts-rail-brand],
+html[data-dsh-prts] [data-prts-nav-rail] > button,
+html[data-dsh-prts] [data-prts-nav-bottom] > button {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #242b2f;
+  border-radius: 0;
+  background: transparent;
+  color: #aeb8bd !important;
+  cursor: pointer;
+  clip-path: none;
+}
+
+html[data-dsh-prts] [data-prts-rail-brand] {
+  height: 64px;
+  border-bottom-color: #30383d;
+}
+
+html[data-dsh-prts] [data-prts-rail-brand]:is(:hover, :focus-visible),
+html[data-dsh-prts] [data-prts-rail-brand][aria-expanded="true"],
+html[data-dsh-prts] [data-prts-nav-rail] > button:is(:hover, :focus-visible),
+html[data-dsh-prts] [data-prts-nav-bottom] > button:is(:hover, :focus-visible) {
+  background: #151a1d;
+  color: #f3f6f7 !important;
+}
+
+html[data-dsh-prts] [data-prts-rail-brand][aria-expanded="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 2px;
+  background: var(--prts-yellow);
+}
+
+html[data-dsh-prts] [data-prts-nav-rail] small,
+html[data-dsh-prts] [data-prts-connection-label] {
+  position: absolute;
+  z-index: 180;
+  top: 50%;
+  left: calc(100% + 9px);
+  width: max-content;
+  max-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid #3d474d;
+  border-radius: 3px;
+  opacity: 0;
+  background: #0e1215;
+  color: #eef2f3;
+  font: 700 9px/1.2 var(--prts-mono);
+  letter-spacing: .04em;
+  text-align: left;
+  transform: translate3d(-5px, -50%, 0);
+  transition: opacity 130ms ease, transform 160ms var(--prts-ease-snap);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+html[data-dsh-prts] [data-prts-nav-rail] button:is(:hover, :focus-visible) small,
+html[data-dsh-prts] [data-prts-connection-indicator]:is(:hover, :focus-visible) [data-prts-connection-label] {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
+}
+
+html[data-dsh-prts] [data-prts-connection-indicator] {
+  position: relative;
+  min-height: 38px;
+  padding: 0;
+  color: #9da8ad;
+}
+
+html[data-dsh-prts] [data-prts-nav-bottom] svg,
+html[data-dsh-prts] [data-prts-nav-bottom] b {
+  display: block;
+  color: currentColor;
+}
+
+
+/* Complete structural outlines; decorative accents are separate edges. */
+html[data-dsh-prts] [data-message-role="user"],
+html[data-dsh-prts] [data-chat-flow-kind="user"] [class$="_bubble"],
+html[data-dsh-prts] [data-composer-card],
+html[data-dsh-prts] [data-prts-composer-fallback],
+html[data-dsh-prts] [data-composer-card] button,
+html[data-dsh-prts] [data-prts-conversation-control],
+html[data-dsh-prts] [data-produced-files-row] > button[type="button"],
+html[data-dsh-prts] [data-prts-to-bottom] {
+  border-radius: 3px !important;
+  clip-path: none !important;
+}
+
+
+html[data-dsh-prts] [data-prts-facility-face] {
+  right: 0 !important;
+  border: 0 !important;
+  background: var(--prts-line-strong);
+}
+
+html[data-dsh-prts] [data-prts-facility-face]::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: var(--prts-panel-raised);
+  clip-path: polygon(
+    3px 0, calc(50% - 25px) 0, calc(50% - 20px) 3.333px, calc(50% + 20px) 3.333px, calc(50% + 25px) 0,
+    calc(100% - 3px) 0, 100% 3px, 100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px),
+    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 3px
+  );
+}
+
+html[data-dsh-prts] [data-prts-workspace-actions] button,
+html[data-dsh-prts] [data-prts-session-actions] button {
+  border: 1px solid var(--prts-line-strong) !important;
+  border-radius: 3px !important;
+  clip-path: none !important;
+}
+
+/* Explicit two-row empty state: particle emblem above, composer below. */
+html[data-dsh-prts] [data-prts-hero-active] {
+  display: grid;
+  grid-template-rows: minmax(220px, 1fr) auto;
+  align-content: center;
+  gap: clamp(28px, 5dvh, 54px);
+  padding-top: 24px;
+  padding-bottom: 34px;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-phase="hero"] {
+  min-height: min(36dvh, 390px);
+  align-self: end;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-seat] {
+  align-self: start;
+  justify-self: center;
+}

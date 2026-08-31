@@ -1,0 +1,4 @@
+# dsh-theme-prts — DeepSeek Harness Web client plugin patch layer.
+- insert:
+    - id: theme-prts
+      name: '@ash-qw/dsh-theme-prts'

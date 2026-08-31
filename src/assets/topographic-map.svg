@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 4800" preserveAspectRatio="none" fill="none">
+  <defs>
+    <pattern id="survey-grid" width="160" height="160" patternUnits="userSpaceOnUse">
+      <path d="M160 0H0V160" stroke="#919ba1" stroke-width="1.2" opacity=".09" vector-effect="non-scaling-stroke"/>
+      <path d="M80 0V160M0 80H160" stroke="#919ba1" stroke-width=".8" opacity=".045" vector-effect="non-scaling-stroke"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="4800" fill="url(#survey-grid)"/>
+
+  <g data-landform="seam-basin" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M-150 0C-125-285 70-470 330-455C610-438 765-225 735 0C705 224 534 396 310 414C76 432-124 270-150 0Z" stroke-width="4.6" opacity=".48"/>
+    <path data-contour="minor" d="M-58 0C-40-226 106-362 318-351C523-340 652-185 631 0C610 176 476 302 306 316C127 331-42 206-58 0Z" stroke-width="2.8" opacity=".3"/>
+    <path data-contour="minor" d="M40 0C51-157 160-254 310-246C455-238 550-128 535 0C520 121 425 211 303 220C174 231 48 144 40 0Z" stroke-width="2.6" opacity=".25"/>
+    <path data-contour="index" d="M135 0C141-91 213-149 305-145C396-140 452-77 443 0C434 75 377 126 298 130C219 135 139 82 135 0Z" stroke-width="3.8" opacity=".42"/>
+  </g>
+  <g data-landform="seam-basin-copy" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M-150 4800C-125 4515 70 4330 330 4345C610 4362 765 4575 735 4800C705 5024 534 5196 310 5214C76 5232-124 5070-150 4800Z" stroke-width="4.6" opacity=".48"/>
+    <path data-contour="minor" d="M-58 4800C-40 4574 106 4438 318 4449C523 4460 652 4615 631 4800C610 4976 476 5102 306 5116C127 5131-42 5006-58 4800Z" stroke-width="2.8" opacity=".3"/>
+    <path data-contour="minor" d="M40 4800C51 4643 160 4546 310 4554C455 4562 550 4672 535 4800C520 4921 425 5011 303 5020C174 5031 48 4944 40 4800Z" stroke-width="2.6" opacity=".25"/>
+    <path data-contour="index" d="M135 4800C141 4709 213 4651 305 4655C396 4660 452 4723 443 4800C434 4875 377 4926 298 4930C219 4935 139 4882 135 4800Z" stroke-width="3.8" opacity=".42"/>
+  </g>
+
+  <g data-landform="western-terrace" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M-120 690C45 486 305 406 568 505C777 583 872 778 776 948C681 1117 421 1191 187 1090C-38 992-228 824-120 690Z" stroke-width="4.4" opacity=".46"/>
+    <path data-contour="minor" d="M-16 711C112 558 316 500 512 572C671 631 748 770 679 893C607 1021 413 1079 238 1005C67 934-99 812-16 711Z" stroke-width="2.8" opacity=".29"/>
+    <path data-contour="minor" d="M85 733C179 626 322 587 462 638C576 680 635 778 584 864C531 953 395 994 278 944C158 894 24 802 85 733Z" stroke-width="2.6" opacity=".24"/>
+    <path data-contour="index" d="M188 756C248 694 331 672 411 701C480 726 514 784 486 833C454 887 376 910 313 882C244 853 149 797 188 756Z" stroke-width="3.6" opacity=".4"/>
+  </g>
+
+  <g data-landform="northeast-massif" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M826 1176C1043 1011 1338 1045 1499 1255C1652 1454 1605 1716 1397 1842C1195 1964 926 1884 814 1678C703 1475 670 1296 826 1176Z" stroke-width="4.8" opacity=".5"/>
+    <path data-contour="minor" d="M914 1237C1072 1119 1289 1141 1410 1298C1526 1448 1488 1644 1338 1738C1192 1829 991 1768 906 1617C823 1468 798 1322 914 1237Z" stroke-width="2.9" opacity=".3"/>
+    <path data-contour="minor" d="M1004 1305C1112 1226 1253 1242 1331 1347C1412 1454 1385 1576 1284 1644C1185 1711 1050 1667 993 1563C934 1458 926 1363 1004 1305Z" stroke-width="2.6" opacity=".25"/>
+    <path data-contour="index" d="M1091 1372C1154 1326 1236 1338 1281 1401C1327 1466 1311 1539 1252 1579C1193 1620 1114 1593 1081 1532C1047 1468 1046 1405 1091 1372Z" stroke-width="3.8" opacity=".42"/>
+    <path data-contour="minor" d="M1164 1424C1196 1400 1238 1407 1261 1439C1283 1472 1275 1508 1245 1529C1215 1549 1175 1535 1158 1504C1141 1473 1142 1441 1164 1424Z" stroke-width="2.4" opacity=".23"/>
+  </g>
+
+  <g data-landform="central-ridge" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M238 1974C420 1805 689 1773 886 1888C1026 1970 1057 2093 1212 2175C1392 2269 1491 2440 1384 2597C1273 2760 1010 2788 789 2664C620 2569 511 2471 310 2435C96 2397 61 2138 238 1974Z" stroke-width="4.7" opacity=".48"/>
+    <path data-contour="minor" d="M333 2025C474 1902 669 1879 817 1964C937 2033 974 2146 1096 2211C1234 2284 1315 2407 1238 2519C1157 2634 967 2647 811 2559C672 2481 588 2390 422 2358C258 2326 200 2141 333 2025Z" stroke-width="2.8" opacity=".29"/>
+    <path data-contour="minor" d="M428 2079C530 1993 662 1978 765 2037C863 2093 896 2193 991 2243C1094 2297 1150 2378 1096 2454C1041 2533 911 2538 804 2478C695 2417 636 2339 510 2314C392 2291 332 2159 428 2079Z" stroke-width="2.6" opacity=".24"/>
+    <path data-contour="index" d="M526 2138C593 2084 672 2077 732 2112C806 2155 831 2240 898 2275C968 2312 1004 2363 970 2410C934 2460 850 2460 784 2422C704 2377 669 2315 580 2297C501 2281 462 2189 526 2138Z" stroke-width="3.8" opacity=".41"/>
+  </g>
+
+  <g data-landform="southwest-basin" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M-110 2811C92 2673 382 2672 590 2817C787 2954 836 3189 678 3362C524 3531 249 3568 30 3423C-176 3286-285 2931-110 2811Z" stroke-width="4.6" opacity=".47"/>
+    <path data-contour="minor" d="M-4 2871C150 2770 360 2772 515 2878C664 2980 701 3153 585 3277C469 3402 268 3427 106 3320C-48 3218-135 2958-4 2871Z" stroke-width="2.8" opacity=".29"/>
+    <path data-contour="minor" d="M98 2934C205 2864 345 2868 446 2939C545 3007 570 3120 494 3204C416 3290 283 3305 177 3235C75 3168 8 2993 98 2934Z" stroke-width="2.6" opacity=".24"/>
+    <path data-contour="index" d="M197 3001C262 2959 340 2962 397 3001C455 3041 469 3105 426 3153C382 3202 308 3211 250 3172C193 3134 146 3034 197 3001Z" stroke-width="3.7" opacity=".4"/>
+  </g>
+
+  <g data-landform="eastern-shelf" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M847 3332C1039 3215 1309 3246 1491 3409C1663 3563 1675 3803 1518 3955C1363 4105 1095 4098 912 3939C732 3783 687 3429 847 3332Z" stroke-width="4.7" opacity=".49"/>
+    <path data-contour="minor" d="M935 3401C1074 3319 1268 3342 1401 3459C1529 3572 1537 3749 1424 3858C1312 3967 1120 3961 986 3847C854 3734 817 3470 935 3401Z" stroke-width="2.9" opacity=".3"/>
+    <path data-contour="minor" d="M1026 3473C1116 3420 1242 3435 1328 3512C1413 3587 1418 3702 1342 3776C1269 3848 1142 3844 1055 3770C968 3696 948 3519 1026 3473Z" stroke-width="2.6" opacity=".25"/>
+    <path data-contour="index" d="M1115 3545C1166 3515 1236 3524 1284 3567C1332 3609 1335 3673 1293 3714C1252 3754 1182 3752 1135 3711C1087 3670 1073 3570 1115 3545Z" stroke-width="3.8" opacity=".42"/>
+  </g>
+
+  <g data-landform="southern-fold" stroke="#57d5e7" vector-effect="non-scaling-stroke">
+    <path data-contour="index" d="M308 3973C491 3835 733 3822 913 3938C1053 4028 1078 4161 1226 4264C1402 4386 1410 4610 1222 4716C1036 4821 773 4719 632 4597C485 4470 359 4490 218 4368C84 4252 158 4086 308 3973Z" stroke-width="4.6" opacity=".47"/>
+    <path data-contour="minor" d="M398 4031C532 3934 704 3928 833 4012C949 4088 973 4203 1092 4285C1219 4373 1224 4529 1089 4605C952 4681 766 4606 664 4519C547 4419 465 4434 356 4342C257 4258 286 4112 398 4031Z" stroke-width="2.8" opacity=".29"/>
+    <path data-contour="minor" d="M490 4092C580 4027 691 4024 775 4079C866 4139 887 4238 977 4301C1063 4361 1066 4463 974 4515C879 4568 754 4516 685 4457C599 4384 548 4395 470 4330C399 4270 413 4147 490 4092Z" stroke-width="2.6" opacity=".24"/>
+    <path data-contour="index" d="M583 4156C638 4117 700 4115 747 4146C808 4186 824 4253 883 4294C938 4332 940 4392 882 4425C820 4459 742 4427 698 4389C642 4342 613 4348 565 4308C521 4271 535 4190 583 4156Z" stroke-width="3.7" opacity=".4"/>
+  </g>
+
+  <g data-survey-marks="" stroke="#919ba1" fill="#919ba1" vector-effect="non-scaling-stroke" opacity=".28">
+    <path d="M1280 690h72M1316 654v72M1288 682l56 16M1308 662l16 56" stroke-width="1.4"/>
+    <circle cx="1316" cy="690" r="18" fill="none" stroke-width="1.4"/>
+    <path d="M215 1840h56M243 1812v56M1180 2920h64M1212 2888v64M760 3700h56M788 3672v56" stroke-width="1.2"/>
+    <path d="M1390 2050h94v42h-94zM118 3650h102v42H118z" fill="none" stroke-width="1.2"/>
+  </g>
+</svg>

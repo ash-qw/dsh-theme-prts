@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 3000" preserveAspectRatio="none">
+  <g fill="none" stroke="#57d5e7" stroke-width="1" opacity=".16" vector-effect="non-scaling-stroke">
+    <path d="M0 0H1600M0 250H1600M0 500H1600M0 750H1600M0 1000H1600M0 1250H1600M0 1500H1600M0 1750H1600M0 2000H1600M0 2250H1600M0 2500H1600M0 2750H1600M0 3000H1600"/>
+    <path d="M0 0V3000M200 0V3000M400 0V3000M600 0V3000M800 0V3000M1000 0V3000M1200 0V3000M1400 0V3000M1600 0V3000"/>
+  </g>
+  <g fill="#57d5e7" opacity=".32" font-family="monospace" font-size="20" letter-spacing="3">
+    <text x="26" y="46">PRTS // GRID 00</text>
+    <text x="1260" y="46">N 00°00′</text>
+    <text x="26" y="796">SECTOR 03-A</text>
+    <text x="1260" y="1046">E 116°24′</text>
+    <text x="26" y="1546">ALT // REL</text>
+    <text x="1260" y="2046">SECTOR 08-C</text>
+    <text x="26" y="2796">RIIC MAP DATUM</text>
+  </g>
+  <g fill="#57d5e7" opacity=".26">
+    <path d="M800 1460v80M760 1500h80"/>
+    <circle cx="800" cy="1500" r="28" fill="none" stroke="#57d5e7" stroke-width="2"/>
+  </g>
+</svg>
