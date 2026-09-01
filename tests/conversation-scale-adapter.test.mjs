@@ -307,6 +307,7 @@ test('mounts one SVG scale, isolates wheel input, supports click and keyboard ju
   const turnsHtml = Array.from({ length: 24 }, (_, index) =>
     `<div data-message-role="user" data-y="${index * 100}">第 ${index + 1} 轮</div>`).join('')
   const dom = new JSDOM(`<!doctype html><html><body>
+    <header data-host-header></header>
     <main data-prts-region="operation">
       <div data-conversation-scroll>${turnsHtml}<div data-chat-flow-kind="assistant-step"><div data-markdown>稳定回复</div></div><div data-composer-seat>composer</div></div>
     </main>
@@ -341,8 +342,23 @@ test('mounts one SVG scale, isolates wheel input, supports click and keyboard ju
     operationReads += 1
     return { top: 0, bottom: 600, left: 100, right: 900, width: 800, height: 600 }
   }
-  scroller.getBoundingClientRect = () => ({ top: 60, bottom: 560, left: 150, right: 850, width: 700, height: 500 })
-  composer.getBoundingClientRect = () => ({ top: 220, bottom: 280, left: 150, right: 850, width: 700, height: 60 })
+  let conversationShift = 0
+  scroller.getBoundingClientRect = () => ({
+    top: 60 + conversationShift,
+    bottom: 560 + conversationShift,
+    left: 150,
+    right: 850,
+    width: 700,
+    height: 500,
+  })
+  composer.getBoundingClientRect = () => ({
+    top: 220 + conversationShift,
+    bottom: 280 + conversationShift,
+    left: 150,
+    right: 850,
+    width: 700,
+    height: 60,
+  })
   let contentColumnLeft = 190
   for (const turn of collectConversationTurns(scroller)) {
     turn.getBoundingClientRect = () => {
@@ -354,6 +370,7 @@ test('mounts one SVG scale, isolates wheel input, supports click and keyboard ju
   const adapter = createConversationScaleAdapter({ document, window: dom.window })
   adapter.start()
   await flush(dom.window)
+  await flush(dom.window, 80)
 
   const scale = document.querySelector('[data-prts-conversation-scale]')
   assert.ok(scale)
@@ -365,6 +382,16 @@ test('mounts one SVG scale, isolates wheel input, supports click and keyboard ju
   assert.equal(scale.dataset.prtsScaleOffset, scale.dataset.prtsScaleMaximum)
   assert.equal(scroller.hasAttribute('data-prts-conversation-scale-ready'), true)
   assert.equal(scale.style.left, "29px")
+  assert.equal(scale.style.top, '72px')
+
+  conversationShift = 40
+  document.querySelector('[data-host-header]').classList.add('expanded')
+  await flush(dom.window, 40)
+  assert.equal(scale.style.top, '112px', 'host position-only reflow refreshes the scale geometry')
+  conversationShift = 0
+  document.querySelector('[data-host-header]').classList.remove('expanded')
+  await flush(dom.window, 40)
+  assert.equal(scale.style.top, '72px', 'scale returns to the visible conversation center')
 
   const readsBeforeCalibration = operationReads
   adapter.getCalibrationState()
@@ -485,10 +512,10 @@ test('mounts one SVG scale, isolates wheel input, supports click and keyboard ju
   menu.getBoundingClientRect = () => ({ top: 60, bottom: 300, left: 140, right: 500, width: 360, height: 240 })
   portal.append(menu)
   document.body.append(portal)
-  await flush(dom.window)
+  await flush(dom.window, 40)
   assert.equal(scale.hasAttribute('data-prts-conversation-scale-obstructed'), true)
   portal.remove()
-  await flush(dom.window)
+  await flush(dom.window, 40)
   assert.equal(scale.hasAttribute('data-prts-conversation-scale-obstructed'), false)
 
   const beforeBodyScroll = scroller.scrollTop

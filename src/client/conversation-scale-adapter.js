@@ -107,6 +107,7 @@ const PREVIEW_TOUCH_DURATION = 1200
 const SNAP_DELAY = 110
 const TOUCH_WAVE_DURATION = 620
 const HISTORY_PAGE_SETTLE_LIMIT = 4000
+const GEOMETRY_SETTLE_FRAME_LIMIT = 24
 let scaleInstanceSeed = 0
 
 function clamp(value, minimum, maximum) {
@@ -764,6 +765,9 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
   let scaleLengths = resolveConversationScaleLengths(focusContrast)
   let contentLeft
   let geometryDirty = true
+  let geometrySettleFrame
+  let geometrySettleFramesRemaining = 0
+  let geometrySettleSignature
   let observedOperationWidth
   let observedOperationHeight
   let started = false
@@ -785,6 +789,63 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
   const currentTime = timestamp => Number.isFinite(timestamp)
     ? timestamp
     : window?.performance?.now?.() ?? Date.now()
+
+  function currentGeometrySignature() {
+    if (!operation || !scroller) return undefined
+    const operationBox = operation.getBoundingClientRect?.()
+    const scrollerBox = scroller.getBoundingClientRect?.()
+    const composerBox = composer?.getBoundingClientRect?.()
+    if (!operationBox || !scrollerBox) return undefined
+    const values = [
+      operationBox.width,
+      operationBox.height,
+      scrollerBox.top - operationBox.top,
+      scrollerBox.bottom - operationBox.top,
+      scrollerBox.left - operationBox.left,
+      scrollerBox.right - operationBox.left,
+      composerBox ? composerBox.top - operationBox.top : -1,
+      composerBox ? composerBox.bottom - operationBox.top : -1,
+      composerBox ? composerBox.left - operationBox.left : -1,
+      composerBox ? composerBox.right - operationBox.left : -1,
+    ]
+    if (!values.every(Number.isFinite)) return undefined
+    return values.map(value => Number(value.toFixed(2))).join(':')
+  }
+
+  function sampleGeometryStabilization() {
+    geometrySettleFrame = undefined
+    if (!started || failed || geometrySettleFramesRemaining <= 0) return
+    geometrySettleFramesRemaining -= 1
+    const signature = currentGeometrySignature()
+    if (signature !== undefined && signature !== geometrySettleSignature) {
+      geometrySettleSignature = signature
+      geometryDirty = true
+      obstructionDirty = true
+      schedule()
+    }
+    if (geometrySettleFramesRemaining > 0) {
+      geometrySettleFrame = requestFrame(sampleGeometryStabilization)
+    }
+  }
+
+  function requestGeometryStabilization() {
+    if (!started || failed) return
+    geometrySettleFramesRemaining = GEOMETRY_SETTLE_FRAME_LIMIT
+    if (geometrySettleFrame === undefined) {
+      geometrySettleFrame = requestFrame(sampleGeometryStabilization)
+    }
+  }
+
+  function stopGeometryStabilization() {
+    cancelFrame(geometrySettleFrame)
+    geometrySettleFrame = undefined
+    geometrySettleFramesRemaining = 0
+    geometrySettleSignature = undefined
+  }
+
+  function onHostGeometryChange() {
+    requestGeometryStabilization()
+  }
 
   function reducedMotion() {
     return window?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
@@ -1117,10 +1178,12 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
     setScaleResizeState(resizeActive)
     cancelJump()
     resetWave()
+    requestGeometryStabilization()
     return true
   }
 
   function disconnectRoots() {
+    stopGeometryStabilization()
     clearTimers()
     hidePreview()
     disconnectPreviewObserver()
@@ -2129,10 +2192,15 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
       if (started || !document) return
       started = true
       failed = false
+      window?.addEventListener?.('resize', onHostGeometryChange)
+      window?.addEventListener?.('orientationchange', onHostGeometryChange)
+      window?.addEventListener?.('pageshow', onHostGeometryChange)
+      window?.visualViewport?.addEventListener?.('resize', onHostGeometryChange)
       const ResizeObserver = window?.ResizeObserver
       if (typeof ResizeObserver === 'function') {
         resizeObserver = new ResizeObserver((entries = []) => {
           geometryDirty = true
+          requestGeometryStabilization()
           const operationEntry = entries.find(entry => entry.target === operation)
           const width = Number(operationEntry?.contentRect?.width)
           const height = Number(operationEntry?.contentRect?.height)
@@ -2173,6 +2241,7 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
           const external = mutations.filter(mutation =>
             !mutation.target?.closest?.('[data-prts-conversation-scale], [data-prts-conversation-preview], [data-prts-conversation-history-hint], [data-prts-conversation-history-status]')
           )
+          if (external.length) requestGeometryStabilization()
           const historyRelevant = external.some(mutation =>
             mutation.type === 'childList'
               && operation?.contains?.(mutation.target)
@@ -2210,9 +2279,17 @@ export function createConversationScaleAdapter({ document, window, sessions }) {
           ],
         })
       }
+      document.fonts?.ready?.then?.(() => {
+        if (started) requestGeometryStabilization()
+      }).catch?.(() => {})
       schedule(true)
     },
     dispose() {
+      window?.removeEventListener?.('resize', onHostGeometryChange)
+      window?.removeEventListener?.('orientationchange', onHostGeometryChange)
+      window?.removeEventListener?.('pageshow', onHostGeometryChange)
+      window?.visualViewport?.removeEventListener?.('resize', onHostGeometryChange)
+      stopGeometryStabilization()
       started = false
       failed = false
       mutationObserver?.disconnect()

@@ -241,6 +241,26 @@ test('@conversation-scale scrolls independently and traps wheel input at both bo
   await expect.poll(() => scale.getAttribute('data-prts-scale-maximum')).not.toBe('0')
   const marks = scale.locator('[data-prts-conversation-scale-marks]')
   await expect(marks).toHaveAttribute('mask', /^url\(#prts-conversation-scale-fade-\d+\)$/)
+  const measureCenter = () => page.evaluate(() => {
+    const scrollerBox = document.querySelector('[data-conversation-scroll]').getBoundingClientRect()
+    const composerBox = document.querySelector('[data-composer-seat]').getBoundingClientRect()
+    const scaleBox = document.querySelector('[data-prts-conversation-scale]').getBoundingClientRect()
+    const viewportCenter = (scrollerBox.top + 12 + composerBox.top - 12) / 2
+    return {
+      centerDelta: scaleBox.top + scaleBox.height / 2 - viewportCenter,
+      scaleCenter: scaleBox.top + scaleBox.height / 2,
+    }
+  })
+  const beforeReload = await measureCenter()
+  expect(Math.abs(beforeReload.centerDelta)).toBeLessThan(1)
+
+  await page.reload()
+  await page.waitForFunction(() => document.documentElement.hasAttribute('data-dsh-prts'))
+  await populateTurns(page, 220)
+  await expect.poll(() => scale.getAttribute('data-prts-scale-maximum')).not.toBe('0')
+  const afterReload = await measureCenter()
+  expect(Math.abs(afterReload.centerDelta)).toBeLessThan(1)
+  expect(Math.abs(afterReload.scaleCenter - beforeReload.scaleCenter)).toBeLessThan(1)
 
   const originalBodyScroll = await scroller.evaluate(node => node.scrollTop)
   const originalOffset = Number(await scale.getAttribute('data-prts-scale-offset'))
