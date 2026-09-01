@@ -691,6 +691,69 @@ test('preserves third-party settings button foreground and fill ownership in bot
   }
 })
 
+test('preserves host dialog button foreground and background pairs in both schemes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+
+  for (const scheme of ['light', 'dark']) {
+    await setPreferences(page, { ...enabled, scheme })
+    const colors = scheme === 'light'
+      ? {
+          primary: ['rgb(255, 255, 255)', 'rgb(17, 24, 39)'],
+          secondary: ['rgb(17, 24, 39)', 'rgb(229, 231, 235)'],
+          danger: ['rgb(255, 255, 255)', 'rgb(185, 28, 28)'],
+        }
+      : {
+          primary: ['rgb(17, 24, 39)', 'rgb(248, 250, 252)'],
+          secondary: ['rgb(249, 250, 251)', 'rgb(31, 41, 55)'],
+          danger: ['rgb(255, 255, 255)', 'rgb(185, 28, 28)'],
+        }
+    await page.addStyleTag({ content: [
+      `.fixture-host-dialog .fixture-host-primary { color: ${colors.primary[0]}; background: ${colors.primary[1]}; }`,
+      `.fixture-host-dialog .fixture-host-secondary { color: ${colors.secondary[0]}; background: ${colors.secondary[1]}; }`,
+      `.fixture-host-dialog .fixture-host-danger { color: ${colors.danger[0]}; background: ${colors.danger[1]}; }`,
+    ].join('\n') })
+    await page.evaluate(() => {
+      const portal = document.createElement('div')
+      portal.id = 'fixture-host-dialog-portal'
+      portal.setAttribute('role', 'presentation')
+      portal.innerHTML = [
+        '<section class="fixture-host-dialog" role="dialog" aria-modal="true">',
+        '<button class="fixture-host-primary">确认操作</button>',
+        '<button class="fixture-host-secondary">取消操作</button>',
+        '<button class="fixture-host-danger" data-danger="true">危险操作</button>',
+        '</section>',
+      ].join('')
+      document.body.appendChild(portal)
+
+      const preserved = document.createElement('section')
+      preserved.id = 'fixture-preserved-dialog'
+      preserved.className = 'fixture-host-dialog'
+      preserved.dataset.prtsPreservePopupStyle = ''
+      preserved.setAttribute('role', 'dialog')
+      preserved.setAttribute('aria-modal', 'true')
+      preserved.innerHTML = '<button class="fixture-host-primary">保留操作</button>'
+      document.body.appendChild(preserved)
+    })
+
+    const dialog = page.locator('#fixture-host-dialog-portal [role="dialog"]')
+    await expect(dialog).toHaveAttribute('data-prts-floating-glass', 'dialog')
+    await expect(page.locator('#fixture-preserved-dialog')).not.toHaveAttribute('data-prts-floating-glass')
+
+    const expected = [
+      ['确认操作', ...colors.primary],
+      ['取消操作', ...colors.secondary],
+      ['危险操作', ...colors.danger],
+      ['保留操作', ...colors.primary],
+    ]
+    for (const [name, color, background] of expected) {
+      const button = page.getByRole('button', { name, exact: true })
+      await expect(button).toHaveCSS('color', color)
+      await expect(button).toHaveCSS('background-color', background)
+      expect(await contrastRatio(button)).toBeGreaterThanOrEqual(4.5)
+    }
+  }
+})
+
 test('keeps the quick scheme control at the rail foot and glassifies real conversation utilities', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await setPreferences(page)

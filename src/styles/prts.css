@@ -169,15 +169,14 @@ html[data-dsh-prts] a {
 }
 
 /* Keep the host application's control metrics intact. Only controls owned by
-   the P.R.T.S. shell and settings overlay inherit the theme typography. */
+   the P.R.T.S. shell and settings overlay inherit theme typography and color. */
 html[data-dsh-prts] [data-prts-shell] :is(button, input, textarea, select),
 html[data-dsh-prts] [data-prts-theme-settings] :is(button, input, textarea, select) {
   font: inherit;
 }
 
-/* Host controls inherit the active scheme, while Settings content keeps
-   paired semantic foreground and fill from each registered section. */
-html[data-dsh-prts] button:not([data-slot="sidebar.settings"] button) {
+html[data-dsh-prts] [data-prts-shell] button,
+html[data-dsh-prts] [data-prts-theme-settings] button {
   color: inherit;
 }
 
@@ -992,7 +991,11 @@ html[data-dsh-prts] [data-prts-floating-input] {
   color: var(--prts-ink) !important;
 }
 
-html[data-dsh-prts] [data-prts-floating-danger] {
+html[data-dsh-prts] :is(
+  [data-prts-floating-glass="menu"],
+  [data-prts-floating-glass="listbox"],
+  [data-prts-floating-glass="popover"]
+) [data-prts-floating-danger] {
   color: var(--prts-red) !important;
 }
 

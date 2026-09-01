@@ -278,6 +278,7 @@ test('retains scoped floating surfaces and a readable responsive settings workbe
     '@container prts-settings (max-width: 52rem)',
   ])
   assert.match(css, /\[data-prts-floating-glass="dialog"\][^{]*\{[^}]*backdrop-filter:\s*none/s)
+  assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+button:not\(\[data-slot="sidebar\.settings"\] button\)/)
   assert.equal(css.includes('[data-sonner-toast]'), false)
   assert.equal(css.includes('[role="tooltip"]'), false)
   assert.doesNotMatch(css, /\.prts-settings__(?:recovery|startup|meta)/)
@@ -316,7 +317,8 @@ test('owns one responsive startup layer with a reduced-motion completion state',
 test('preserves native composer metrics and uses continuous empty-session geometry', () => {
   assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+(?:button|input|textarea|select)[^{]*\{[^}]*font:\s*inherit/s)
   assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+button\s*\{[^}]*color:\s*inherit/s)
-  assert.match(css, /html\[data-dsh-prts\]\s+button:not\(\[data-slot="sidebar\.settings"\]\s+button\)\s*\{[^}]*color:\s*inherit/s)
+  assert.match(css, /\[data-prts-shell\]\s+button,[^{]*\[data-prts-theme-settings\]\s+button\s*\{[^}]*color:\s*inherit/s)
+  assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+button:not\([^}]*color:\s*inherit/s)
   assert.match(css, /\[data-prts-shell\] :is\(button, input, textarea, select\)[^{]*\{[^}]*font:\s*inherit/s)
   assert.match(css, /\[data-prts-theme-settings\] :is\(button, input, textarea, select\)[^{]*\{[^}]*font:\s*inherit/s)
   assert.match(css, /\[data-slot="sidebar\.settings"\]\s*>\s*button\s*\{[^}]*color:\s*var\(--prts-ink\)\s*!important/s)
