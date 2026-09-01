@@ -217,16 +217,23 @@ test('keeps particle emblems and composer geometry without retired dossier style
   assert.doesNotMatch(css, /\[data-prts-composer-signal\]::after/)
 })
 
-test('supports fixed host-owned light and dark themes and accessibility fallbacks', () => {
+test('supports fixed host-owned themes, optical calibration, and accessibility fallbacks', () => {
   includesAll([
     '[data-prts-scheme-toggle]',
     '[data-prts-scheme-current="dark"]',
-    '[data-prts-scheme-transition]',
+    '[data-prts-scheme-transition-mode="view"]',
+    '[data-prts-scheme-transition-interactive]',
+    '[data-prts-scheme-transition-armed]',
+    '[data-prts-scheme-reveal-edge]',
+    '[data-prts-scheme-reveal-blend]',
+    '[data-prts-scheme-reveal-label]',
+    'clip-path: inset(',
+    'backdrop-filter: blur(5px)',
+    '@keyframes prts-scheme-view-hold',
     'view-transition-name: prts-scheme-toggle',
     'view-transition-name: prts-scheme-icon',
     '::view-transition-new(root)',
-    '@keyframes prts-scheme-reveal',
-    '450ms cubic-bezier(.22, 1, .36, 1)',
+    'touch-action: none',
     'scale(.96)',
     '@media (max-width: 640px)',
     '@media (prefers-reduced-motion: reduce)',

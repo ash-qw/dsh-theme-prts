@@ -34,91 +34,51 @@ function createDom({ reduced = false, width = 1200, height = 800 } = {}) {
   return dom
 }
 
+function installViewTransitions(dom) {
+  const animations = []
+  const transitions = []
+  dom.window.Element.prototype.animate = function (keyframes, options) {
+    const finished = deferred()
+    const record = { element: this, keyframes, options, finished, cancelled: 0 }
+    animations.push(record)
+    return {
+      finished: finished.promise,
+      cancel() { record.cancelled += 1 },
+    }
+  }
+  dom.window.document.startViewTransition = update => {
+    const finished = deferred()
+    const record = { finished, skipped: 0 }
+    transitions.push(record)
+    update()
+    return {
+      ready: Promise.resolve(),
+      finished: finished.promise,
+      skipTransition() { record.skipped += 1 },
+    }
+  }
+  return { animations, transitions }
+}
+
 function settle() {
   return new Promise(resolve => setTimeout(resolve, 0))
 }
 
-test('waits for host confirmation but not press feedback before revealing the confirmed theme', async t => {
+test('reveals the host-confirmed theme from left to right with one soft View Transition boundary', async t => {
   const dom = createDom()
   const host = deferred()
-  const press = deferred()
-  const finished = deferred()
-  let current = 'dark'
-  let transitions = 0
   const transitionStates = []
-  const service = {
-    getTheme: () => current,
-    setTheme(id) {
-      return host.promise.then(() => { current = id })
-    },
-  }
-  dom.window.document.startViewTransition = update => {
-    transitions += 1
-    update()
-    return { finished: finished.promise, skipTransition() {} }
-  }
-  const controller = createThemeController({
-    document: dom.window.document,
-    window: dom.window,
-    cssText: '',
-    service,
-    onTransitionStateChange: active => transitionStates.push(active),
-  })
-  t.after(() => controller.dispose())
-  controller.apply(enabled)
-  const root = dom.window.document.documentElement
-
-  const request = controller.setTheme('light', {
-    animate: true,
-    origin: { x: 30, y: 40 },
-    ready: press.promise,
-  })
-  controller.sync('light')
-  assert.equal(root.dataset.prtsScheme, 'dark')
-
-  assert.equal(transitions, 0)
-  host.resolve()
-  assert.equal(await request, 'light')
-  assert.equal(root.dataset.prtsScheme, 'light')
-  assert.equal(root.getAttribute('data-prts-scheme-transition'), 'light')
-  assert.equal(root.style.getPropertyValue('--prts-scheme-origin-x'), '30px')
-  assert.equal(root.style.getPropertyValue('--prts-scheme-origin-y'), '40px')
-  const expectedRadius = Math.hypot(1170, 760) + 2
-  assert.ok(Math.abs(Number.parseFloat(root.style.getPropertyValue('--prts-scheme-radius')) - expectedRadius) < 0.01)
-  assert.equal(transitions, 1)
-  assert.deepEqual(transitionStates, [true])
-
-  finished.resolve()
-  await settle()
-  assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
-  assert.equal(root.style.getPropertyValue('--prts-scheme-radius'), '')
-  assert.deepEqual(transitionStates, [true, false])
-})
-
-
-test('uses a compositor curtain instead of full-page snapshots for large viewports', async t => {
-  const dom = createDom({ width: 1440, height: 1000 })
   let current = 'dark'
-  let viewTransitions = 0
-  const transitionStates = []
-  const animationRecords = []
-  dom.window.Element.prototype.animate = function (keyframes, options) {
-    const finished = deferred()
-    const record = { element: this, keyframes, options, finished }
-    animationRecords.push(record)
-    return { finished: finished.promise, cancel() {} }
-  }
-  dom.window.document.startViewTransition = () => {
-    viewTransitions += 1
-    throw new Error('large viewports should not capture full-page snapshots')
-  }
+  const records = installViewTransitions(dom)
   const controller = createThemeController({
     document: dom.window.document,
     window: dom.window,
     cssText: '',
     service: {
       getTheme: () => current,
-      setTheme(id) { current = id },
+      setTheme(id) {
+        return host.promise.then(() => { current = id })
+      },
     },
     onTransitionStateChange: active => transitionStates.push(active),
   })
@@ -127,34 +87,157 @@ test('uses a compositor curtain instead of full-page snapshots for large viewpor
   const root = dom.window.document.documentElement
 
   const request = controller.setTheme('light', { animate: true, origin: { x: 30, y: 40 } })
-  const curtain = dom.window.document.querySelector('[data-prts-scheme-curtain="light"]')
-  assert.ok(curtain)
-  assert.equal(root.dataset.prtsScheme, 'dark')
-  assert.equal(viewTransitions, 0)
-  assert.deepEqual(transitionStates, [true])
-  assert.equal(animationRecords.length, 1)
-  assert.equal(animationRecords[0].element, curtain)
-  assert.equal(animationRecords[0].options.duration, 260)
   controller.sync('light')
   assert.equal(root.dataset.prtsScheme, 'dark')
-  assert.equal(dom.window.document.querySelector('[data-prts-scheme-curtain]'), curtain)
-  assert.match(animationRecords[0].keyframes[0].clipPath, /circle\(0 at 30px 40px\)/)
+  assert.equal(records.transitions.length, 0)
 
-  animationRecords[0].finished.resolve()
+  host.resolve()
   await settle()
   assert.equal(root.dataset.prtsScheme, 'light')
-  assert.equal(animationRecords.length, 2)
-  assert.equal(animationRecords[1].options.duration, 140)
+  assert.equal(root.getAttribute('data-prts-scheme-transition'), 'light')
+  assert.equal(root.getAttribute('data-prts-scheme-transition-mode'), 'view')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-origin-x'), '30px')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-origin-y'), '40px')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-duration'), '480ms')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '-32px')
+  assert.equal(records.transitions.length, 1)
+  assert.equal(records.animations.length, 2)
+  const clip = records.animations.find(record => record.options.pseudoElement === '::view-transition-new(root)')
+  const edge = records.animations.find(record => record !== clip)
+  assert.equal(clip.keyframes[0].clipPath, 'inset(0 1232px 0 0)')
+  assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 0px 0 0)')
+  assert.equal(clip.options.duration, 480)
+  assert.equal(clip.options.easing, 'cubic-bezier(.4, 0, .2, 1)')
+  assert.equal(edge.keyframes[0].transform, 'translate3d(-33px, 0, 0)')
+  assert.equal(edge.keyframes.at(-1).transform, 'translate3d(1231px, 0, 0)')
+  assert.deepEqual(transitionStates, [true])
 
-  animationRecords[1].finished.resolve()
+  for (const record of records.animations) record.finished.resolve()
   assert.equal(await request, 'light')
-  assert.equal(dom.window.document.querySelector('[data-prts-scheme-curtain]'), null)
+  assert.equal(records.transitions[0].skipped, 1)
   assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '')
   assert.deepEqual(transitionStates, [true, false])
 })
 
-test('keeps external sync and reduced-motion theme changes instantaneous', () => {
+test('uses the compact reveal duration on phone viewports', async t => {
+  const dom = createDom({ width: 390, height: 844 })
+  let current = 'dark'
+  const records = installViewTransitions(dom)
+  const controller = createThemeController({
+    document: dom.window.document,
+    window: dom.window,
+    cssText: '',
+    service: {
+      getTheme: () => current,
+      setTheme(id) { current = id },
+    },
+  })
+  t.after(() => controller.dispose())
+  controller.apply(enabled)
+
+  const request = controller.setTheme('light', { animate: true })
+  await settle()
+  const completion = records.animations.filter(record => record.options.duration === 351)
+  const clip = completion.find(record => record.options.pseudoElement)
+  assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 0px 0 0)')
+  for (const record of completion) record.finished.resolve()
+  assert.equal(await request, 'light')
+})
+
+test('tracks an interactive boundary in both directions and rolls back below 50 percent', async t => {
   const dom = createDom()
+  let current = 'dark'
+  let hostCommits = 0
+  const records = installViewTransitions(dom)
+  const controller = createThemeController({
+    document: dom.window.document,
+    window: dom.window,
+    cssText: '',
+    service: {
+      getTheme: () => current,
+      setTheme(id) {
+        hostCommits += 1
+        current = id
+      },
+    },
+  })
+  t.after(() => controller.dispose())
+  controller.apply(enabled)
+  const root = dom.window.document.documentElement
+
+  const gesture = controller.beginThemeTransition('light', {
+    origin: { x: 30, y: 40 },
+    progress: .1,
+  })
+  await settle()
+  assert.equal(root.dataset.prtsScheme, 'light')
+  assert.equal(root.getAttribute('data-prts-scheme-transition-interactive'), '')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '120px')
+
+  gesture.update(.63)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '756px')
+  assert.equal(root.getAttribute('data-prts-scheme-transition-armed'), '')
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-label]')?.textContent, 'OPTICAL SYNC: 63%')
+
+  controller.sync('dark')
+  assert.equal(root.dataset.prtsScheme, 'light')
+  gesture.update(.35)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '420px')
+  assert.equal(root.hasAttribute('data-prts-scheme-transition-armed'), false)
+
+  const result = gesture.finish(false)
+  await settle()
+  const completion = records.animations.filter(record => record.options.duration === 121)
+  const clip = completion.find(record => record.options.pseudoElement)
+  assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 1232px 0 0)')
+  for (const record of completion) record.finished.resolve()
+  assert.equal(await result, 'dark')
+  assert.equal(root.dataset.prtsScheme, 'dark')
+  assert.equal(hostCommits, 0)
+  assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]'), null)
+})
+
+test('commits an interactive reveal above 50 percent through the host authority', async t => {
+  const dom = createDom()
+  let current = 'dark'
+  const hostTargets = []
+  const records = installViewTransitions(dom)
+  const controller = createThemeController({
+    document: dom.window.document,
+    window: dom.window,
+    cssText: '',
+    service: {
+      getTheme: () => current,
+      setTheme(id) {
+        hostTargets.push(id)
+        current = id
+      },
+    },
+  })
+  t.after(() => controller.dispose())
+  controller.apply(enabled)
+  const root = dom.window.document.documentElement
+
+  const gesture = controller.beginThemeTransition('light', { progress: .12 })
+  await settle()
+  gesture.update(.63)
+  const result = gesture.finish(true)
+  await settle()
+  assert.deepEqual(hostTargets, ['light'])
+  const completion = records.animations.filter(record => record.options.duration === 178)
+  const clip = completion.find(record => record.options.pseudoElement)
+  assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 0px 0 0)')
+  for (const record of completion) record.finished.resolve()
+
+  assert.equal(await result, 'light')
+  assert.equal(root.dataset.prtsScheme, 'light')
+  assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
+})
+
+test('keeps external sync and reduced-motion theme changes instantaneous', async () => {
+  const dom = createDom({ reduced: true })
   let current = 'dark'
   let transitions = 0
   const service = {
@@ -177,8 +260,10 @@ test('keeps external sync and reduced-motion theme changes instantaneous', () =>
   controller.sync('light')
   assert.equal(root.dataset.prtsScheme, 'light')
   controller.sync('dark')
-  root.dataset.prtsMotion = 'reduced'
-  assert.equal(controller.setTheme('light', { animate: true }), 'light')
+  const gesture = controller.beginThemeTransition('light', { progress: .1 })
+  gesture.update(.7)
+  assert.equal(root.dataset.prtsScheme, 'dark')
+  assert.equal(await gesture.finish(true), 'light')
   assert.equal(root.dataset.prtsScheme, 'light')
   assert.equal(transitions, 0)
   controller.dispose()
@@ -190,7 +275,10 @@ test('keeps the current theme when the host rejects a manual switch', async () =
     getTheme: () => 'dark',
     setTheme: () => Promise.reject(new Error('host rejected theme')),
   }
+  let transitions = 0
+  dom.window.Element.prototype.animate = () => ({ finished: Promise.resolve(), cancel() {} })
   dom.window.document.startViewTransition = () => {
+    transitions += 1
     throw new Error('should not start')
   }
   const controller = createThemeController({
@@ -205,53 +293,6 @@ test('keeps the current theme when the host rejects a manual switch', async () =
   assert.equal(await controller.setTheme('light', { animate: true }), 'dark')
   assert.equal(root.dataset.prtsScheme, 'dark')
   assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
+  assert.equal(transitions, 0)
   controller.dispose()
-})
-
-test('lets the latest manual switch replace an active reveal', async t => {
-  const dom = createDom()
-  let current = 'dark'
-  const records = []
-  const transitionStates = []
-  const service = {
-    getTheme: () => current,
-    setTheme(id) { current = id },
-  }
-  dom.window.document.startViewTransition = update => {
-    const finished = deferred()
-    const record = { finished, skipped: 0 }
-    records.push(record)
-    update()
-    return {
-      finished: finished.promise,
-      skipTransition() { record.skipped += 1 },
-    }
-  }
-  const controller = createThemeController({
-    document: dom.window.document,
-    window: dom.window,
-    cssText: '',
-    service,
-    onTransitionStateChange: active => transitionStates.push(active),
-  })
-  t.after(() => controller.dispose())
-  controller.apply(enabled)
-  const root = dom.window.document.documentElement
-
-  await controller.setTheme('light', { animate: true, origin: { x: 10, y: 20 } })
-  await controller.setTheme('dark', { animate: true, origin: { x: 10, y: 20 } })
-  assert.equal(records.length, 2)
-  assert.equal(records[0].skipped, 1)
-  assert.equal(root.dataset.prtsScheme, 'dark')
-  assert.equal(root.getAttribute('data-prts-scheme-transition'), 'dark')
-  assert.deepEqual(transitionStates, [true])
-
-  records[0].finished.resolve()
-  await settle()
-  assert.equal(root.getAttribute('data-prts-scheme-transition'), 'dark')
-  assert.deepEqual(transitionStates, [true])
-  records[1].finished.resolve()
-  await settle()
-  assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
-  assert.deepEqual(transitionStates, [true, false])
 })

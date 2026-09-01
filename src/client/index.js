@@ -171,6 +171,9 @@ export function applyPrtsPlugin(ctx, environment) {
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
       },
+      onSchemeDragStart(next, interaction) {
+        return theme.beginThemeTransition(next, interaction)
+      },
       onThemeDisable() {
         persistAndApply(updatePreferenceValue(preferences, 'enabled', false))
       },

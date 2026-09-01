@@ -35,6 +35,7 @@ export function createOperationsShell({
   adapter,
   hostGeometry,
   onSchemeToggle = () => {},
+  onSchemeDragStart = () => undefined,
   onThemeDisable = () => {},
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
@@ -56,6 +57,9 @@ export function createOperationsShell({
   let schemeIntent
   let schemePressRevision = 0
   let schemePressAnimation
+  let schemePointer
+  let suppressSchemeClick = false
+  let suppressSchemeClickTimer
   let themeDisable
   let connectionIndicator
   let conversationObserver
@@ -108,6 +112,16 @@ export function createOperationsShell({
     schemePressDelays.clear()
   }
 
+  function schemeTarget() {
+    const current = schemeIntent ?? (root.dataset.prtsScheme === 'dark' ? 'dark' : 'light')
+    return current === 'dark' ? 'light' : 'dark'
+  }
+
+  function schemeOrigin() {
+    const rect = schemeToggle?.getBoundingClientRect?.()
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : undefined
+  }
+
   function syncConversationState() {
     if (!operationRegion) return
     const candidate = operationRegion.querySelector(
@@ -119,19 +133,115 @@ export function createOperationsShell({
   }
 
   function toggleScheme(event) {
-    const current = schemeIntent ?? (root.dataset.prtsScheme === 'dark' ? 'dark' : 'light')
-    const next = current === 'dark' ? 'light' : 'dark'
-    const rect = event?.currentTarget?.getBoundingClientRect?.()
-    const origin = rect
-      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-      : undefined
+    if (suppressSchemeClick) {
+      event?.preventDefault?.()
+      return
+    }
+    const next = schemeTarget()
     schemeIntent = next
     playSchemePress()
     let request
-    try { request = onSchemeToggle(next, { origin }) } catch { request = undefined }
+    try { request = onSchemeToggle(next, { origin: schemeOrigin() }) } catch { request = undefined }
     Promise.resolve(request).catch(() => {}).finally(() => {
       if (schemeIntent === next) schemeIntent = undefined
     })
+  }
+
+  function schemePointerProgress(event) {
+    const width = Math.max(1, Number(window.innerWidth) || Number(root.clientWidth) || 1)
+    return Math.min(1, Math.max(0, Number(event?.clientX) / width || 0))
+  }
+
+  function clearSchemeClickSuppression() {
+    if (suppressSchemeClickTimer !== undefined) window.clearTimeout(suppressSchemeClickTimer)
+    suppressSchemeClickTimer = undefined
+    suppressSchemeClick = false
+  }
+
+  function suppressNextSchemeClick() {
+    clearSchemeClickSuppression()
+    suppressSchemeClick = true
+    suppressSchemeClickTimer = window.setTimeout(() => {
+      suppressSchemeClickTimer = undefined
+      suppressSchemeClick = false
+    }, 0)
+  }
+
+  function settleSchemePointer({ commit = false } = {}) {
+    const pointer = schemePointer
+    if (!pointer) return
+    schemePointer = undefined
+    try { schemeToggle?.releasePointerCapture?.(pointer.pointerId) } catch {}
+    if (!pointer.dragging) return
+    suppressNextSchemeClick()
+    let result
+    try { result = pointer.gesture?.finish?.(commit) } catch { result = undefined }
+    Promise.resolve(result).catch(() => {}).finally(() => {
+      if (schemeIntent === pointer.target) schemeIntent = undefined
+    })
+  }
+
+  function onSchemePointerDown(event) {
+    if ((event.button ?? 0) !== 0 || schemePointer) return
+    const pointerId = event.pointerId ?? 1
+    schemePointer = {
+      pointerId,
+      startX: Number(event.clientX) || 0,
+      startY: Number(event.clientY) || 0,
+      target: schemeTarget(),
+      origin: schemeOrigin(),
+      dragging: false,
+      gesture: undefined,
+    }
+    try { schemeToggle?.setPointerCapture?.(pointerId) } catch {}
+  }
+
+  function onSchemePointerMove(event) {
+    const pointer = schemePointer
+    if (!pointer || (event.pointerId ?? 1) !== pointer.pointerId) return
+    const deltaX = (Number(event.clientX) || 0) - pointer.startX
+    if (!pointer.dragging) {
+      if (deltaX < 8) return
+      pointer.dragging = true
+      schemeIntent = pointer.target
+      playSchemePress()
+      const progress = schemePointerProgress(event)
+      try {
+        pointer.gesture = onSchemeDragStart(pointer.target, {
+          origin: pointer.origin,
+          progress,
+          clientX: Number(event.clientX) || 0,
+        })
+      } catch {
+        pointer.gesture = undefined
+      }
+    }
+    event.preventDefault?.()
+    pointer.gesture?.update?.(schemePointerProgress(event))
+  }
+
+  function onSchemePointerUp(event) {
+    const pointer = schemePointer
+    if (!pointer || (event.pointerId ?? 1) !== pointer.pointerId) return
+    const commit = pointer.dragging && schemePointerProgress(event) >= .5
+    settleSchemePointer({ commit })
+  }
+
+  function cancelSchemePointer() {
+    const pointer = schemePointer
+    if (!pointer) return
+    if (pointer.dragging) {
+      try { pointer.gesture?.cancel?.() } catch {}
+    }
+    schemePointer = undefined
+    try { schemeToggle?.releasePointerCapture?.(pointer.pointerId) } catch {}
+    if (pointer.dragging) suppressNextSchemeClick()
+    if (schemeIntent === pointer.target) schemeIntent = undefined
+  }
+
+  function onSchemeLostPointerCapture(event) {
+    if (!schemePointer || (event.pointerId ?? 1) !== schemePointer.pointerId) return
+    cancelSchemePointer()
   }
 
   function syncSchemeToggle() {
@@ -261,6 +371,12 @@ export function createOperationsShell({
     document.addEventListener('keydown', onRailKeydown)
     document.addEventListener('click', onDocumentClick)
     schemeToggle.addEventListener('click', toggleScheme)
+    schemeToggle.addEventListener('pointerdown', onSchemePointerDown)
+    schemeToggle.addEventListener('pointermove', onSchemePointerMove)
+    schemeToggle.addEventListener('pointerup', onSchemePointerUp)
+    schemeToggle.addEventListener('pointercancel', cancelSchemePointer)
+    schemeToggle.addEventListener('lostpointercapture', onSchemeLostPointerCapture)
+    window.addEventListener?.('blur', cancelSchemePointer)
     themeDisable.addEventListener('click', disableTheme)
     syncConversationState()
     syncSchemeToggle()
@@ -268,11 +384,19 @@ export function createOperationsShell({
   }
 
   function dispose() {
+    cancelSchemePointer()
+    clearSchemeClickSuppression()
     clearSchemePressDelays()
     railLauncher?.removeEventListener('click', toggleRail)
     document.removeEventListener('keydown', onRailKeydown)
     document.removeEventListener('click', onDocumentClick)
     schemeToggle?.removeEventListener('click', toggleScheme)
+    schemeToggle?.removeEventListener('pointerdown', onSchemePointerDown)
+    schemeToggle?.removeEventListener('pointermove', onSchemePointerMove)
+    schemeToggle?.removeEventListener('pointerup', onSchemePointerUp)
+    schemeToggle?.removeEventListener('pointercancel', cancelSchemePointer)
+    schemeToggle?.removeEventListener('lostpointercapture', onSchemeLostPointerCapture)
+    window.removeEventListener?.('blur', cancelSchemePointer)
     themeDisable?.removeEventListener('click', disableTheme)
     railViewportQuery?.removeEventListener?.('change', onResponsiveChange)
     railViewportQuery = undefined

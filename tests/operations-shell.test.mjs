@@ -39,6 +39,7 @@ test('mounts the shell without an operator dossier and restores the host', async
   document.documentElement.dataset.prtsScheme = 'dark'
   const schemeToggles = []
   const schemeInteractions = []
+  const schemeDrags = []
   const preferenceUpdates = []
   let disabled = 0
   let geometryFrame
@@ -62,6 +63,18 @@ test('mounts the shell without an operator dossier and restores the host', async
     onSchemeToggle(current, interaction) {
       schemeToggles.push(current)
       schemeInteractions.push(interaction)
+    },
+    onSchemeDragStart(current, interaction) {
+      const record = { current, interaction, updates: [], commits: [], cancelled: 0 }
+      schemeDrags.push(record)
+      return {
+        update(progress) { record.updates.push(progress) },
+        finish(commit) {
+          record.commits.push(commit)
+          return Promise.resolve(current)
+        },
+        cancel() { record.cancelled += 1 },
+      }
     },
     onThemeDisable: () => { disabled += 1 },
     onPreferenceChange: (...args) => preferenceUpdates.push(args),
@@ -92,6 +105,19 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.deepEqual(schemeInteractions[0].origin, { x: 30, y: 50 })
   assert.equal('ready' in schemeInteractions[0], false)
   assert.equal(schemeToggle.hasAttribute('data-prts-scheme-press'), true)
+  await new Promise(resolve => dom.window.setTimeout(resolve, 0))
+
+  schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointerdown', { clientX: 30, clientY: 50, button: 0, bubbles: true }))
+  schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointermove', { clientX: 500, clientY: 52, buttons: 1, bubbles: true, cancelable: true }))
+  schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointerup', { clientX: 500, clientY: 52, button: 0, bubbles: true }))
+  schemeToggle.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  assert.equal(schemeDrags.length, 1)
+  assert.equal(schemeDrags[0].current, 'light')
+  assert.deepEqual(schemeDrags[0].interaction.origin, { x: 30, y: 50 })
+  assert.equal(schemeDrags[0].updates.at(-1), .625)
+  assert.deepEqual(schemeDrags[0].commits, [true])
+  assert.deepEqual(schemeToggles, ['light'])
+
   document.querySelector('[data-prts-theme-disable]').click()
   assert.equal(disabled, 1)
 

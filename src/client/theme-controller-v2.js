@@ -10,15 +10,20 @@ const ROOT_ATTRIBUTES = [
 ]
 
 const TRANSITION_ATTRIBUTE = 'data-prts-scheme-transition'
+const TRANSITION_MODE_ATTRIBUTE = 'data-prts-scheme-transition-mode'
+const TRANSITION_INTERACTIVE_ATTRIBUTE = 'data-prts-scheme-transition-interactive'
+const TRANSITION_ARMED_ATTRIBUTE = 'data-prts-scheme-transition-armed'
 const TRANSITION_PROPERTIES = [
   '--prts-scheme-origin-x',
   '--prts-scheme-origin-y',
-  '--prts-scheme-radius',
+  '--prts-scheme-duration',
+  '--prts-scheme-reveal-x',
 ]
-const CURTAIN_RASTER_THRESHOLD = 1_000_000
-const CURTAIN_COVER_MS = 260
-const CURTAIN_FADE_MS = 140
-
+const REVEAL_EDGE_OVERSCAN = 32
+const REVEAL_TIMING_LIMITS = {
+  desktop: { minimum: 480, maximum: 560, widthFactor: .38 },
+  mobile: { minimum: 320, maximum: 380, widthFactor: .9 },
+}
 function themeIdentity(value) {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return ''
@@ -36,7 +41,10 @@ function resolveScheme(value) {
 }
 
 export function createThemeController({ document, window, cssText, service, onTransitionStateChange = () => {} }) {
-  if (!document || !window) return { apply() {}, sync() {}, refresh() {}, setTheme() {}, toggle() {}, dispose() {} }
+  if (!document || !window) {
+    const gesture = { update() {}, finish() {}, cancel() {} }
+    return { apply() {}, sync() {}, refresh() {}, setTheme() {}, beginThemeTransition() { return gesture }, toggle() {}, dispose() {} }
+  }
 
   const root = document.documentElement
   let style
@@ -58,14 +66,17 @@ export function createThemeController({ document, window, cssText, service, onTr
 
   function clearTransitionState() {
     root.removeAttribute(TRANSITION_ATTRIBUTE)
+    root.removeAttribute(TRANSITION_MODE_ATTRIBUTE)
+    root.removeAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE)
+    root.removeAttribute(TRANSITION_ARMED_ATTRIBUTE)
     for (const property of TRANSITION_PROPERTIES) root.style.removeProperty(property)
   }
 
   function cancelActiveTransition({ keepPaused = false } = {}) {
     const current = activeTransition
     activeTransition = undefined
-    current?.viewTransition?.skipTransition?.()
     current?.cancel?.()
+    current?.viewTransition?.skipTransition?.()
     clearTransitionState()
     if (!keepPaused) setTransitionState(false)
   }
@@ -114,6 +125,7 @@ export function createThemeController({ document, window, cssText, service, onTr
     }
     if (activeTransition) {
       if (next === activeTransition.target) return root.dataset.prtsScheme
+      if (activeTransition.interactive && next === activeTransition.source) return root.dataset.prtsScheme
       if (next !== root.dataset.prtsScheme) cancelActiveTransition()
     }
     return applyScheme(next)
@@ -144,22 +156,9 @@ export function createThemeController({ document, window, cssText, service, onTr
     try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
   }
 
-  function viewportRasterPixels() {
-    const width = Math.max(Number(window.innerWidth) || 0, Number(root.clientWidth) || 0)
-    const height = Math.max(Number(window.innerHeight) || 0, Number(root.clientHeight) || 0)
-    const dpr = Math.max(1, Number(window.devicePixelRatio) || 1)
-    return width * height * dpr * dpr
-  }
-
-  function canUseCurtain() {
-    return viewportRasterPixels() >= CURTAIN_RASTER_THRESHOLD
-      && Boolean(document.body)
-      && typeof window.Element?.prototype?.animate === 'function'
-  }
-
   function canAnimateScheme(options) {
-    const animationAvailable = canUseCurtain()
-      || typeof document.startViewTransition === 'function'
+    const animationAvailable = typeof document.startViewTransition === 'function'
+      && typeof root.animate === 'function'
     return options?.animate === true
       && animationAvailable
       && !prefersReducedMotion()
@@ -171,106 +170,336 @@ export function createThemeController({ document, window, cssText, service, onTr
     const clamp = (value, maximum, fallback) => Math.min(maximum, Math.max(0, Number.isFinite(Number(value)) ? Number(value) : fallback))
     const x = clamp(origin?.x, width, width / 2)
     const y = clamp(origin?.y, height, height / 2)
-    const radius = Math.hypot(Math.max(x, width - x), Math.max(y, height - y)) + 2
-    return { x, y, radius }
+    return { x, y }
   }
 
-  function commitViewTransitionScheme(target, origin) {
+  function revealViewport(origin) {
+    const geometry = transitionOrigin(origin)
+    const width = Math.max(1, Number(window.innerWidth) || 0, Number(root.clientWidth) || 0)
+    const height = Math.max(1, Number(window.innerHeight) || 0, Number(root.clientHeight) || 0)
+    return { ...geometry, width, height }
+  }
+
+  function revealDuration(width) {
+    const limits = width <= 720 ? REVEAL_TIMING_LIMITS.mobile : REVEAL_TIMING_LIMITS.desktop
+    return Math.min(limits.maximum, Math.max(limits.minimum, Math.round(width * limits.widthFactor)))
+  }
+
+  function revealProgress(value) {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return 0
+    return Math.min(1, Math.max(0, numeric))
+  }
+
+  function removeRevealHud(session) {
+    const hud = session?.hud
+    if (!hud) return
+    try {
+      if (hud.matches?.(':popover-open')) hud.hidePopover?.()
+    } catch {}
+    hud.remove()
+    session.hud = undefined
+    session.hudEdge = undefined
+    session.hudLabel = undefined
+  }
+
+  function updateRevealHud(session) {
+    if (!session || session.settled) return
+    const percentage = Math.round(revealProgress(session.progress) * 100)
+    if (session.hudLabel) session.hudLabel.textContent = `OPTICAL SYNC: ${percentage}%`
+    root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, session.interactive && percentage >= 50)
+  }
+
+  function mountRevealHud(session) {
+    if (session.settled || session.hud || !document.body) return
+    const hud = document.createElement('div')
+    hud.dataset.prtsSchemeReveal = session.target
+    hud.dataset.prtsSchemeRevealMode = session.interactive ? 'interactive' : 'automatic'
+    hud.setAttribute('aria-hidden', 'true')
+    hud.setAttribute('popover', 'manual')
+    const edge = document.createElement('span')
+    edge.dataset.prtsSchemeRevealEdge = ''
+    const blend = document.createElement('i')
+    blend.dataset.prtsSchemeRevealBlend = ''
+    const label = document.createElement('span')
+    label.dataset.prtsSchemeRevealLabel = ''
+    edge.append(blend, label)
+    hud.appendChild(edge)
+    document.body.appendChild(hud)
+    session.hud = hud
+    session.hudEdge = edge
+    session.hudLabel = label
+    updateRevealHud(session)
+    try { hud.showPopover?.() } catch {}
+  }
+
+  function revealTargetX(session, progress) {
+    if (progress === 0) return -REVEAL_EDGE_OVERSCAN
+    if (progress === 1) return session.geometry.width + REVEAL_EDGE_OVERSCAN
+    return progress * session.geometry.width
+  }
+
+  function revealPixels(value) {
+    const rounded = Math.round(value * 1000) / 1000
+    return `${Object.is(rounded, -0) ? 0 : rounded}px`
+  }
+
+  function revealClipPath(session, x) {
+    return `inset(0 ${revealPixels(Math.max(0, session.geometry.width - x))} 0 0)`
+  }
+
+  function revealEdgeTransform(x) {
+    return `translate3d(${revealPixels(x - 1)}, 0, 0)`
+  }
+
+  function createInteractiveScrub(session) {
+    if (!session.interactive || session.settled || session.scrubAnimation) return
+    try {
+      const animation = root.animate([
+        { clipPath: revealClipPath(session, 0) },
+        { clipPath: revealClipPath(session, session.geometry.width) },
+      ], {
+        duration: session.duration,
+        easing: 'linear',
+        fill: 'both',
+        pseudoElement: '::view-transition-new(root)',
+      })
+      animation.pause?.()
+      animation.currentTime = session.progress * session.duration
+      session.scrubAnimation = animation
+    } catch {}
+  }
+
+  function setRevealProgress(session, value) {
+    if (!session || session.settled) return
+    session.progress = revealProgress(value)
+    session.revealX = session.progress * session.geometry.width
+    root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
+    if (session.scrubAnimation) {
+      try {
+        session.scrubAnimation.pause?.()
+        session.scrubAnimation.currentTime = session.progress * session.duration
+      } catch {}
+    }
+    updateRevealHud(session)
+  }
+
+  function cancelRevealAnimation(session) {
+    const animations = session?.progressAnimations || []
+    session.progressAnimations = undefined
+    for (const animation of animations) {
+      try { animation?.cancel?.() } catch {}
+    }
+    try { session?.scrubAnimation?.cancel?.() } catch {}
+    if (session) session.scrubAnimation = undefined
+  }
+
+  function animateRevealTo(session, value, duration, easing) {
+    if (!session || session.settled) return Promise.resolve(false)
+    cancelRevealAnimation(session)
+    const targetProgress = revealProgress(value)
+    const targetX = revealTargetX(session, targetProgress)
+    if (!(duration > 0)) {
+      setRevealProgress(session, targetProgress)
+      return Promise.resolve(true)
+    }
+    let animations
+    try {
+      const options = {
+        duration: Math.round(duration),
+        easing,
+        fill: 'forwards',
+      }
+      const clip = root.animate([
+        { clipPath: revealClipPath(session, session.revealX) },
+        { clipPath: revealClipPath(session, targetX) },
+      ], {
+        ...options,
+        pseudoElement: '::view-transition-new(root)',
+      })
+      const edge = session.hudEdge?.animate?.([
+        { transform: revealEdgeTransform(session.revealX) },
+        { transform: revealEdgeTransform(targetX) },
+      ], options)
+      animations = edge ? [clip, edge] : [clip]
+    } catch {
+      setRevealProgress(session, targetProgress)
+      return Promise.resolve(true)
+    }
+    session.progressAnimations = animations
+    return Promise.all(animations.map(animation => Promise.resolve(animation?.finished).then(() => true, () => false))).then(results => {
+      const completed = results.every(Boolean)
+      if (!completed || session.settled || session.progressAnimations !== animations) return false
+      for (const animation of animations) {
+        try { animation.cancel?.() } catch {}
+      }
+      session.progressAnimations = undefined
+      session.progress = targetProgress
+      session.revealX = targetX
+      root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
+      updateRevealHud(session)
+      return true
+    })
+  }
+
+  function finishRevealSession(session, { commit }) {
+    if (!session || session.settled) return
+    session.committed = commit
+    session.settled = true
+    cancelRevealAnimation(session)
+    if (!commit) applyScheme(session.source)
+    try { session.viewTransition?.skipTransition?.() } catch {}
+    removeRevealHud(session)
+    if (activeTransition?.token === session.token) activeTransition = undefined
+    clearTransitionState()
+    setTransitionState(false)
+  }
+
+  function createRevealSession(target, options = {}) {
     cancelActiveTransition({ keepPaused: true })
     setTransitionState(true)
+    const source = root.dataset.prtsScheme === 'dark' ? 'dark' : 'light'
+    const geometry = revealViewport(options.origin)
+    const interactive = options.interactive === true
+    const initialProgress = interactive ? revealProgress(options.progress) : 0
+    const duration = revealDuration(geometry.width)
     const token = ++transitionRevision
-    const geometry = transitionOrigin(origin)
+    const session = {
+      token,
+      target,
+      source,
+      geometry,
+      interactive,
+      progress: initialProgress,
+      revealX: interactive ? initialProgress * geometry.width : -REVEAL_EDGE_OVERSCAN,
+      duration,
+      settled: false,
+      committed: false,
+    }
     root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
     root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
-    root.style.setProperty('--prts-scheme-radius', `${geometry.radius}px`)
+    root.style.setProperty('--prts-scheme-duration', `${interactive ? 3600000 : duration}ms`)
+    root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
     root.setAttribute(TRANSITION_ATTRIBUTE, target)
+    root.setAttribute(TRANSITION_MODE_ATTRIBUTE, 'view')
+    root.toggleAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE, interactive)
 
     let viewTransition
     try {
       viewTransition = document.startViewTransition(() => applyScheme(target))
     } catch {
       clearTransitionState()
-      applyScheme(target)
+      applyScheme(interactive ? source : target)
       setTransitionState(false)
-      return target
+      return undefined
     }
-
-    activeTransition = { token, target, viewTransition }
-    Promise.resolve(viewTransition?.finished).catch(() => {}).finally(() => {
-      if (activeTransition?.token !== token) return
-      activeTransition = undefined
-      clearTransitionState()
-      setTransitionState(false)
+    session.viewTransition = viewTransition
+    session.cancel = () => {
+      if (session.settled) return
+      session.settled = true
+      cancelRevealAnimation(session)
+      if (session.interactive && !session.committed) applyScheme(session.source)
+      removeRevealHud(session)
+    }
+    session.ready = Promise.resolve(viewTransition?.ready).catch(() => {}).then(() => {
+      if (activeTransition?.token === token && !session.settled) {
+        mountRevealHud(session)
+        createInteractiveScrub(session)
+      }
     })
+    activeTransition = session
+    return session
+  }
+
+  async function commitRevealScheme(target, origin) {
+    const session = createRevealSession(target, { origin })
+    if (!session) return target
+    await session.ready
+    if (activeTransition?.token !== session.token || session.settled) return root.dataset.prtsScheme
+    await animateRevealTo(session, 1, session.duration, 'cubic-bezier(.4, 0, .2, 1)')
+    if (activeTransition?.token === session.token && !session.settled) finishRevealSession(session, { commit: true })
     return target
   }
 
-  async function commitCurtainScheme(target, origin) {
-    cancelActiveTransition({ keepPaused: true })
-    setTransitionState(true)
-    const token = ++transitionRevision
-    const geometry = transitionOrigin(origin)
-    root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
-    root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
-    root.style.setProperty('--prts-scheme-radius', `${geometry.radius}px`)
-    root.setAttribute(TRANSITION_ATTRIBUTE, target)
-
-    const curtain = document.createElement('div')
-    curtain.dataset.prtsSchemeCurtain = target
-    curtain.setAttribute('aria-hidden', 'true')
-    document.body.appendChild(curtain)
-    const animations = []
-    activeTransition = {
-      token,
-      target,
+  function fallbackGesture(target, source) {
+    let progress = 0
+    let settled = false
+    return {
+      update(value) { if (!settled) progress = revealProgress(value) },
+      finish(commit = progress >= .5) {
+        if (settled) return root.dataset.prtsScheme
+        settled = true
+        return commit ? setTheme(target, { animate: false }) : source
+      },
       cancel() {
-        for (const animation of animations) animation.cancel?.()
-        curtain.remove()
+        if (settled) return source
+        settled = true
+        return source
       },
     }
+  }
 
-    try {
-      const cover = curtain.animate([
-        { clipPath: `circle(0 at ${geometry.x}px ${geometry.y}px)` },
-        { clipPath: `circle(${geometry.radius}px at ${geometry.x}px ${geometry.y}px)` },
-      ], {
-        duration: CURTAIN_COVER_MS,
-        easing: 'cubic-bezier(.22, 1, .36, 1)',
-        fill: 'forwards',
-      })
-      animations.push(cover)
-      await cover.finished
-      if (activeTransition?.token !== token) return root.dataset.prtsScheme
+  function beginThemeTransition(id, options = {}) {
+    const target = id === 'dark' ? 'dark' : 'light'
+    const source = root.dataset.prtsScheme === 'dark' ? 'dark' : 'light'
+    if (disposed || target === source || !canAnimateScheme({ ...options, animate: true })) return fallbackGesture(target, source)
+    const session = createRevealSession(target, { ...options, interactive: true })
+    if (!session) return fallbackGesture(target, source)
+    let finishPromise
 
-      applyScheme(target)
-      const fade = curtain.animate([
-        { opacity: 1 },
-        { opacity: 0 },
-      ], {
-        duration: CURTAIN_FADE_MS,
-        easing: 'ease-out',
-        fill: 'forwards',
-      })
-      animations.push(fade)
-      await fade.finished
-      if (activeTransition?.token !== token) return root.dataset.prtsScheme
-    } catch {
-      if (activeTransition?.token !== token) return root.dataset.prtsScheme
-      applyScheme(target)
-    } finally {
-      if (activeTransition?.token === token) {
-        activeTransition = undefined
-        curtain.remove()
-        clearTransitionState()
-        setTransitionState(false)
+    const finish = commit => {
+      if (finishPromise) return finishPromise
+      if (session.settled || activeTransition?.token !== session.token) return Promise.resolve(root.dataset.prtsScheme)
+      root.removeAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE)
+      root.removeAttribute(TRANSITION_ARMED_ATTRIBUTE)
+      session.hud?.removeAttribute('data-prts-scheme-reveal-mode')
+      const visualDuration = commit
+        ? Math.max(90, Math.round(session.duration * (1 - session.progress)))
+        : Math.max(90, Math.round(session.duration * session.progress * .72))
+      const visual = session.ready.then(() => animateRevealTo(
+        session,
+        commit ? 1 : 0,
+        visualDuration,
+        commit ? 'cubic-bezier(.22, 1, .36, 1)' : 'cubic-bezier(.4, 0, .2, 1)',
+      ))
+
+      if (!commit) {
+        finishPromise = visual.finally(() => {
+          if (!session.settled) finishRevealSession(session, { commit: false })
+        }).then(() => session.source)
+        return finishPromise
       }
+
+      let hostResult
+      try { hostResult = service?.setTheme?.(target) } catch { hostResult = Promise.reject(new Error('theme commit failed')) }
+      const host = Promise.resolve(hostResult).then(() => true, () => false)
+      finishPromise = Promise.all([visual, host]).then(async ([, accepted]) => {
+        if (accepted) {
+          if (!session.settled) finishRevealSession(session, { commit: true })
+          return target
+        }
+        if (!session.settled) {
+          await animateRevealTo(session, 0, session.duration, 'cubic-bezier(.4, 0, .2, 1)')
+          finishRevealSession(session, { commit: false })
+        }
+        refresh()
+        return root.dataset.prtsScheme
+      })
+      return finishPromise
     }
-    return target
+
+    return {
+      update(progress) {
+        if (session.settled || activeTransition?.token !== session.token) return
+        setRevealProgress(session, progress)
+      },
+      finish,
+      cancel() { return finish(false) },
+    }
   }
 
   function commitAnimatedScheme(target, origin) {
-    if (canUseCurtain()) return commitCurtainScheme(target, origin)
-    return commitViewTransitionScheme(target, origin)
+    return commitRevealScheme(target, origin)
   }
 
   function setTheme(id, options = {}) {
@@ -339,6 +568,7 @@ export function createThemeController({ document, window, cssText, service, onTr
     sync,
     refresh,
     setTheme,
+    beginThemeTransition,
     toggle,
     dispose: removeOwnedState,
   }
