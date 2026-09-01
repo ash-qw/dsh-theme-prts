@@ -55,6 +55,7 @@ export function createOperationsShell({
   let schemeToggle
   let schemeIntent
   let schemePressRevision = 0
+  let schemePressAnimation
   let themeDisable
   let connectionIndicator
   let conversationObserver
@@ -68,28 +69,41 @@ export function createOperationsShell({
   }
 
   function playSchemePress() {
-    if (!schemeToggle || reducedMotion()) return Promise.resolve()
+    if (!schemeToggle || reducedMotion()) return
     const revision = ++schemePressRevision
+    schemePressAnimation?.cancel?.()
+    schemePressAnimation = undefined
     schemeToggle.removeAttribute('data-prts-scheme-press')
-    void schemeToggle.offsetWidth
+
+    if (typeof schemeToggle.animate === 'function') {
+      const animation = schemeToggle.animate([
+        { transform: 'translateY(0) scale(1)' },
+        { transform: 'translateY(0) scale(.96)', offset: 0.5 },
+        { transform: 'translateY(0) scale(1)' },
+      ], { duration: 100, easing: 'cubic-bezier(.22, 1, .36, 1)' })
+      schemePressAnimation = animation
+      Promise.resolve(animation.finished).catch(() => {}).finally(() => {
+        if (revision === schemePressRevision && schemePressAnimation === animation) schemePressAnimation = undefined
+      })
+      return
+    }
+
     schemeToggle.setAttribute('data-prts-scheme-press', '')
-    return new Promise(resolve => {
-      const entry = { timer: undefined, resolve }
-      entry.timer = window.setTimeout(() => {
-        schemePressDelays.delete(entry)
-        if (revision === schemePressRevision) schemeToggle?.removeAttribute('data-prts-scheme-press')
-        resolve()
-      }, 100)
-      schemePressDelays.add(entry)
-    })
+    const entry = { timer: undefined }
+    entry.timer = window.setTimeout(() => {
+      schemePressDelays.delete(entry)
+      if (revision === schemePressRevision) schemeToggle?.removeAttribute('data-prts-scheme-press')
+    }, 100)
+    schemePressDelays.add(entry)
   }
 
   function clearSchemePressDelays() {
     schemePressRevision += 1
+    schemePressAnimation?.cancel?.()
+    schemePressAnimation = undefined
     schemeToggle?.removeAttribute('data-prts-scheme-press')
     for (const entry of schemePressDelays) {
       window.clearTimeout(entry.timer)
-      entry.resolve()
     }
     schemePressDelays.clear()
   }
@@ -112,9 +126,9 @@ export function createOperationsShell({
       ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
       : undefined
     schemeIntent = next
-    const ready = playSchemePress()
+    playSchemePress()
     let request
-    try { request = onSchemeToggle(next, { origin, ready }) } catch { request = undefined }
+    try { request = onSchemeToggle(next, { origin }) } catch { request = undefined }
     Promise.resolve(request).catch(() => {}).finally(() => {
       if (schemeIntent === next) schemeIntent = undefined
     })

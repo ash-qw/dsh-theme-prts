@@ -90,7 +90,7 @@ test('mounts the shell without an operator dossier and restores the host', async
   schemeToggle.click()
   assert.deepEqual(schemeToggles, ['light'])
   assert.deepEqual(schemeInteractions[0].origin, { x: 30, y: 50 })
-  assert.equal(typeof schemeInteractions[0].ready?.then, 'function')
+  assert.equal('ready' in schemeInteractions[0], false)
   assert.equal(schemeToggle.hasAttribute('data-prts-scheme-press'), true)
   document.querySelector('[data-prts-theme-disable]').click()
   assert.equal(disabled, 1)
