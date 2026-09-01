@@ -16,6 +16,7 @@ const PRESET_OPTIONS = [
 ]
 
 const COMMON_CONTROLS = [
+  ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
   ['texture', '环境底纹', [['off', '关闭'], ['restrained', '克制'], ['full', '完整']]],
   ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],
   ['motion', '动态效果', [['system', '跟随系统'], ['reduced', '减少']]],
@@ -32,6 +33,8 @@ function settingButtons(key, label, options) {
     ? '<small data-prts-setting-note data-prts-transparency-status hidden>系统当前要求降低透明度</small>'
     : key === 'motion'
       ? '<small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
+      : key === 'railDefaultHidden'
+        ? '<small data-prts-setting-note>在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开</small>'
       : ''
   const sample = value => key === 'texture' || key === 'glass'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`

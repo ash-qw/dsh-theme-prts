@@ -136,6 +136,7 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   const api = await load('../src/client/index.js')
   assert.ok(api, 'client assembly module should exist')
   const dom = new JSDOM(fixture, { url: 'http://localhost/', pretendToBeVisual: true })
+  Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 1440 })
   dom.window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} })
   const calls = { cleanups: [], injected: [], registrations: [] }
   t.after(() => calls.cleanups.splice(0).reverse().forEach(cleanup => cleanup()))
@@ -169,9 +170,20 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   assert.equal(dom.window.document.documentElement.dataset.prtsGlass, 'clear')
   assert.equal(dom.window.document.documentElement.hasAttribute('data-prts-glass-highlight'), false)
   assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).glass, 'clear')
+  const brand = dom.window.document.querySelector('[data-prts-rail-brand]')
+  brand.click()
+  const appearancePanel = dom.window.document.querySelector('[data-prts-theme-settings]')
+  appearancePanel.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="true"]').click()
+  assert.equal(appearancePanel.hasAttribute('open'), true)
+  assert.equal(dom.window.document.documentElement.dataset.prtsRailMode, 'overlay')
+  assert.equal(dom.window.document.querySelector('[data-prts-nav-rail]').getAttribute('aria-hidden'), 'true')
+  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).railDefaultHidden, true)
+  dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   actions.resetPreferences()
   assert.equal(dom.window.document.documentElement.hasAttribute('data-dsh-prts'), true)
   assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).glass, 'standard')
+  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).railDefaultHidden, false)
+  assert.equal(dom.window.document.documentElement.dataset.prtsRailMode, 'docked')
   actions.updatePreference('enabled', false)
   assert.equal(dom.window.document.documentElement.hasAttribute('data-dsh-prts'), false)
   assert.equal(dom.window.document.querySelector('[data-prts-shell]'), null)
@@ -371,6 +383,9 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelectorAll('[data-prts-setting-key="particlePattern"]').length, 0)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="glass"]').length, 4)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="motion"]').length, 2)
+  assert.equal(document.querySelectorAll('[data-prts-setting-key="railDefaultHidden"]').length, 2)
+  assert.equal(document.querySelector('[data-prts-setting-row="railDefaultHidden"] [data-prts-setting-note]').textContent,
+    '在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开')
   assert.equal(document.querySelectorAll('[data-prts-setting-key="dossier"]').length, 0)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="bootAnimation"]').length, 0)
   assert.equal(document.querySelectorAll('[data-prts-preview-startup]').length, 0)
@@ -560,6 +575,7 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
     glass: 'standard',
     motion: 'system',
     bootAnimation: false,
+    railDefaultHidden: false,
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
     conversationScaleMaxDistance: 96,
@@ -577,6 +593,13 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
   textureOff.click()
   assert.deepEqual(calls.updates, [['texture', 'off']])
   assert.equal(textureOff.hasAttribute('data-prts-setting-feedback'), true)
+  const railHiddenOff = document.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="false"]')
+  const railHiddenOn = document.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="true"]')
+  assert.equal(railHiddenOff.classList.contains('is-selected'), true)
+  railHiddenOn.click()
+  assert.deepEqual(calls.updates, [['texture', 'off'], ['railDefaultHidden', true]])
+  assert.equal(panel.hasAttribute('open'), true)
+  assert.equal(railHiddenOn.hasAttribute('data-prts-setting-feedback'), true)
   document.querySelector('[data-prts-retry-save]').click()
   assert.equal(calls.retries, 1)
 

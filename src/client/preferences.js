@@ -16,7 +16,7 @@ export const PARTICLE_TRAVERSAL_SPEED_STEP = 0.25
 export const PARTICLE_TRAVERSAL_SPEED_DEFAULT = 1
 
 export const DEFAULT_PREFERENCES = Object.freeze({
-  version: 7,
+  version: 8,
   enabled: false,
   preset: 'standard-tactical',
   texture: 'full',
@@ -27,6 +27,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   heroParticleDensity: 'light',
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
+  railDefaultHidden: false,
   conversationScaleMaxDistance: CONVERSATION_SCALE_DISTANCE_DEFAULT,
   conversationScaleFocusContrast: CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT,
 })
@@ -69,7 +70,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation']),
-  navigation: Object.freeze(['conversationScaleMaxDistance', 'conversationScaleFocusContrast']),
+  navigation: Object.freeze(['railDefaultHidden', 'conversationScaleMaxDistance', 'conversationScaleFocusContrast']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -154,7 +155,7 @@ export function normalizePreferences(value) {
   const particlePreset = VISUAL_PRESETS[input.preset] ?? DEFAULT_PREFERENCES
   const legacyDensities = legacyParticleDensities(input)
   const normalized = {
-    version: 7,
+    version: 8,
     enabled: booleanOr(input.enabled, DEFAULT_PREFERENCES.enabled),
     preset: enumOr(migratedPreset, PRESETS, DEFAULT_PREFERENCES.preset),
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
@@ -168,6 +169,7 @@ export function normalizePreferences(value) {
       DEFAULT_PREFERENCES.particleTraversalSpeed,
     ),
     particlePattern: 'orthogonal',
+    railDefaultHidden: booleanOr(input.railDefaultHidden, DEFAULT_PREFERENCES.railDefaultHidden),
     conversationScaleMaxDistance: scaleDistanceOr(
       input.conversationScaleMaxDistance,
       DEFAULT_PREFERENCES.conversationScaleMaxDistance,
@@ -222,7 +224,7 @@ export function loadPreferences(storage) {
     const raw = storage?.getItem(PRTS_STORAGE_KEY)
     if (raw === null || raw === undefined) return { ...DEFAULT_PREFERENCES }
     const parsed = JSON.parse(raw)
-    if (![1, 2, 3, 4, 5, 6, 7].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
+    if (![1, 2, 3, 4, 5, 6, 7, 8].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
     return normalizePreferences(parsed)
   } catch {
     return { ...DEFAULT_PREFERENCES }

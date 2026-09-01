@@ -48,6 +48,8 @@ export function createOperationsShell({
   let navRail
   let railLauncher
   let railMode
+  let railViewport
+  let railDefaultHidden = false
   let railViewportQuery
   let settingsOverlay
   let schemeToggle
@@ -111,13 +113,16 @@ export function createOperationsShell({
     else window?.setTimeout?.(focusFirst, 0)
   }
 
-  function setRailViewport(width = window.innerWidth) {
-    const nextMode = Number(width) >= 1180 ? 'docked' : 'overlay'
-    if (nextMode === railMode) return railMode
+  function setRailViewport(width = window.innerWidth, { forceClose = false } = {}) {
+    const nextViewport = Number(width) >= 1180 ? 'wide' : 'narrow'
+    const viewportChanged = nextViewport !== railViewport
+    const nextMode = railDefaultHidden || nextViewport === 'narrow' ? 'overlay' : 'docked'
+    const modeChanged = nextMode !== railMode
+    if (!viewportChanged && !modeChanged && !forceClose) return railMode
+    railViewport = nextViewport
     railMode = nextMode
     root.dataset.prtsRailMode = nextMode
-    if (nextMode === 'docked') root.removeAttribute('data-prts-rail-open')
-    else root.removeAttribute('data-prts-rail-open')
+    root.removeAttribute('data-prts-rail-open')
     syncRailState()
     return nextMode
   }
@@ -135,13 +140,10 @@ export function createOperationsShell({
 
   function onDocumentClick(event) {
     if (railMode !== 'overlay' || !root.hasAttribute('data-prts-rail-open')) return
-    if (navRail?.contains?.(event.target) || railLauncher?.contains?.(event.target)) return
+    const settingsPanel = shell?.querySelector?.('[data-prts-theme-settings]')
+    const insideSettingsContent = settingsPanel?.contains?.(event.target) && event.target !== settingsPanel
+    if (navRail?.contains?.(event.target) || railLauncher?.contains?.(event.target) || insideSettingsContent) return
     closeRail()
-  }
-
-  function onRailAction(event) {
-    const action = event.target?.closest?.('[data-prts-rail-brand], [data-prts-scheme-toggle]')
-    if (action && navRail?.contains?.(action)) closeRail()
   }
 
   function onResponsiveChange() {
@@ -193,7 +195,6 @@ export function createOperationsShell({
     schemeObserver = new window.MutationObserver(syncSchemeToggle)
     schemeObserver.observe(root, { attributes: true, attributeFilter: ['data-prts-scheme'] })
     railLauncher.addEventListener('click', toggleRail)
-    navRail.addEventListener('click', onRailAction)
     document.addEventListener('keydown', onRailKeydown)
     document.addEventListener('click', onDocumentClick)
     schemeToggle.addEventListener('click', toggleScheme)
@@ -205,7 +206,6 @@ export function createOperationsShell({
 
   function dispose() {
     railLauncher?.removeEventListener('click', toggleRail)
-    navRail?.removeEventListener('click', onRailAction)
     document.removeEventListener('keydown', onRailKeydown)
     document.removeEventListener('click', onDocumentClick)
     schemeToggle?.removeEventListener('click', toggleScheme)
@@ -220,7 +220,9 @@ export function createOperationsShell({
     root.removeAttribute('data-prts-conversation-state')
     root.removeAttribute('data-prts-rail-mode')
     root.removeAttribute('data-prts-rail-open')
-    navRail = railLauncher = railMode = undefined
+    root.removeAttribute('data-prts-rail-default-hidden')
+    navRail = railLauncher = railMode = railViewport = undefined
+    railDefaultHidden = false
     shell = settingsOverlay = schemeToggle = themeDisable = connectionIndicator = undefined
     conversationObserver = schemeObserver = undefined
     operationRegion = undefined
@@ -234,7 +236,12 @@ export function createOperationsShell({
         dispose()
         return false
       }
+      const nextRailDefaultHidden = Boolean(preferences.railDefaultHidden)
+      const railPreferenceChanged = nextRailDefaultHidden !== railDefaultHidden
+      railDefaultHidden = nextRailDefaultHidden
       if (!mount()) return false
+      root.toggleAttribute('data-prts-rail-default-hidden', railDefaultHidden)
+      setRailViewport(window.innerWidth, { forceClose: railPreferenceChanged })
       const connection = status?.connection || 'unknown'
       const connectionLabel = status?.connectionLabel || '未知'
       connectionIndicator.dataset.state = connection

@@ -600,7 +600,7 @@ test('keeps daylight appearance controls distinct and readable', async ({ page }
   })
   expect(materials.selected).not.toEqual(materials.unselected)
   const visualOptions = settings.locator('[data-prts-settings-common] [data-prts-setting-key]')
-  await expect(visualOptions).toHaveCount(9)
+  await expect(visualOptions).toHaveCount(11)
   const firstVisual = visualOptions.first()
   const visualContrast = await contrastRatio(firstVisual)
   const visualColors = await firstVisual.evaluate(node => ({

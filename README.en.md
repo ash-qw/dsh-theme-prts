@@ -35,16 +35,16 @@ Open `http://<NAS-IP>:3080`, enable the theme under “Settings → Plugins → 
 - off, soft, standard, and clear material levels for composers, menus, previews, and overlays;
 - Rhodes Island, Lungmen, Penguin Logistics, Rhine Lab, and Reunion particle marks with structure-complete orthogonal layouts and independent five-level conversation/hero density; regular conversations also expose a 0×–2× scroll-follow speed, where faster movement reaches fracture and faction changes sooner;
 - a staged P.R.T.S. startup sequence on manual theme enable and activated-theme refresh, using the original P.R.T.S. mark, progress telemetry, a compact phone treatment, and a reduced-motion completion state;
-- desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations;
+- desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations, with an option to keep the leftmost P.R.T.S. navigation hidden by default at every viewport width;
 - no runtime network requests, analytics, or telemetry.
 
 ## Settings architecture
 
-The Rhodes Island emblem at the upper left opens the complete appearance panel. It provides three presets and manual groups for environment texture, particle marks, interface material, accessibility, and conversation navigation. The particle follow-speed range previews live, reports the estimated viewports per reassembly, and saves when the interaction completes. Conversation navigation configures the scale rail’s maximum distance from the left sidebar and keeps a spatial cross-section visible for the selected distance, automatic centering, or a specific hidden reason. Visual edits display `CUSTOM`; particle follow speed remains independent from visual presets.
+The Rhodes Island emblem at the upper left opens the complete appearance panel. It provides three presets and manual groups for environment texture, particle marks, interface material, default navigation visibility, accessibility, and conversation navigation. The particle follow-speed range previews live, reports the estimated viewports per reassembly, and saves when the interaction completes. Conversation navigation configures the scale rail’s maximum distance from the left sidebar and keeps a spatial cross-section visible for the selected distance, automatic centering, or a specific hidden reason. Visual edits display `CUSTOM`; default navigation visibility and particle follow speed remain independent from visual presets.
 
 “Settings → Plugins → P.R.T.S.” contains only the theme and startup-animation switches in the standard host layout. The animation preference remains editable while the theme is disabled or safe mode is active; the Rhodes Island emblem continues to own the complete appearance controls.
 
-Preferences still use the `dsh.ui.prts.v1` browser key, now with a v7 payload. Existing v1/v2/v3/v4/v5/v6 values migrate automatically, with particle follow speed defaulting to the previous 1× behavior; migration also covers the old split glass flags, `liquid`, `full` motion, and retired organic/hex particle settings.
+Preferences still use the `dsh.ui.prts.v1` browser key, now with a v8 payload. Existing v1/v2/v3/v4/v5/v6/v7 values migrate automatically, with default navigation hiding kept off and particle follow speed retaining the previous 1× behavior; migration also covers the old split glass flags, `liquid`, `full` motion, and retired organic/hex particle settings.
 
 ## Floating surface compatibility
 

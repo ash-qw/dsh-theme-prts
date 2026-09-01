@@ -6,7 +6,7 @@ import { createRc7Adapter } from '../src/client/rc7-adapter.js'
 import { createOperationsShell } from '../src/client/operations-shell-v2.js'
 
 const fixture = await readFile(new URL('./fixtures/rc7-harness.html', import.meta.url), 'utf8')
-const enabled = { version: 6, enabled: true, preset: 'standard-tactical', texture: 'full', glass: 'standard', motion: 'reduced', bootAnimation: true }
+const enabled = { version: 8, enabled: true, preset: 'standard-tactical', texture: 'full', glass: 'standard', motion: 'reduced', bootAnimation: true, railDefaultHidden: false }
 const status = { connection: 'connected', connectionLabel: '已连接' }
 
 test('updates responsive shell state only at the navigation breakpoint', async () => {
@@ -94,20 +94,62 @@ test('mounts the shell without an operator dossier and restores the host', async
   launcher.click()
   await new Promise(resolve => dom.window.setTimeout(resolve, 24))
   assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
+  schemeToggle.click()
+  assert.deepEqual(schemeToggles, ['light', 'light'])
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
 
   const brand = document.querySelector('[data-prts-rail-brand]')
   brand.click()
   assert.equal(brand.getAttribute('aria-expanded'), 'true')
-  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="dossier"]').length, 0)
   assert.equal(preferenceUpdates.length, 0)
+  const settingsPanel = document.querySelector('[data-prts-theme-settings]')
+  settingsPanel.querySelector('[data-prts-setting-key="texture"][data-prts-setting-value="off"]').click()
+  assert.deepEqual(preferenceUpdates, [['texture', 'off']])
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
   document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   assert.equal(brand.getAttribute('aria-expanded'), 'false')
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
+  launcher.click()
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  brand.click()
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
+  settingsPanel.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  assert.equal(brand.getAttribute('aria-expanded'), 'false')
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
+
+  launcher.click()
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  document.querySelector('[data-prts-region="operation"]').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
 
   Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 1440 })
   for (const query of mediaQueries) query.dispatch()
   assert.equal(document.documentElement.dataset.prtsRailMode, 'docked')
   assert.equal(navRail.hasAttribute('aria-hidden'), false)
+
+  shell.update({ ...enabled, railDefaultHidden: true }, status)
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-default-hidden'), true)
+  assert.equal(document.documentElement.dataset.prtsRailMode, 'overlay')
+  assert.equal(navRail.getAttribute('aria-hidden'), 'true')
+  assert.equal(launcher.getAttribute('aria-expanded'), 'false')
+
+  launcher.click()
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
+  Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 1000 })
+  for (const query of mediaQueries) query.dispatch()
+  assert.equal(document.documentElement.dataset.prtsRailMode, 'overlay')
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
+
+  Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 1440 })
+  for (const query of mediaQueries) query.dispatch()
+  assert.equal(document.documentElement.dataset.prtsRailMode, 'overlay')
+  assert.equal(navRail.getAttribute('aria-hidden'), 'true')
+  shell.update(enabled, status)
+  assert.equal(document.documentElement.dataset.prtsRailMode, 'docked')
+  assert.equal(document.documentElement.hasAttribute('data-prts-rail-default-hidden'), false)
 
   shell.dispose()
   assert.equal(document.querySelector('[data-prts-shell]'), null)

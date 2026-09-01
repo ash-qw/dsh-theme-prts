@@ -3,12 +3,13 @@ import test from 'node:test'
 
 import * as api from '../src/client/preferences.js'
 
-test('normalizes unsupported values into the disabled version-seven defaults', () => {
+test('normalizes unsupported values into the disabled version-eight defaults', () => {
   assert.deepEqual(
     api.normalizePreferences({ enabled: 'yes', scheme: 'neon', dossier: 0 }),
     api.DEFAULT_PREFERENCES,
   )
-  assert.equal(api.DEFAULT_PREFERENCES.version, 7)
+  assert.equal(api.DEFAULT_PREFERENCES.version, 8)
+  assert.equal(api.DEFAULT_PREFERENCES.railDefaultHidden, false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassHighlight'), false)
 })
@@ -42,7 +43,7 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
-    version: 7,
+    version: 8,
     enabled: true,
     preset: 'custom',
     texture: 'full',
@@ -53,6 +54,7 @@ test('loads and migrates a complete version-one payload without losing independe
     heroParticleDensity: 'dense',
     particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
+    railDefaultHidden: false,
     conversationScaleMaxDistance: 96,
     conversationScaleFocusContrast: 70,
   })
@@ -64,13 +66,13 @@ test('falls back after malformed, unsupported, and unavailable storage', () => {
   assert.deepEqual(api.loadPreferences({ getItem: () => { throw new Error('blocked') } }), api.DEFAULT_PREFERENCES)
 })
 
-test('persists only the normalized version-seven payload', () => {
+test('persists only the normalized version-eight payload', () => {
   let written
   const storage = { setItem: (key, value) => { written = [key, value] } }
   const saved = api.savePreferences(storage, { version: 1, enabled: true, texture: 'off', glassEnabled: false })
   assert.equal(written[0], 'dsh.ui.prts.v1')
   assert.deepEqual(JSON.parse(written[1]), saved)
-  assert.equal(saved.version, 7)
+  assert.equal(saved.version, 8)
   assert.equal(saved.glass, 'off')
   assert.equal(Object.hasOwn(saved, 'glassEnabled'), false)
 })
@@ -102,11 +104,14 @@ test('normalizes, migrates, and resets the conversation scale controls', () => {
   assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 64 }).conversationScaleFocusContrast, 60)
   assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 999 }).conversationScaleFocusContrast, 100)
   assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 'bad' }).conversationScaleFocusContrast, 70)
-  let edited = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationScaleMaxDistance', 184)
+  let edited = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'railDefaultHidden', true)
+  assert.equal(edited.railDefaultHidden, true)
+  edited = api.updatePreferenceValue(edited, 'conversationScaleMaxDistance', 184)
   edited = api.updatePreferenceValue(edited, 'conversationScaleFocusContrast', 100)
   assert.equal(edited.conversationScaleMaxDistance, 184)
   assert.equal(edited.conversationScaleFocusContrast, 100)
   const reset = api.resetPreferenceGroup(edited, 'navigation')
+  assert.equal(reset.railDefaultHidden, false)
   assert.equal(reset.conversationScaleMaxDistance, 96)
   assert.equal(reset.conversationScaleFocusContrast, 70)
 })
@@ -182,7 +187,7 @@ test('migrates retired algorithms into one orthogonal density pair', () => {
       orthogonal: { conversation: 'sparse', hero: 'light' },
     },
   })
-  assert.equal(migrated.version, 7)
+  assert.equal(migrated.version, 8)
   assert.equal(migrated.particlePattern, 'orthogonal')
   assert.equal(migrated.conversationParticleDensity, 'dense')
   assert.equal(migrated.heroParticleDensity, 'ultra')
