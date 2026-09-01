@@ -169,6 +169,10 @@ export function applyPrtsPlugin(ctx, environment) {
       onPreferenceChange(key, value) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
+      onPreferencePreview(key, value) {
+        if (key !== 'particleTraversalSpeed') return
+        particleField.update(updatePreferenceValue(preferences, key, value))
+      },
       onVisualReset() {
         persistAndApply({
           ...DEFAULT_PREFERENCES,

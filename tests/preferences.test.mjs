@@ -3,12 +3,12 @@ import test from 'node:test'
 
 import * as api from '../src/client/preferences.js'
 
-test('normalizes unsupported values into the disabled version-six defaults', () => {
+test('normalizes unsupported values into the disabled version-seven defaults', () => {
   assert.deepEqual(
     api.normalizePreferences({ enabled: 'yes', scheme: 'neon', dossier: 0 }),
     api.DEFAULT_PREFERENCES,
   )
-  assert.equal(api.DEFAULT_PREFERENCES.version, 6)
+  assert.equal(api.DEFAULT_PREFERENCES.version, 7)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassHighlight'), false)
 })
@@ -42,7 +42,7 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
-    version: 6,
+    version: 7,
     enabled: true,
     preset: 'custom',
     texture: 'full',
@@ -51,6 +51,7 @@ test('loads and migrates a complete version-one payload without losing independe
     bootAnimation: true,
     conversationParticleDensity: 'standard',
     heroParticleDensity: 'dense',
+    particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
     conversationScaleMaxDistance: 96,
     conversationScaleFocusContrast: 70,
@@ -63,13 +64,13 @@ test('falls back after malformed, unsupported, and unavailable storage', () => {
   assert.deepEqual(api.loadPreferences({ getItem: () => { throw new Error('blocked') } }), api.DEFAULT_PREFERENCES)
 })
 
-test('persists only the normalized version-six payload', () => {
+test('persists only the normalized version-seven payload', () => {
   let written
   const storage = { setItem: (key, value) => { written = [key, value] } }
   const saved = api.savePreferences(storage, { version: 1, enabled: true, texture: 'off', glassEnabled: false })
   assert.equal(written[0], 'dsh.ui.prts.v1')
   assert.deepEqual(JSON.parse(written[1]), saved)
-  assert.equal(saved.version, 6)
+  assert.equal(saved.version, 7)
   assert.equal(saved.glass, 'off')
   assert.equal(Object.hasOwn(saved, 'glassEnabled'), false)
 })
@@ -108,6 +109,26 @@ test('normalizes, migrates, and resets the conversation scale controls', () => {
   const reset = api.resetPreferenceGroup(edited, 'navigation')
   assert.equal(reset.conversationScaleMaxDistance, 96)
   assert.equal(reset.conversationScaleFocusContrast, 70)
+})
+
+test('normalizes, migrates, presets, and resets particle traversal speed independently', () => {
+  assert.equal(api.normalizePreferences({ version: 7, particleTraversalSpeed: -1 }).particleTraversalSpeed, 0)
+  assert.equal(api.normalizePreferences({ version: 7, particleTraversalSpeed: 0.62 }).particleTraversalSpeed, 0.5)
+  assert.equal(api.normalizePreferences({ version: 7, particleTraversalSpeed: 1.88 }).particleTraversalSpeed, 2)
+  assert.equal(api.normalizePreferences({ version: 7, particleTraversalSpeed: 99 }).particleTraversalSpeed, 2)
+  assert.equal(api.normalizePreferences({ version: 7, particleTraversalSpeed: 'bad' }).particleTraversalSpeed, 1)
+  assert.equal(api.loadPreferences({ getItem: () => JSON.stringify({ version: 6, enabled: true }) }).particleTraversalSpeed, 1)
+
+  const edited = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'particleTraversalSpeed', 0.25)
+  assert.equal(edited.particleTraversalSpeed, 0.25)
+  assert.equal(edited.preset, 'standard-tactical')
+  const quiet = api.applyVisualPreset(edited, 'quiet-reading')
+  assert.equal(quiet.particleTraversalSpeed, 0.25)
+  assert.equal(quiet.preset, 'quiet-reading')
+  const reset = api.resetPreferenceGroup(quiet, 'particles')
+  assert.equal(reset.particleTraversalSpeed, 1)
+  assert.equal(reset.conversationParticleDensity, api.DEFAULT_PREFERENCES.conversationParticleDensity)
+  assert.equal(reset.heroParticleDensity, api.DEFAULT_PREFERENCES.heroParticleDensity)
 })
 
 test('recognizes only the explicit safe-mode query', () => {
@@ -161,7 +182,7 @@ test('migrates retired algorithms into one orthogonal density pair', () => {
       orthogonal: { conversation: 'sparse', hero: 'light' },
     },
   })
-  assert.equal(migrated.version, 6)
+  assert.equal(migrated.version, 7)
   assert.equal(migrated.particlePattern, 'orthogonal')
   assert.equal(migrated.conversationParticleDensity, 'dense')
   assert.equal(migrated.heroParticleDensity, 'ultra')

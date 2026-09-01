@@ -1,4 +1,4 @@
-import { CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT, CONVERSATION_SCALE_FOCUS_CONTRAST_MAX, CONVERSATION_SCALE_FOCUS_CONTRAST_MIN, CONVERSATION_SCALE_FOCUS_CONTRAST_STEP, resolveParticleDetail } from './preferences.js'
+import { CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT, CONVERSATION_SCALE_FOCUS_CONTRAST_MAX, CONVERSATION_SCALE_FOCUS_CONTRAST_MIN, CONVERSATION_SCALE_FOCUS_CONTRAST_STEP, PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, resolveParticleDetail } from './preferences.js'
 import { resolveConversationScaleLengths } from './conversation-scale-adapter.js'
 
 const SETTINGS_FOCUSABLE = [
@@ -102,6 +102,10 @@ export function themeSettingsMarkup() {
               <section data-prts-particle-detail>
                 <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span></header>
                 <div role="radiogroup" aria-label="粒子精度">${particleMarkup()}</div>
+                <label data-prts-setting-row="particleTraversalSpeed" data-prts-setting-range-row data-prts-particle-traversal>
+                  <span><strong>跟随移动速度</strong><small>控制普通会话徽记移动及破碎重组的滚动距离</small></span>
+                  <div><input type="range" min="0" max="2" step="0.25" value="1" data-prts-setting-range data-prts-setting-key="particleTraversalSpeed" aria-label="粒子徽记跟随移动速度"><output data-prts-particle-traversal-output>1× · 每 1 个视口重组</output></div>
+                </label>
                 <span data-prts-particle-error role="alert" hidden>粒子资源加载异常，主题已使用静态后备效果</span>
               </section>
               <section data-prts-scale-adjustment>
@@ -150,6 +154,7 @@ export function createThemeSettingsOverlay({
   backdrop,
   onOpen = () => {},
   onPreferenceChange = () => {},
+  onPreferencePreview = () => {},
   onResetVisual = () => {},
   onRetrySave = () => {},
   getConversationScalePreview = () => ({ visible: false, reason: 'unmeasured', mode: 'hidden' }),
@@ -167,6 +172,8 @@ export function createThemeSettingsOverlay({
   let scaleDistanceDirty = false
   let scaleFocusContrastDraft
   let scaleFocusContrastDirty = false
+  let particleTraversalSpeedDraft
+  let particleTraversalSpeedDirty = false
   let calibrationResizeObserver
   let calibrationSettleTimer
   let calibrationFrame
@@ -222,6 +229,7 @@ export function createThemeSettingsOverlay({
     if (!value) {
       commitScaleDistance()
       commitScaleFocusContrast()
+      commitParticleTraversalSpeed()
     }
     isOpen = value
     trigger.setAttribute('aria-expanded', String(isOpen))
@@ -262,6 +270,37 @@ export function createThemeSettingsOverlay({
 
   function currentScaleFocusContrast() {
     return normalizeScaleFocusContrast(scaleFocusContrastDirty ? scaleFocusContrastDraft : currentPreferences?.conversationScaleFocusContrast)
+  }
+
+  function normalizeParticleTraversalSpeed(value) {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return PARTICLE_TRAVERSAL_SPEED_DEFAULT
+    const clamped = Math.min(PARTICLE_TRAVERSAL_SPEED_MAX, Math.max(PARTICLE_TRAVERSAL_SPEED_MIN, numeric))
+    return Math.round(clamped / PARTICLE_TRAVERSAL_SPEED_STEP) * PARTICLE_TRAVERSAL_SPEED_STEP
+  }
+
+  function currentParticleTraversalSpeed() {
+    return normalizeParticleTraversalSpeed(
+      particleTraversalSpeedDirty ? particleTraversalSpeedDraft : currentPreferences?.particleTraversalSpeed,
+    )
+  }
+
+  function conciseNumber(value) {
+    return String(Number(Number(value).toFixed(2)))
+  }
+
+  function particleTraversalLabel(value) {
+    const speed = normalizeParticleTraversalSpeed(value)
+    if (speed === 0) return '0× · 静止 / 不重组'
+    return `${conciseNumber(speed)}× · 每 ${conciseNumber(1 / speed)} 个视口重组`
+  }
+
+  function renderParticleTraversal() {
+    if (!panel || !currentPreferences) return
+    const value = currentParticleTraversalSpeed()
+    const range = panel.querySelector('input[data-prts-setting-range][data-prts-setting-key="particleTraversalSpeed"]')
+    if (range && range.value !== String(value)) range.value = String(value)
+    setText(panel.querySelector('[data-prts-particle-traversal-output]'), particleTraversalLabel(value))
   }
 
   function calibrationStatus(state, value) {
@@ -371,7 +410,7 @@ export function createThemeSettingsOverlay({
     const detail = resolveParticleDetail(currentPreferences)
     const detailLabels = { compact: '精简', standard: '标准', precise: '精细' }
     const advanced = panel.querySelector('[data-prts-advanced-summary]')
-    setText(advanced, `${detailLabels[detail]} / 区分度 ${contrast} / ${value} px`)
+    setText(advanced, `${detailLabels[detail]} / ${conciseNumber(currentParticleTraversalSpeed())}× / 区分度 ${contrast} / ${value} px`)
     if (!calibration) return
     const distance = `${value}px`
     if (calibration.style.getPropertyValue('--prts-calibration-distance') !== distance) {
@@ -397,6 +436,19 @@ export function createThemeSettingsOverlay({
     scaleFocusContrastDraft = value
     if (value !== normalizeScaleFocusContrast(currentPreferences.conversationScaleFocusContrast)) onPreferenceChange('conversationScaleFocusContrast', value)
     else renderScaleCalibration()
+    return true
+  }
+
+  function commitParticleTraversalSpeed() {
+    if (!particleTraversalSpeedDirty || !currentPreferences) return false
+    const value = currentParticleTraversalSpeed()
+    particleTraversalSpeedDirty = false
+    particleTraversalSpeedDraft = value
+    if (value !== normalizeParticleTraversalSpeed(currentPreferences.particleTraversalSpeed)) {
+      onPreferenceChange('particleTraversalSpeed', value)
+    } else {
+      renderParticleTraversal()
+    }
     return true
   }
 
@@ -442,6 +494,8 @@ export function createThemeSettingsOverlay({
     if (particleError) particleError.hidden = currentStatus?.particle?.phase !== 'error'
     if (!scaleDistanceDirty) scaleDistanceDraft = normalizeScaleDistance(currentPreferences.conversationScaleMaxDistance)
     if (!scaleFocusContrastDirty) scaleFocusContrastDraft = normalizeScaleFocusContrast(currentPreferences.conversationScaleFocusContrast)
+    if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(currentPreferences.particleTraversalSpeed)
+    renderParticleTraversal()
     renderScaleCalibration()
     renderPersistence()
   }
@@ -478,6 +532,8 @@ export function createThemeSettingsOverlay({
       scaleDistanceDraft = undefined
       scaleFocusContrastDirty = false
       scaleFocusContrastDraft = undefined
+      particleTraversalSpeedDirty = false
+      particleTraversalSpeedDraft = undefined
       setResetConfirmation(false)
       onResetVisual()
     }
@@ -494,6 +550,12 @@ export function createThemeSettingsOverlay({
     } else if (target.dataset.prtsSettingKey === 'conversationScaleFocusContrast') {
       scaleFocusContrastDraft = value
       scaleFocusContrastDirty = true
+    } else if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') {
+      particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(value)
+      particleTraversalSpeedDirty = true
+      renderParticleTraversal()
+      onPreferencePreview('particleTraversalSpeed', particleTraversalSpeedDraft)
+      return
     } else {
       return
     }
@@ -521,6 +583,7 @@ export function createThemeSettingsOverlay({
     if (!target?.matches?.('input[data-prts-setting-range]')) return
     if (target.dataset.prtsSettingKey === 'conversationScaleMaxDistance') commitScaleDistance()
     if (target.dataset.prtsSettingKey === 'conversationScaleFocusContrast') commitScaleFocusContrast()
+    if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') commitParticleTraversalSpeed()
   }
 
   trigger?.addEventListener('click', toggle)
@@ -547,6 +610,7 @@ export function createThemeSettingsOverlay({
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
       if (!scaleDistanceDirty) scaleDistanceDraft = normalizeScaleDistance(preferences?.conversationScaleMaxDistance)
       if (!scaleFocusContrastDirty) scaleFocusContrastDraft = normalizeScaleFocusContrast(preferences?.conversationScaleFocusContrast)
+      if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(preferences?.particleTraversalSpeed)
       renderState()
     },
     refreshScalePreview: renderScaleCalibration,

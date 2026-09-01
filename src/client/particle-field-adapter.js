@@ -378,6 +378,9 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   let side = -1
   let segment = 0
   let transition
+  let traversalAnchorScrollTop = 0
+  let traversalAnchorSegment = 0
+  let traversalAnchorProgress = 0
   let pendingSegment
   let transitionStartedAt
   let densityTransition
@@ -554,11 +557,59 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
 
+  function particleTraversalSpeed(value = preferences) {
+    const numeric = Number(value?.particleTraversalSpeed)
+    return Number.isFinite(numeric) ? clamp(numeric, 0, 2) : 1
+  }
+
+  function currentScrollTop() {
+    return Number(scroller?.scrollTop) || 0
+  }
+
+  function traversalViewport() {
+    return Math.max(1, Number(scroller?.clientHeight) || height)
+  }
+
   function scrollProgress() {
     if (!scroller) return 0
-    const viewport = Math.max(1, Number(scroller.clientHeight) || height)
-    const raw = (Number(scroller.scrollTop) || 0) / viewport
-    return raw - Math.floor(raw)
+    const distance = currentScrollTop() - traversalAnchorScrollTop
+    return clamp(
+      traversalAnchorProgress + distance * particleTraversalSpeed() / traversalViewport(),
+      0,
+      1,
+    )
+  }
+
+  function anchorTraversal(progress = scrollProgress()) {
+    traversalAnchorScrollTop = currentScrollTop()
+    traversalAnchorSegment = segment
+    traversalAnchorProgress = clamp(progress, 0, 1)
+  }
+
+  function restoreTraversalFromScroll() {
+    const speed = particleTraversalSpeed()
+    const raw = speed === 0 ? 0 : currentScrollTop() * speed / traversalViewport()
+    segment = Math.floor(raw)
+    side = sideForSegment(segment)
+    pendingSegment = undefined
+    transition = undefined
+    transitionStartedAt = undefined
+    traversalAnchorScrollTop = currentScrollTop()
+    traversalAnchorSegment = segment
+    traversalAnchorProgress = raw - Math.floor(raw)
+  }
+
+  function reanchorTraversal(progress = scrollProgress()) {
+    if (transition) {
+      const targetSegment = transition.targetSegment
+      side = sideForSegment(targetSegment)
+      transition = undefined
+      transitionStartedAt = undefined
+      commitTransitionTargets(targetSegment, true)
+    }
+    pendingSegment = undefined
+    anchorTraversal(progress)
+    if (particles.length) snapParticlesToCurrentLayout()
   }
 
   function anchorFor(sideValue, verticalProgress) {
@@ -1203,14 +1254,17 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     transitionStartedAt = undefined
     commitTransitionTargets(completed.targetSegment, false, completed.targetDensity)
     const queued = pendingSegment
+    let completedDirection = completed.direction
     pendingSegment = undefined
     if (queued !== undefined && queued !== segment) {
       if (sideForSegment(queued) !== side) {
         startTransition(queued)
         return
       }
+      completedDirection = queued > segment ? 1 : -1
       commitTransitionTargets(queued)
     }
+    anchorTraversal(completedDirection > 0 ? 0 : 1)
     const queuedDensity = queuedDensityCount
     const force = queuedTargetRefresh
     queuedDensityCount = undefined
@@ -1373,11 +1427,13 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       return
     }
     const targetSide = sideForSegment(targetSegment)
+    const direction = targetSegment > segment ? 1 : -1
     if (targetSide === side || motionReduced() || phoneStatic()) {
       side = targetSide
       transition = undefined
       transitionStartedAt = undefined
       commitTransitionTargets(targetSegment, motionReduced() || phoneStatic())
+      anchorTraversal(direction > 0 ? 0 : 1)
       return
     }
     const population = prepareTransitionTargets(targetSegment)
@@ -1389,7 +1445,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       ...population,
       fromSide: side,
       toSide: targetSide,
-      direction: targetSegment > segment ? 1 : -1,
+      direction,
       targetSegment,
       progress: 0,
     }
@@ -1398,9 +1454,29 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     scheduleFrame()
   }
 
+  function retargetTransition(targetSegment) {
+    if (!transition || targetSegment === transition.targetSegment) return
+    const population = prepareTransitionTargets(targetSegment)
+    if (!population.toCount) {
+      reportState({ phase: 'error', error: '徽记资源异常' })
+      return
+    }
+    transition = {
+      ...transition,
+      ...population,
+      toSide: sideForSegment(targetSegment),
+      direction: targetSegment >= segment ? 1 : -1,
+      targetSegment,
+    }
+    pendingSegment = undefined
+  }
+
   function resetTraversal() {
     side = -1
     segment = 0
+    traversalAnchorScrollTop = currentScrollTop()
+    traversalAnchorSegment = 0
+    traversalAnchorProgress = 0
     pendingSegment = undefined
     queuedDensityCount = undefined
     queuedTargetRefresh = false
@@ -1474,9 +1550,11 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       scheduleFrame()
       return
     }
-    const viewport = Math.max(1, Number(scroller.clientHeight) || height)
-    const desiredSegment = Math.floor(((Number(scroller.scrollTop) || 0) + 1) / viewport)
-    if (transition) pendingSegment = desiredSegment
+    const distance = currentScrollTop() - traversalAnchorScrollTop
+    const speed = particleTraversalSpeed()
+    const completedCycles = Math.floor((Math.abs(distance) * speed + 1) / traversalViewport())
+    const desiredSegment = traversalAnchorSegment + Math.sign(distance) * completedCycles
+    if (transition) retargetTransition(desiredSegment)
     else if (desiredSegment !== segment) startTransition(desiredSegment)
     scheduleFrame()
   }
@@ -1649,6 +1727,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     targetCache.clear()
     initializeFieldSize()
     syncHeroState()
+    if (!heroActive) restoreTraversalFromScroll()
     if (!particles.length && maskRecords.length) buildParticles()
     if (context && particles.length) {
       syncCanvasBackingStore()
@@ -1716,6 +1795,11 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   return {
     update(nextPreferences = {}) {
       const previousPreferences = preferences
+      const traversalSpeedChanged = previousPreferences.particleTraversalSpeed !== undefined
+        && particleTraversalSpeed(previousPreferences) !== particleTraversalSpeed(nextPreferences)
+      const preservedTraversalProgress = traversalSpeedChanged && scroller && !heroActive
+        ? scrollProgress()
+        : undefined
       preferences = nextPreferences
       disposed = false
       if (!preferences.enabled) {
@@ -1734,6 +1818,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       const activeDensityChanged = previousActiveDensity !== undefined && previousActiveDensity !== activeDensity()
       reportState({ requestedPattern: 'orthogonal' })
       if (particles.length && activeDensityChanged) scheduleDensityReassembly(targetParticleCount(), true)
+      if (preservedTraversalProgress !== undefined && scroller && !heroActive) reanchorTraversal(preservedTraversalProgress)
       if (!mutationObserver && window.MutationObserver && document.body) {
         const observationRoot = document.querySelector('[data-slot="root"]')
           ?? document.querySelector('[data-prts-region="frame"]')
@@ -1771,6 +1856,9 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
         emblemKey: (heroActive || transition?.fromHero ? heroEmblem() : emblemForSegment(segment))?.key,
         nextEmblemKey: transition ? emblemForSegment(transition.targetSegment)?.key : null,
         segment,
+        traversalSpeed: particleTraversalSpeed(),
+        traversalAnchorScrollTop,
+        traversalProgress: scrollProgress(),
         transition: transition ? {
           fromSide: transition.fromSide,
           toSide: transition.toSide,

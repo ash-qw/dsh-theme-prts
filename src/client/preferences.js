@@ -10,8 +10,13 @@ export const CONVERSATION_SCALE_FOCUS_CONTRAST_MAX = 100
 export const CONVERSATION_SCALE_FOCUS_CONTRAST_STEP = 10
 export const CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT = 70
 
+export const PARTICLE_TRAVERSAL_SPEED_MIN = 0
+export const PARTICLE_TRAVERSAL_SPEED_MAX = 2
+export const PARTICLE_TRAVERSAL_SPEED_STEP = 0.25
+export const PARTICLE_TRAVERSAL_SPEED_DEFAULT = 1
+
 export const DEFAULT_PREFERENCES = Object.freeze({
-  version: 6,
+  version: 7,
   enabled: false,
   preset: 'standard-tactical',
   texture: 'full',
@@ -20,6 +25,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   bootAnimation: true,
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
+  particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   conversationScaleMaxDistance: CONVERSATION_SCALE_DISTANCE_DEFAULT,
   conversationScaleFocusContrast: CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT,
@@ -60,7 +66,7 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
 })
 export const PREFERENCE_GROUPS = Object.freeze({
   background: Object.freeze(['texture']),
-  particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity']),
+  particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation']),
   navigation: Object.freeze(['conversationScaleMaxDistance', 'conversationScaleFocusContrast']),
@@ -114,6 +120,13 @@ function scaleFocusContrastOr(value, fallback) {
   return Math.round(clamped / CONVERSATION_SCALE_FOCUS_CONTRAST_STEP) * CONVERSATION_SCALE_FOCUS_CONTRAST_STEP
 }
 
+function particleTraversalSpeedOr(value, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  const clamped = Math.min(PARTICLE_TRAVERSAL_SPEED_MAX, Math.max(PARTICLE_TRAVERSAL_SPEED_MIN, numeric))
+  return Math.round(clamped / PARTICLE_TRAVERSAL_SPEED_STEP) * PARTICLE_TRAVERSAL_SPEED_STEP
+}
+
 function normalizeGlass(input) {
   if (input.glassEnabled === false || input.glass === 'off') return 'off'
   if (input.glass === 'liquid') return 'clear'
@@ -141,7 +154,7 @@ export function normalizePreferences(value) {
   const particlePreset = VISUAL_PRESETS[input.preset] ?? DEFAULT_PREFERENCES
   const legacyDensities = legacyParticleDensities(input)
   const normalized = {
-    version: 6,
+    version: 7,
     enabled: booleanOr(input.enabled, DEFAULT_PREFERENCES.enabled),
     preset: enumOr(migratedPreset, PRESETS, DEFAULT_PREFERENCES.preset),
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
@@ -150,6 +163,10 @@ export function normalizePreferences(value) {
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
+    particleTraversalSpeed: particleTraversalSpeedOr(
+      input.particleTraversalSpeed,
+      DEFAULT_PREFERENCES.particleTraversalSpeed,
+    ),
     particlePattern: 'orthogonal',
     conversationScaleMaxDistance: scaleDistanceOr(
       input.conversationScaleMaxDistance,
@@ -205,7 +222,7 @@ export function loadPreferences(storage) {
     const raw = storage?.getItem(PRTS_STORAGE_KEY)
     if (raw === null || raw === undefined) return { ...DEFAULT_PREFERENCES }
     const parsed = JSON.parse(raw)
-    if (![1, 2, 3, 4, 5, 6].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
+    if (![1, 2, 3, 4, 5, 6, 7].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
     return normalizePreferences(parsed)
   } catch {
     return { ...DEFAULT_PREFERENCES }

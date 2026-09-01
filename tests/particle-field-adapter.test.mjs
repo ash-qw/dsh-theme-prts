@@ -319,7 +319,7 @@ test('alternates sides at viewport boundaries and keeps upward reassembly at the
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().side, 1)
 
-  scroller.scrollTop = 776
+  scroller.scrollTop = 0
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   assert.deepEqual(adapter.inspect().transition, { fromSide: 1, toSide: -1, direction: -1 })
   for (let index = 0; index < 55; index += 1) step(16)
@@ -328,6 +328,91 @@ test('alternates sides at viewport boundaries and keeps upward reassembly at the
   const state = adapter.inspect()
   assert.equal(state.side, -1)
   assert.ok(state.anchor.verticalProgress > 0.95)
+  adapter.dispose()
+})
+
+test('uses configurable net viewport travel and reanchors speed changes without an immediate fracture', () => {
+  const { dom, scroller, step } = fixture()
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 0.5 })
+
+  scroller.scrollTop = 1500
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().transition, null)
+  assert.ok(adapter.inspect().traversalProgress > 0.9)
+
+  scroller.scrollTop = 1600
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.deepEqual(adapter.inspect().transition, { fromSide: -1, toSide: 1, direction: 1 })
+  for (let index = 0; index < 70; index += 1) step(16)
+  assert.equal(adapter.inspect().segment, 1)
+  assert.equal(adapter.inspect().traversalAnchorScrollTop, 1600)
+
+  scroller.scrollTop = 900
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().transition, null, 'sub-threshold reverse travel must not fracture')
+  scroller.scrollTop = 1600
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().segment, 1, 'returning to the anchor must cancel reverse travel')
+
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 2 })
+  assert.equal(adapter.inspect().traversalAnchorScrollTop, 1600)
+  scroller.scrollTop = 1999
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().transition, null)
+  scroller.scrollTop = 2000
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.deepEqual(adapter.inspect().transition, { fromSide: 1, toSide: -1, direction: 1 })
+
+  for (let index = 0; index < 70; index += 1) step(16)
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 0 })
+  const frozen = adapter.inspect()
+  scroller.scrollTop = 10000
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().segment, frozen.segment)
+  assert.equal(adapter.inspect().transition, null)
+  assert.equal(adapter.inspect().traversalProgress, frozen.traversalProgress)
+  adapter.dispose()
+})
+
+test('retargets rapid multi-cycle scrolling to the final segment without queuing another fracture', () => {
+  const { dom, scroller, step } = fixture()
+  const emblems = [
+    { key: 'rhodes-island', label: '罗德岛', source: 'data:image/png;base64,AA==' },
+    { key: 'lungmen', label: '龙门', source: 'data:image/png;base64,AA==' },
+    { key: 'penguin-logistics', label: '企鹅物流', source: 'data:image/png;base64,AA==' },
+  ]
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblems, emblemMasks: masksFor(emblems) })
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 2 })
+
+  scroller.scrollTop = 400
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().nextEmblemKey, 'lungmen')
+  scroller.scrollTop = 800
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().nextEmblemKey, 'penguin-logistics')
+
+  for (let index = 0; index < 70; index += 1) step(16)
+  assert.equal(adapter.inspect().segment, 2)
+  assert.equal(adapter.inspect().emblemKey, 'penguin-logistics')
+  assert.equal(adapter.inspect().transition, null)
+  adapter.dispose()
+})
+
+test('restores a deterministic long-conversation segment before establishing a fresh movement anchor', () => {
+  const { dom, scroller } = fixture()
+  scroller.scrollTop = 2400
+  const emblems = [
+    { key: 'rhodes-island', label: '罗德岛', source: 'data:image/png;base64,AA==' },
+    { key: 'lungmen', label: '龙门', source: 'data:image/png;base64,AA==' },
+  ]
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblems, emblemMasks: masksFor(emblems) })
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 0.5 })
+  const state = adapter.inspect()
+  assert.equal(state.segment, 1)
+  assert.equal(state.emblemKey, 'lungmen')
+  assert.equal(state.transition, null)
+  assert.equal(state.traversalAnchorScrollTop, 2400)
   adapter.dispose()
 })
 
@@ -353,7 +438,7 @@ test('cycles official faction emblems as boundary transitions complete in either
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().emblemKey, 'penguin-logistics')
 
-  scroller.scrollTop = 776
+  scroller.scrollTop = 24
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().emblemKey, 'rhodes-island')
@@ -405,7 +490,7 @@ test('pins a fresh conversation hero to a large Rhodes Island mark and resets tr
   assert.deepEqual(adapter.inspect().transition, { fromSide: -1, toSide: -1, direction: 1 })
   for (let index = 0; index < 70; index += 1) step(16)
 
-  scroller.scrollTop = 824
+  scroller.scrollTop = 2464
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().segment, 1)

@@ -388,6 +388,12 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(scaleContrast.max, '100')
   assert.equal(scaleContrast.step, '10')
   assert.equal(scaleContrast.value, '70')
+  const traversalSpeed = document.querySelector('[data-prts-setting-range][data-prts-setting-key="particleTraversalSpeed"]')
+  assert.equal(traversalSpeed.min, '0')
+  assert.equal(traversalSpeed.max, '2')
+  assert.equal(traversalSpeed.step, '0.25')
+  assert.equal(traversalSpeed.value, '1')
+  assert.equal(document.querySelector('[data-prts-particle-traversal-output]').textContent, '1× · 每 1 个视口重组')
   assert.equal(document.querySelectorAll('[data-prts-scale-focus-preview-tick]').length, 5)
   assert.equal(document.querySelector('[data-prts-scale-focus-output]').textContent, '70')
   assert.ok(document.querySelector('[data-prts-scale-calibration]'))
@@ -469,6 +475,60 @@ test('conversation scale calibration previews drafts and commits only after inte
   assert.deepEqual(updates.at(-1), ['conversationScaleMaxDistance', 208], 'closing should commit the latest draft')
   overlay.dispose()
 })
+test('particle traversal speed previews live and persists only when range interaction completes', async () => {
+  const api = await load('../src/client/theme-settings-workbench.js')
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <button type="button" data-trigger></button>
+    ${api.themeSettingsMarkup()}
+  </body></html>`, { pretendToBeVisual: true })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  const { document } = dom.window
+  const previews = []
+  const updates = []
+  const overlay = api.createThemeSettingsOverlay({
+    document,
+    trigger: document.querySelector('[data-trigger]'),
+    panel: document.querySelector('[data-prts-theme-settings]'),
+    backdrop: document.querySelector('[data-prts-settings-backdrop]'),
+    onPreferencePreview(key, value) { previews.push([key, value]) },
+    onPreferenceChange(key, value) { updates.push([key, value]) },
+  })
+  overlay.update({
+    preset: 'standard-tactical',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+    particleTraversalSpeed: 1,
+    conversationScaleMaxDistance: 96,
+    conversationScaleFocusContrast: 70,
+  }, {})
+  overlay.open()
+
+  const range = document.querySelector('[data-prts-setting-range][data-prts-setting-key="particleTraversalSpeed"]')
+  range.value = '0.25'
+  range.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
+  assert.deepEqual(previews, [['particleTraversalSpeed', 0.25]])
+  assert.deepEqual(updates, [])
+  assert.equal(document.querySelector('[data-prts-particle-traversal-output]').textContent, '0.25× · 每 4 个视口重组')
+
+  range.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+  assert.deepEqual(updates, [['particleTraversalSpeed', 0.25]])
+  overlay.update({
+    preset: 'standard-tactical',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+    particleTraversalSpeed: 0.25,
+    conversationScaleMaxDistance: 96,
+    conversationScaleFocusContrast: 70,
+  }, {})
+
+  range.value = '0'
+  range.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
+  assert.equal(document.querySelector('[data-prts-particle-traversal-output]').textContent, '0× · 静止 / 不重组')
+  overlay.close()
+  assert.deepEqual(updates.at(-1), ['particleTraversalSpeed', 0])
+  overlay.dispose()
+})
+
 test('workbench uses inline reset confirmation and exposes persistence recovery', async () => {
   const api = await load('../src/client/theme-settings-workbench.js')
   const dom = new JSDOM(`<!doctype html><html><body>

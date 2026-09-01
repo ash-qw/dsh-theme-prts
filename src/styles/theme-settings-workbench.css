@@ -439,6 +439,23 @@ html[data-dsh-prts] [data-prts-particle-detail-preview] {
   border: 1px solid color-mix(in srgb, currentColor 44%, transparent);
 }
 html[data-dsh-prts] [data-prts-particle-detail-preview] b { width: 2px; height: 2px; background: currentColor; }
+html[data-dsh-prts] [data-prts-particle-traversal] {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--prts-line);
+}
+html[data-dsh-prts] [data-prts-particle-traversal] > span { display: grid; gap: 3px; }
+html[data-dsh-prts] [data-prts-particle-traversal] > span strong { font-size: 9px; }
+html[data-dsh-prts] [data-prts-particle-traversal] > span small {
+  color: var(--prts-muted);
+  font: 600 8px/1.35 var(--prts-mono);
+}
+html[data-dsh-prts] [data-prts-particle-traversal-output] {
+  min-width: 132px;
+  color: var(--prts-cyan);
+  font: 800 8px/1.2 var(--prts-mono);
+  text-align: right;
+}
 html[data-dsh-prts] [data-prts-particle-error] { margin: 8px 0 0; color: var(--prts-yellow); font: 700 8px/1.4 var(--prts-mono); }
 
 html[data-dsh-prts] [data-prts-scale-calibration] {
