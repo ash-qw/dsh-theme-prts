@@ -18,10 +18,9 @@ async function enableTheme(page) {
   await expect(page.locator('html')).toHaveAttribute('data-dsh-prts', '')
 }
 
-test('reveals a confirmed manual theme from the scheme button center', async ({ page }) => {
+test('reveals a confirmed manual theme with a compositor curtain on large viewports', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await enableTheme(page)
-  expect(await page.evaluate(() => typeof document.startViewTransition)).toBe('function')
 
   const root = page.locator('html')
   const toggle = page.locator('[data-prts-scheme-toggle]')
@@ -32,24 +31,30 @@ test('reveals a confirmed manual theme from the scheme button center', async ({ 
 
   await toggle.click()
   await expect(root).toHaveAttribute('data-prts-scheme-transition', target)
-  await expect(root).toHaveAttribute('data-prts-scheme', target)
+  const curtain = page.locator(`[data-prts-scheme-curtain="${target}"]`)
+  await expect(curtain).toHaveCount(1)
   const state = await page.evaluate(() => {
     const style = document.documentElement.style
-    const animation = getComputedStyle(document.documentElement, '::view-transition-new(root)')
+    const curtainElement = document.querySelector('[data-prts-scheme-curtain]')
+    const animation = curtainElement.getAnimations()[0]
     return {
       x: Number.parseFloat(style.getPropertyValue('--prts-scheme-origin-x')),
       y: Number.parseFloat(style.getPropertyValue('--prts-scheme-origin-y')),
       radius: Number.parseFloat(style.getPropertyValue('--prts-scheme-radius')),
-      animationName: animation.animationName,
-      animationDuration: animation.animationDuration,
+      animationDuration: animation.effect.getTiming().duration,
+      finalClipPath: animation.effect.getKeyframes().at(-1).clipPath,
+      background: getComputedStyle(curtainElement).backgroundColor,
     }
   })
   expect(state.x).toBeCloseTo(box.x + box.width / 2, 1)
   expect(state.y).toBeCloseTo(box.y + box.height / 2, 1)
   expect(state.radius).toBeGreaterThan(Math.hypot(page.viewportSize().width, page.viewportSize().height) / 2)
-  expect(state.animationName).toContain('prts-scheme-reveal')
-  expect(state.animationDuration).toBe('0.45s')
+  expect(state.animationDuration).toBe(260)
+  expect(state.finalClipPath).toContain('circle(')
+  expect(state.background).toBe(target === 'light' ? 'rgb(238, 241, 243)' : 'rgb(8, 10, 12)')
 
+  await expect(root).toHaveAttribute('data-prts-scheme', target)
+  await expect(curtain).toHaveCount(0)
   await expect(root).not.toHaveAttribute('data-prts-scheme-transition', target)
   await expect(toggle).toHaveAttribute('data-prts-scheme-current', target)
 })

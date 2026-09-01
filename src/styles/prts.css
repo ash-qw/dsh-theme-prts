@@ -422,6 +422,23 @@ html[data-dsh-prts] [data-prts-scheme-toggle][data-prts-scheme-press] {
   animation: prts-scheme-toggle-press 100ms var(--prts-ease-snap) both;
 }
 
+html[data-dsh-prts] [data-prts-scheme-curtain] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  contain: strict;
+  will-change: clip-path, opacity;
+}
+
+html[data-dsh-prts] [data-prts-scheme-curtain="dark"] {
+  background: #080a0c;
+}
+
+html[data-dsh-prts] [data-prts-scheme-curtain="light"] {
+  background: #eef1f3;
+}
+
 html[data-dsh-prts][data-prts-scheme-transition] [data-prts-scheme-toggle] {
   view-transition-name: prts-scheme-toggle;
 }

@@ -15,6 +15,9 @@ const TRANSITION_PROPERTIES = [
   '--prts-scheme-origin-y',
   '--prts-scheme-radius',
 ]
+const CURTAIN_RASTER_THRESHOLD = 1_000_000
+const CURTAIN_COVER_MS = 260
+const CURTAIN_FADE_MS = 140
 
 function themeIdentity(value) {
   if (typeof value === 'string') return value
@@ -32,7 +35,7 @@ function resolveScheme(value) {
   return identity.includes('dark') || identity.includes('night') ? 'dark' : 'light'
 }
 
-export function createThemeController({ document, window, cssText, service }) {
+export function createThemeController({ document, window, cssText, service, onTransitionStateChange = () => {} }) {
   if (!document || !window) return { apply() {}, sync() {}, refresh() {}, setTheme() {}, toggle() {}, dispose() {} }
 
   const root = document.documentElement
@@ -44,16 +47,27 @@ export function createThemeController({ document, window, cssText, service }) {
   let activeTransition
   let animatedRequest
 
+  let transitionStateActive = false
+
+  function setTransitionState(active) {
+    const next = Boolean(active)
+    if (transitionStateActive === next) return
+    transitionStateActive = next
+    try { onTransitionStateChange(next) } catch {}
+  }
+
   function clearTransitionState() {
     root.removeAttribute(TRANSITION_ATTRIBUTE)
     for (const property of TRANSITION_PROPERTIES) root.style.removeProperty(property)
   }
 
-  function cancelActiveTransition() {
+  function cancelActiveTransition({ keepPaused = false } = {}) {
     const current = activeTransition
     activeTransition = undefined
     current?.viewTransition?.skipTransition?.()
+    current?.cancel?.()
     clearTransitionState()
+    if (!keepPaused) setTransitionState(false)
   }
 
   function clearThemeState() {
@@ -98,7 +112,10 @@ export function createThemeController({ document, window, cssText, service }) {
       animatedRequest.hostScheme = next
       return root.dataset.prtsScheme
     }
-    if (activeTransition && next !== root.dataset.prtsScheme) cancelActiveTransition()
+    if (activeTransition) {
+      if (next === activeTransition.target) return root.dataset.prtsScheme
+      if (next !== root.dataset.prtsScheme) cancelActiveTransition()
+    }
     return applyScheme(next)
   }
 
@@ -127,9 +144,24 @@ export function createThemeController({ document, window, cssText, service }) {
     try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
   }
 
+  function viewportRasterPixels() {
+    const width = Math.max(Number(window.innerWidth) || 0, Number(root.clientWidth) || 0)
+    const height = Math.max(Number(window.innerHeight) || 0, Number(root.clientHeight) || 0)
+    const dpr = Math.max(1, Number(window.devicePixelRatio) || 1)
+    return width * height * dpr * dpr
+  }
+
+  function canUseCurtain() {
+    return viewportRasterPixels() >= CURTAIN_RASTER_THRESHOLD
+      && Boolean(document.body)
+      && typeof window.Element?.prototype?.animate === 'function'
+  }
+
   function canAnimateScheme(options) {
+    const animationAvailable = canUseCurtain()
+      || typeof document.startViewTransition === 'function'
     return options?.animate === true
-      && typeof document.startViewTransition === 'function'
+      && animationAvailable
       && !prefersReducedMotion()
   }
 
@@ -143,8 +175,9 @@ export function createThemeController({ document, window, cssText, service }) {
     return { x, y, radius }
   }
 
-  function commitAnimatedScheme(target, origin) {
-    cancelActiveTransition()
+  function commitViewTransitionScheme(target, origin) {
+    cancelActiveTransition({ keepPaused: true })
+    setTransitionState(true)
     const token = ++transitionRevision
     const geometry = transitionOrigin(origin)
     root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
@@ -158,16 +191,86 @@ export function createThemeController({ document, window, cssText, service }) {
     } catch {
       clearTransitionState()
       applyScheme(target)
+      setTransitionState(false)
       return target
     }
 
-    activeTransition = { token, viewTransition }
+    activeTransition = { token, target, viewTransition }
     Promise.resolve(viewTransition?.finished).catch(() => {}).finally(() => {
       if (activeTransition?.token !== token) return
       activeTransition = undefined
       clearTransitionState()
+      setTransitionState(false)
     })
     return target
+  }
+
+  async function commitCurtainScheme(target, origin) {
+    cancelActiveTransition({ keepPaused: true })
+    setTransitionState(true)
+    const token = ++transitionRevision
+    const geometry = transitionOrigin(origin)
+    root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
+    root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
+    root.style.setProperty('--prts-scheme-radius', `${geometry.radius}px`)
+    root.setAttribute(TRANSITION_ATTRIBUTE, target)
+
+    const curtain = document.createElement('div')
+    curtain.dataset.prtsSchemeCurtain = target
+    curtain.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(curtain)
+    const animations = []
+    activeTransition = {
+      token,
+      target,
+      cancel() {
+        for (const animation of animations) animation.cancel?.()
+        curtain.remove()
+      },
+    }
+
+    try {
+      const cover = curtain.animate([
+        { clipPath: `circle(0 at ${geometry.x}px ${geometry.y}px)` },
+        { clipPath: `circle(${geometry.radius}px at ${geometry.x}px ${geometry.y}px)` },
+      ], {
+        duration: CURTAIN_COVER_MS,
+        easing: 'cubic-bezier(.22, 1, .36, 1)',
+        fill: 'forwards',
+      })
+      animations.push(cover)
+      await cover.finished
+      if (activeTransition?.token !== token) return root.dataset.prtsScheme
+
+      applyScheme(target)
+      const fade = curtain.animate([
+        { opacity: 1 },
+        { opacity: 0 },
+      ], {
+        duration: CURTAIN_FADE_MS,
+        easing: 'ease-out',
+        fill: 'forwards',
+      })
+      animations.push(fade)
+      await fade.finished
+      if (activeTransition?.token !== token) return root.dataset.prtsScheme
+    } catch {
+      if (activeTransition?.token !== token) return root.dataset.prtsScheme
+      applyScheme(target)
+    } finally {
+      if (activeTransition?.token === token) {
+        activeTransition = undefined
+        curtain.remove()
+        clearTransitionState()
+        setTransitionState(false)
+      }
+    }
+    return target
+  }
+
+  function commitAnimatedScheme(target, origin) {
+    if (canUseCurtain()) return commitCurtainScheme(target, origin)
+    return commitViewTransitionScheme(target, origin)
   }
 
   function setTheme(id, options = {}) {
@@ -187,10 +290,7 @@ export function createThemeController({ document, window, cssText, service }) {
       if (disposed || revision !== setRevision) return root.dataset.prtsScheme
       clearAnimatedRequest()
       if (!animate) return applyScheme(target)
-      return Promise.resolve(options.ready).catch(() => {}).then(() => {
-        if (disposed || revision !== setRevision) return root.dataset.prtsScheme
-        return commitAnimatedScheme(target, options.origin)
-      })
+      return commitAnimatedScheme(target, options.origin)
     }
 
     const fail = () => {
