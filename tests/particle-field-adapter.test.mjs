@@ -319,7 +319,7 @@ test('alternates sides at viewport boundaries and keeps upward reassembly at the
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().side, 1)
 
-  scroller.scrollTop = 0
+  scroller.scrollTop = 776
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   assert.deepEqual(adapter.inspect().transition, { fromSide: 1, toSide: -1, direction: -1 })
   for (let index = 0; index < 55; index += 1) step(16)
@@ -331,7 +331,7 @@ test('alternates sides at viewport boundaries and keeps upward reassembly at the
   adapter.dispose()
 })
 
-test('uses configurable net viewport travel and reanchors speed changes without an immediate fracture', () => {
+test('keeps traversal continuous in both directions and reanchors speed changes without a dead zone', () => {
   const { dom, scroller, step } = fixture()
   const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
   adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 0.5 })
@@ -346,21 +346,26 @@ test('uses configurable net viewport travel and reanchors speed changes without 
   assert.deepEqual(adapter.inspect().transition, { fromSide: -1, toSide: 1, direction: 1 })
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().segment, 1)
-  assert.equal(adapter.inspect().traversalAnchorScrollTop, 1600)
 
-  scroller.scrollTop = 900
-  scroller.dispatchEvent(new dom.window.Event('scroll'))
-  assert.equal(adapter.inspect().transition, null, 'sub-threshold reverse travel must not fracture')
-  scroller.scrollTop = 1600
-  scroller.dispatchEvent(new dom.window.Event('scroll'))
-  assert.equal(adapter.inspect().segment, 1, 'returning to the anchor must cancel reverse travel')
-
-  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 2 })
-  assert.equal(adapter.inspect().traversalAnchorScrollTop, 1600)
-  scroller.scrollTop = 1999
+  scroller.scrollTop = 1900
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   assert.equal(adapter.inspect().transition, null)
-  scroller.scrollTop = 2000
+  assert.equal(adapter.inspect().traversalProgress, 0.1875)
+  scroller.scrollTop = 1700
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().traversalProgress, 0.0625, 'reverse scrolling must move immediately')
+  scroller.scrollTop = 1900
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().traversalProgress, 0.1875, 'returning must restore the same position')
+
+  const coordinateBeforeSpeedChange = adapter.inspect().traversalCoordinate
+  adapter.update({ enabled: true, texture: 'full', motion: 'full', particleTraversalSpeed: 2 })
+  assert.equal(adapter.inspect().traversalCoordinate, coordinateBeforeSpeedChange)
+  assert.equal(adapter.inspect().traversalProgress, 0.1875)
+  scroller.scrollTop = 2224
+  scroller.dispatchEvent(new dom.window.Event('scroll'))
+  assert.equal(adapter.inspect().transition, null)
+  scroller.scrollTop = 2225
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   assert.deepEqual(adapter.inspect().transition, { fromSide: 1, toSide: -1, direction: 1 })
 
@@ -371,6 +376,7 @@ test('uses configurable net viewport travel and reanchors speed changes without 
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   assert.equal(adapter.inspect().segment, frozen.segment)
   assert.equal(adapter.inspect().transition, null)
+  assert.equal(adapter.inspect().traversalCoordinate, frozen.traversalCoordinate)
   assert.equal(adapter.inspect().traversalProgress, frozen.traversalProgress)
   adapter.dispose()
 })
@@ -399,7 +405,7 @@ test('retargets rapid multi-cycle scrolling to the final segment without queuing
   adapter.dispose()
 })
 
-test('restores a deterministic long-conversation segment before establishing a fresh movement anchor', () => {
+test('restores a deterministic long-conversation coordinate without playing a transition', () => {
   const { dom, scroller } = fixture()
   scroller.scrollTop = 2400
   const emblems = [
@@ -412,7 +418,9 @@ test('restores a deterministic long-conversation segment before establishing a f
   assert.equal(state.segment, 1)
   assert.equal(state.emblemKey, 'lungmen')
   assert.equal(state.transition, null)
-  assert.equal(state.traversalAnchorScrollTop, 2400)
+  assert.equal(state.traversalOffset, 0)
+  assert.equal(state.traversalCoordinate, 1.5)
+  assert.equal(state.traversalProgress, 0.5)
   adapter.dispose()
 })
 
@@ -438,7 +446,7 @@ test('cycles official faction emblems as boundary transitions complete in either
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().emblemKey, 'penguin-logistics')
 
-  scroller.scrollTop = 24
+  scroller.scrollTop = 776
   scroller.dispatchEvent(new dom.window.Event('scroll'))
   for (let index = 0; index < 70; index += 1) step(16)
   assert.equal(adapter.inspect().emblemKey, 'rhodes-island')
