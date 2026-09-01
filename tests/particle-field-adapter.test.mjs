@@ -142,6 +142,44 @@ test('sleeps after the particle field visually settles and wakes for interaction
   adapter.dispose()
 })
 
+test('pauses particle frames for a scheme transition and resumes them afterward', () => {
+  const { dom, pendingFrames } = fixture()
+  dom.window.CanvasRenderingContext2D = class {}
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({
+    setTransform() {},
+    clearRect() {},
+    beginPath() {},
+    arc() {},
+    fill() {},
+    set fillStyle(value) {},
+  })
+  const adapter = createParticleFieldAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    emblem: '<svg />',
+    emblemMasks: masksFor(),
+  })
+  adapter.update({
+    enabled: true,
+    texture: 'full',
+    motion: 'system',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+  })
+
+  assert.ok(pendingFrames() > 0)
+  adapter.setSchemeTransitionActive(true)
+  assert.equal(adapter.inspect().schemeTransitionPaused, true)
+  assert.equal(adapter.inspect().suspended, true)
+  assert.equal(pendingFrames(), 0)
+
+  adapter.setSchemeTransitionActive(false)
+  assert.equal(adapter.inspect().schemeTransitionPaused, false)
+  assert.equal(adapter.inspect().suspended, false)
+  assert.ok(pendingFrames() > 0)
+  adapter.dispose()
+})
+
 test('pauses particle rendering during bulk hydration and resumes after stable frames', async () => {
   const { dom, scroller, step } = fixture()
   const adapter = createParticleFieldAdapter({

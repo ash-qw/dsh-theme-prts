@@ -45,7 +45,6 @@ export function applyPrtsPlugin(ctx, environment) {
   const safeMode = isSafeMode(window?.location?.search ?? '')
   const storage = window?.localStorage
   const themeService = contextService(ctx, 'theme')
-  const theme = createThemeController({ document, window, cssText, service: themeService })
   const startup = createPrtsStartupSequence({ document, window, prtsEmblem: assets.prtsEmblem, rhodesEmblem: assets.emblem, timings: startupTimings })
   const composerGlass = createComposerGlassAdapter({ document, window })
   const assistantGlass = createAssistantGlassAdapter({ document, window })
@@ -58,6 +57,15 @@ export function applyPrtsPlugin(ctx, environment) {
     onStateChange(next) {
       status = { ...status, particle: next }
       sync()
+    },
+  })
+  const theme = createThemeController({
+    document,
+    window,
+    cssText,
+    service: themeService,
+    onTransitionStateChange(active) {
+      particleField.setSchemeTransitionActive(active)
     },
   })
   const sessions = contextService(ctx, 'sessions')
