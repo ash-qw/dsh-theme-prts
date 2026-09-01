@@ -37,7 +37,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 135_168, 'the replacement stylesheets must stay compact')
+  assert.ok(Buffer.byteLength(css) < 137_216, 'the replacement stylesheets must stay compact')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -217,21 +217,30 @@ test('keeps particle emblems and composer geometry without retired dossier style
   assert.doesNotMatch(css, /\[data-prts-composer-signal\]::after/)
 })
 
-test('supports fixed host-owned themes, optical calibration, and accessibility fallbacks', () => {
+test('supports fixed host-owned themes, tactical takeover, and accessibility fallbacks', () => {
   includesAll([
     '[data-prts-scheme-toggle]',
     '[data-prts-scheme-current="dark"]',
     '[data-prts-scheme-transition-mode="view"]',
     '[data-prts-scheme-transition-interactive]',
-    '[data-prts-scheme-transition-armed]',
     '[data-prts-scheme-reveal-edge]',
+    '[data-prts-scheme-reveal-grid]',
     '[data-prts-scheme-reveal-blend]',
+    '[data-prts-scheme-reveal-node]',
+    '[data-prts-scheme-reveal-meter]',
+    '[data-prts-scheme-reveal-meter-fill]',
     '[data-prts-scheme-reveal-label]',
+    '[data-prts-scheme-reveal-value]',
     'clip-path: inset(',
-    'backdrop-filter: blur(5px)',
+    'backdrop-filter: blur(2px)',
+    'mask-image: linear-gradient(',
+    '--prts-scheme-grid-diagonal-cell: 40px',
     '@keyframes prts-scheme-view-hold',
-    'view-transition-name: prts-scheme-toggle',
-    'view-transition-name: prts-scheme-icon',
+    '@keyframes prts-scheme-hud-release',
+    'view-transition-name: prts-scheme-edge',
+    'view-transition-name: prts-scheme-node',
+    'view-transition-name: prts-scheme-grid',
+    '::view-transition-new(prts-scheme-node)',
     '::view-transition-new(root)',
     'touch-action: none',
     'scale(.96)',
@@ -250,6 +259,11 @@ test('supports fixed host-owned themes, optical calibration, and accessibility f
     'height: 100dvh',
     'height: calc(100% - 48px) !important',
   ])
+  assert.match(css, /html\[data-dsh-prts\]\[data-prts-scheme-transition-mode="view"\]\s*\{[^}]*--prts-scheme-grid-axis:/s)
+  assert.match(css, /\[data-prts-scheme-reveal-edge\]\s*\{[^}]*transform:\s*translate3d\(-14px, 0, 0\)/s)
+  assert.doesNotMatch(css, /\[data-prts-scheme-reveal-edge\]\s*\{[^}]*transform:[^;}]*--prts-scheme-reveal-x/s)
+  assert.doesNotMatch(css, /view-transition-name:\s*prts-scheme-(?:toggle|icon)/)
+  assert.doesNotMatch(css, /OPTICAL SYNC/)
   assert.doesNotMatch(css, /\[data-prts-region="frame"\]\s*\{[^}]*min-height:\s*100dvh/s)
   assert.doesNotMatch(css, /prefers-color-scheme/)
   assert.doesNotMatch(css, /color\s*:\s*transparent\b/i)

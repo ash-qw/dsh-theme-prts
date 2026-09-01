@@ -48,11 +48,12 @@ function installViewTransitions(dom) {
   }
   dom.window.document.startViewTransition = update => {
     const finished = deferred()
-    const record = { finished, skipped: 0 }
+    const updateCallbackDone = Promise.resolve().then(update)
+    const record = { finished, updateCallbackDone, skipped: 0 }
     transitions.push(record)
-    update()
     return {
-      ready: Promise.resolve(),
+      ready: updateCallbackDone,
+      updateCallbackDone,
       finished: finished.promise,
       skipTransition() { record.skipped += 1 },
     }
@@ -89,7 +90,8 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   const request = controller.setTheme('light', { animate: true, origin: { x: 30, y: 40 } })
   controller.sync('light')
   assert.equal(root.dataset.prtsScheme, 'dark')
-  assert.equal(records.transitions.length, 0)
+  assert.equal(records.transitions.length, 1)
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]'), null)
 
   host.resolve()
   await settle()
@@ -101,15 +103,18 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   assert.equal(root.style.getPropertyValue('--prts-scheme-duration'), '480ms')
   assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '-32px')
   assert.equal(records.transitions.length, 1)
-  assert.equal(records.animations.length, 2)
+  assert.equal(records.animations.length, 7)
   const clip = records.animations.find(record => record.options.pseudoElement === '::view-transition-new(root)')
-  const edge = records.animations.find(record => record !== clip)
+  const edge = records.animations.find(record => record.options.pseudoElement === '::view-transition-group(prts-scheme-edge)')
+  const grid = records.animations.find(record => record.options.pseudoElement === '::view-transition-new(prts-scheme-grid)')
   assert.equal(clip.keyframes[0].clipPath, 'inset(0 1232px 0 0)')
   assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 0px 0 0)')
   assert.equal(clip.options.duration, 480)
   assert.equal(clip.options.easing, 'cubic-bezier(.4, 0, .2, 1)')
-  assert.equal(edge.keyframes[0].transform, 'translate3d(-33px, 0, 0)')
-  assert.equal(edge.keyframes.at(-1).transform, 'translate3d(1231px, 0, 0)')
+  assert.equal(edge.keyframes[0].translate, '-32px 0px')
+  assert.equal(edge.keyframes.at(-1).translate, '1232px 0px')
+  assert.equal(grid.keyframes[0].backgroundPosition, '252px 0px')
+  assert.equal(grid.keyframes.at(-1).backgroundPosition, '-1012px 0px')
   assert.deepEqual(transitionStates, [true])
 
   for (const record of records.animations) record.finished.resolve()
@@ -174,17 +179,27 @@ test('tracks an interactive boundary in both directions and rolls back below 50 
   assert.equal(root.dataset.prtsScheme, 'light')
   assert.equal(root.getAttribute('data-prts-scheme-transition-interactive'), '')
   assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '120px')
+  assert.equal(hostCommits, 1)
+  const edgeScrub = records.animations.find(record => record.options.pseudoElement === '::view-transition-group(prts-scheme-edge)')
+  assert.equal(edgeScrub.keyframes[0].translate, '0px 0px')
+  assert.equal(edgeScrub.keyframes.at(-1).translate, '1200px 0px')
 
   gesture.update(.63)
   assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '756px')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.63')
   assert.equal(root.getAttribute('data-prts-scheme-transition-armed'), '')
-  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-label]')?.textContent, 'OPTICAL SYNC: 63%')
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-label]')?.textContent, 'CTRL')
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-value]')?.textContent, '')
+  assert.match(root.style.getPropertyValue('--prts-scheme-control-value-image'), /^url\("data:image\/svg\+xml,.*063/)
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-grid]')?.parentElement?.hasAttribute('data-prts-scheme-reveal-edge'), true)
 
   controller.sync('dark')
   assert.equal(root.dataset.prtsScheme, 'light')
   gesture.update(.35)
   assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '420px')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.35')
   assert.equal(root.hasAttribute('data-prts-scheme-transition-armed'), false)
+  assert.match(root.style.getPropertyValue('--prts-scheme-control-value-image'), /035/)
 
   const result = gesture.finish(false)
   await settle()
@@ -194,8 +209,10 @@ test('tracks an interactive boundary in both directions and rolls back below 50 
   for (const record of completion) record.finished.resolve()
   assert.equal(await result, 'dark')
   assert.equal(root.dataset.prtsScheme, 'dark')
-  assert.equal(hostCommits, 0)
+  assert.equal(hostCommits, 2)
+  assert.equal(current, 'dark')
   assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '')
   assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]'), null)
 })
 
@@ -275,12 +292,7 @@ test('keeps the current theme when the host rejects a manual switch', async () =
     getTheme: () => 'dark',
     setTheme: () => Promise.reject(new Error('host rejected theme')),
   }
-  let transitions = 0
-  dom.window.Element.prototype.animate = () => ({ finished: Promise.resolve(), cancel() {} })
-  dom.window.document.startViewTransition = () => {
-    transitions += 1
-    throw new Error('should not start')
-  }
+  const records = installViewTransitions(dom)
   const controller = createThemeController({
     document: dom.window.document,
     window: dom.window,
@@ -293,6 +305,8 @@ test('keeps the current theme when the host rejects a manual switch', async () =
   assert.equal(await controller.setTheme('light', { animate: true }), 'dark')
   assert.equal(root.dataset.prtsScheme, 'dark')
   assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
-  assert.equal(transitions, 0)
+  assert.equal(records.transitions.length, 1)
+  assert.equal(records.transitions[0].skipped, 1)
+  assert.equal(records.animations.length, 0)
   controller.dispose()
 })

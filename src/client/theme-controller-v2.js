@@ -13,17 +13,34 @@ const TRANSITION_ATTRIBUTE = 'data-prts-scheme-transition'
 const TRANSITION_MODE_ATTRIBUTE = 'data-prts-scheme-transition-mode'
 const TRANSITION_INTERACTIVE_ATTRIBUTE = 'data-prts-scheme-transition-interactive'
 const TRANSITION_ARMED_ATTRIBUTE = 'data-prts-scheme-transition-armed'
+const TRANSITION_COMPLETE_ATTRIBUTE = 'data-prts-scheme-transition-complete'
 const TRANSITION_PROPERTIES = [
   '--prts-scheme-origin-x',
   '--prts-scheme-origin-y',
   '--prts-scheme-duration',
   '--prts-scheme-reveal-x',
+  '--prts-scheme-control-progress',
+  '--prts-scheme-control-meter-height',
+  '--prts-scheme-control-value-image',
 ]
 const REVEAL_EDGE_OVERSCAN = 32
+const REVEAL_GRID_WIDTH = 220
 const REVEAL_TIMING_LIMITS = {
   desktop: { minimum: 480, maximum: 560, widthFactor: .38 },
   mobile: { minimum: 320, maximum: 380, widthFactor: .9 },
 }
+const revealValueImages = new Map()
+
+function revealValueImageUrl(value) {
+  const percentage = Math.min(100, Math.max(0, Math.round(Number(value) || 0)))
+  if (revealValueImages.has(percentage)) return revealValueImages.get(percentage)
+  const label = String(percentage).padStart(3, '0')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="11" viewBox="0 0 24 11"><text x="0" y="9" fill="#ffd400" font-family="monospace" font-size="10" font-weight="700">${label}</text></svg>`
+  const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+  revealValueImages.set(percentage, url)
+  return url
+}
+
 function themeIdentity(value) {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return ''
@@ -53,7 +70,6 @@ export function createThemeController({ document, window, cssText, service, onTr
   let setRevision = 0
   let transitionRevision = 0
   let activeTransition
-  let animatedRequest
 
   let transitionStateActive = false
 
@@ -69,6 +85,7 @@ export function createThemeController({ document, window, cssText, service, onTr
     root.removeAttribute(TRANSITION_MODE_ATTRIBUTE)
     root.removeAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE)
     root.removeAttribute(TRANSITION_ARMED_ATTRIBUTE)
+    root.removeAttribute(TRANSITION_COMPLETE_ATTRIBUTE)
     for (const property of TRANSITION_PROPERTIES) root.style.removeProperty(property)
   }
 
@@ -90,7 +107,6 @@ export function createThemeController({ document, window, cssText, service, onTr
     disposed = true
     refreshRevision += 1
     setRevision += 1
-    animatedRequest = undefined
     cancelActiveTransition()
     clearThemeState()
     root.removeAttribute('data-dsh-prts-settings')
@@ -119,10 +135,6 @@ export function createThemeController({ document, window, cssText, service, onTr
   function sync(value) {
     if (disposed) return
     const next = resolveScheme(value)
-    if (animatedRequest) {
-      animatedRequest.hostScheme = next
-      return root.dataset.prtsScheme
-    }
     if (activeTransition) {
       if (next === activeTransition.target) return root.dataset.prtsScheme
       if (activeTransition.interactive && next === activeTransition.source) return root.dataset.prtsScheme
@@ -199,15 +211,29 @@ export function createThemeController({ document, window, cssText, service, onTr
     } catch {}
     hud.remove()
     session.hud = undefined
+    session.hudGrid = undefined
     session.hudEdge = undefined
+    session.hudMark = undefined
+    session.hudMeterFill = undefined
     session.hudLabel = undefined
+    session.hudValue = undefined
   }
 
   function updateRevealHud(session) {
     if (!session || session.settled) return
     const percentage = Math.round(revealProgress(session.progress) * 100)
-    if (session.hudLabel) session.hudLabel.textContent = `OPTICAL SYNC: ${percentage}%`
-    root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, session.interactive && percentage >= 50)
+    if (session.hudEdge) session.hudEdge.dataset.prtsSchemeRevealSide = 'left'
+    root.style.setProperty('--prts-scheme-control-progress', String(session.progress))
+    root.style.setProperty('--prts-scheme-control-meter-height', `${revealProgress(session.progress) * 48}px`)
+    root.style.setProperty('--prts-scheme-control-value-image', revealValueImageUrl(percentage))
+    root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, session.interactive && session.progress >= .5)
+  }
+
+  function releaseRevealHud(session) {
+    if (!session?.hud || session.settled) return Promise.resolve()
+    session.hud.dataset.prtsSchemeRevealState = 'complete'
+    root.setAttribute(TRANSITION_COMPLETE_ATTRIBUTE, '')
+    return new Promise(resolve => window.setTimeout(resolve, 100))
   }
 
   function mountRevealHud(session) {
@@ -217,18 +243,37 @@ export function createThemeController({ document, window, cssText, service, onTr
     hud.dataset.prtsSchemeRevealMode = session.interactive ? 'interactive' : 'automatic'
     hud.setAttribute('aria-hidden', 'true')
     hud.setAttribute('popover', 'manual')
+    const grid = document.createElement('i')
+    grid.dataset.prtsSchemeRevealGrid = ''
     const edge = document.createElement('span')
     edge.dataset.prtsSchemeRevealEdge = ''
     const blend = document.createElement('i')
     blend.dataset.prtsSchemeRevealBlend = ''
+    const node = document.createElement('span')
+    node.dataset.prtsSchemeRevealNode = ''
+    const meter = document.createElement('i')
+    meter.dataset.prtsSchemeRevealMeter = ''
+    const meterFill = document.createElement('i')
+    meterFill.dataset.prtsSchemeRevealMeterFill = ''
     const label = document.createElement('span')
     label.dataset.prtsSchemeRevealLabel = ''
-    edge.append(blend, label)
+    label.textContent = 'CTRL'
+    const mark = document.createElement('i')
+    mark.dataset.prtsSchemeRevealMark = ''
+    const value = document.createElement('span')
+    value.dataset.prtsSchemeRevealValue = ''
+    meter.appendChild(meterFill)
+    node.append(meter, label, value, mark)
+    edge.append(grid, blend, node)
     hud.appendChild(edge)
     document.body.appendChild(hud)
     session.hud = hud
+    session.hudGrid = grid
     session.hudEdge = edge
+    session.hudMark = mark
+    session.hudMeterFill = meterFill
     session.hudLabel = label
+    session.hudValue = value
     updateRevealHud(session)
     try { hud.showPopover?.() } catch {}
   }
@@ -252,21 +297,57 @@ export function createThemeController({ document, window, cssText, service, onTr
     return `translate3d(${revealPixels(x - 1)}, 0, 0)`
   }
 
+  function revealGridPosition(x) {
+    return `${revealPixels(REVEAL_GRID_WIDTH - x)} 0px`
+  }
+
+  function revealGroupTranslate(x) {
+    return `${revealPixels(x)} 0px`
+  }
+
+  function revealNamedAnimation(keyframes, options, pseudoElement) {
+    return root.animate(keyframes, { ...options, pseudoElement })
+  }
+
   function createInteractiveScrub(session) {
-    if (!session.interactive || session.settled || session.scrubAnimation) return
+    if (!session.interactive || session.settled || session.scrubAnimations) return
     try {
-      const animation = root.animate([
-        { clipPath: revealClipPath(session, 0) },
-        { clipPath: revealClipPath(session, session.geometry.width) },
-      ], {
+      const options = {
         duration: session.duration,
         easing: 'linear',
         fill: 'both',
-        pseudoElement: '::view-transition-new(root)',
-      })
-      animation.pause?.()
-      animation.currentTime = session.progress * session.duration
-      session.scrubAnimation = animation
+      }
+      const clip = revealNamedAnimation([
+        { clipPath: revealClipPath(session, 0) },
+        { clipPath: revealClipPath(session, session.geometry.width) },
+      ], options, '::view-transition-new(root)')
+      const edge = revealNamedAnimation([
+        { translate: revealGroupTranslate(0) },
+        { translate: revealGroupTranslate(session.geometry.width) },
+      ], options, '::view-transition-group(prts-scheme-edge)')
+      const node = revealNamedAnimation([
+        { translate: revealGroupTranslate(0) },
+        { translate: revealGroupTranslate(session.geometry.width) },
+      ], options, '::view-transition-group(prts-scheme-node)')
+      const grid = revealNamedAnimation([
+        { translate: revealGroupTranslate(0) },
+        { translate: revealGroupTranslate(session.geometry.width) },
+      ], options, '::view-transition-group(prts-scheme-grid)')
+      const gridPhase = revealNamedAnimation([
+        { backgroundPosition: revealGridPosition(0) },
+        { backgroundPosition: revealGridPosition(session.geometry.width) },
+      ], options, '::view-transition-new(prts-scheme-grid)')
+      const mark = revealNamedAnimation([
+        { offset: 0, translate: revealGroupTranslate(0), rotate: '45deg' },
+        { offset: .49, translate: revealGroupTranslate(session.geometry.width * .49), rotate: '45deg' },
+        { offset: .51, translate: revealGroupTranslate(session.geometry.width * .51), rotate: '225deg' },
+        { offset: 1, translate: revealGroupTranslate(session.geometry.width), rotate: '225deg' },
+      ], options, '::view-transition-group(prts-scheme-mark)')
+      session.scrubAnimations = [clip, edge, node, grid, gridPhase, mark]
+      for (const animation of session.scrubAnimations) {
+        animation.pause?.()
+        animation.currentTime = session.progress * session.duration
+      }
     } catch {}
   }
 
@@ -275,10 +356,12 @@ export function createThemeController({ document, window, cssText, service, onTr
     session.progress = revealProgress(value)
     session.revealX = session.progress * session.geometry.width
     root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
-    if (session.scrubAnimation) {
+    if (session.scrubAnimations) {
       try {
-        session.scrubAnimation.pause?.()
-        session.scrubAnimation.currentTime = session.progress * session.duration
+        for (const animation of session.scrubAnimations) {
+          animation.pause?.()
+          animation.currentTime = session.progress * session.duration
+        }
       } catch {}
     }
     updateRevealHud(session)
@@ -290,8 +373,14 @@ export function createThemeController({ document, window, cssText, service, onTr
     for (const animation of animations) {
       try { animation?.cancel?.() } catch {}
     }
-    try { session?.scrubAnimation?.cancel?.() } catch {}
-    if (session) session.scrubAnimation = undefined
+    for (const animation of session?.completedAnimations || []) {
+      try { animation?.cancel?.() } catch {}
+    }
+    if (session) session.completedAnimations = undefined
+    for (const animation of session?.scrubAnimations || []) {
+      try { animation?.cancel?.() } catch {}
+    }
+    if (session) session.scrubAnimations = undefined
   }
 
   function animateRevealTo(session, value, duration, easing) {
@@ -317,11 +406,31 @@ export function createThemeController({ document, window, cssText, service, onTr
         ...options,
         pseudoElement: '::view-transition-new(root)',
       })
-      const edge = session.hudEdge?.animate?.([
-        { transform: revealEdgeTransform(session.revealX) },
-        { transform: revealEdgeTransform(targetX) },
-      ], options)
-      animations = edge ? [clip, edge] : [clip]
+      const edge = revealNamedAnimation([
+        { translate: revealGroupTranslate(session.revealX) },
+        { translate: revealGroupTranslate(targetX) },
+      ], options, '::view-transition-group(prts-scheme-edge)')
+      const node = revealNamedAnimation([
+        { translate: revealGroupTranslate(session.revealX) },
+        { translate: revealGroupTranslate(targetX) },
+      ], options, '::view-transition-group(prts-scheme-node)')
+      const grid = revealNamedAnimation([
+        { translate: revealGroupTranslate(session.revealX) },
+        { translate: revealGroupTranslate(targetX) },
+      ], options, '::view-transition-group(prts-scheme-grid)')
+      const gridPhase = revealNamedAnimation([
+        { backgroundPosition: revealGridPosition(session.revealX) },
+        { backgroundPosition: revealGridPosition(targetX) },
+      ], options, '::view-transition-new(prts-scheme-grid)')
+      const nodeProgress = revealNamedAnimation([
+        { backgroundSize: `2px ${session.progress * 48}px` },
+        { backgroundSize: `2px ${targetProgress * 48}px` },
+      ], options, '::view-transition-new(prts-scheme-node)')
+      const mark = revealNamedAnimation([
+        { translate: revealGroupTranslate(session.revealX), rotate: session.progress >= .5 ? '225deg' : '45deg' },
+        { translate: revealGroupTranslate(targetX), rotate: targetProgress >= .5 ? '225deg' : '45deg' },
+      ], options, '::view-transition-group(prts-scheme-mark)')
+      animations = [clip, edge, node, grid, gridPhase, nodeProgress, mark]
     } catch {
       setRevealProgress(session, targetProgress)
       return Promise.resolve(true)
@@ -330,16 +439,35 @@ export function createThemeController({ document, window, cssText, service, onTr
     return Promise.all(animations.map(animation => Promise.resolve(animation?.finished).then(() => true, () => false))).then(results => {
       const completed = results.every(Boolean)
       if (!completed || session.settled || session.progressAnimations !== animations) return false
-      for (const animation of animations) {
-        try { animation.cancel?.() } catch {}
-      }
       session.progressAnimations = undefined
+      session.completedAnimations = animations
       session.progress = targetProgress
       session.revealX = targetX
       root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
       updateRevealHud(session)
       return true
     })
+  }
+
+  function requestHostScheme(value) {
+    try {
+      return Promise.resolve(service?.setTheme?.(value)).then(() => true, () => false)
+    } catch {
+      return Promise.resolve(false)
+    }
+  }
+
+  function restoreRevealSource(session) {
+    if (!session) return Promise.resolve(false)
+    session.restoreRequested = true
+    if (session.restorePromise) return session.restorePromise
+    session.restorePromise = Promise.resolve(session.hostRequest).then(async accepted => {
+      if (accepted && !(await requestHostScheme(session.source))) return false
+      applyScheme(session.source)
+      session.hostAccepted = false
+      return true
+    })
+    return session.restorePromise
   }
 
   function finishRevealSession(session, { commit }) {
@@ -364,6 +492,7 @@ export function createThemeController({ document, window, cssText, service, onTr
     const initialProgress = interactive ? revealProgress(options.progress) : 0
     const duration = revealDuration(geometry.width)
     const token = ++transitionRevision
+    let resolveHostReady
     const session = {
       token,
       target,
@@ -375,48 +504,83 @@ export function createThemeController({ document, window, cssText, service, onTr
       duration,
       settled: false,
       committed: false,
+      hostAccepted: false,
+      hostReady: new Promise(resolve => { resolveHostReady = resolve }),
     }
     root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
     root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
     root.style.setProperty('--prts-scheme-duration', `${interactive ? 3600000 : duration}ms`)
     root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
+    root.style.setProperty('--prts-scheme-control-progress', String(initialProgress))
+    root.style.setProperty('--prts-scheme-control-meter-height', `${initialProgress * 48}px`)
+    root.style.setProperty('--prts-scheme-control-value-image', revealValueImageUrl(initialProgress * 100))
     root.setAttribute(TRANSITION_ATTRIBUTE, target)
     root.setAttribute(TRANSITION_MODE_ATTRIBUTE, 'view')
     root.toggleAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE, interactive)
 
-    let viewTransition
-    try {
-      viewTransition = document.startViewTransition(() => applyScheme(target))
-    } catch {
-      clearTransitionState()
-      applyScheme(interactive ? source : target)
-      setTransitionState(false)
-      return undefined
-    }
-    session.viewTransition = viewTransition
     session.cancel = () => {
       if (session.settled) return
       session.settled = true
       cancelRevealAnimation(session)
-      if (session.interactive && !session.committed) applyScheme(session.source)
+      if (session.interactive && !session.committed) void restoreRevealSource(session)
       removeRevealHud(session)
     }
-    session.ready = Promise.resolve(viewTransition?.ready).catch(() => {}).then(() => {
-      if (activeTransition?.token === token && !session.settled) {
+    activeTransition = session
+
+    let viewTransition
+    try {
+      viewTransition = document.startViewTransition(async () => {
+        session.hostRequest = requestHostScheme(target)
+        const accepted = await session.hostRequest
+        session.hostAccepted = accepted
+        if (!accepted) {
+          applyScheme(source)
+          resolveHostReady(false)
+          return
+        }
+        if (session.settled || session.restoreRequested) {
+          await restoreRevealSource(session)
+          resolveHostReady(false)
+          return
+        }
+        applyScheme(target)
         mountRevealHud(session)
+        resolveHostReady(true)
+      })
+    } catch {
+      resolveHostReady(false)
+      if (activeTransition?.token === token) activeTransition = undefined
+      removeRevealHud(session)
+      clearTransitionState()
+      applyScheme(source)
+      setTransitionState(false)
+      return undefined
+    }
+    session.viewTransition = viewTransition
+    session.ready = Promise.all([
+      Promise.resolve(viewTransition?.ready).then(() => true, () => false),
+      session.hostReady,
+    ]).then(([viewReady, hostReady]) => {
+      const ready = viewReady && hostReady
+      if (ready && activeTransition?.token === token && !session.settled) {
         createInteractiveScrub(session)
       }
+      return ready
     })
-    activeTransition = session
     return session
   }
 
   async function commitRevealScheme(target, origin) {
     const session = createRevealSession(target, { origin })
-    if (!session) return target
-    await session.ready
+    if (!session) return root.dataset.prtsScheme
+    const ready = await session.ready
+    if (!ready) {
+      if (!session.settled) finishRevealSession(session, { commit: false })
+      return session.source
+    }
     if (activeTransition?.token !== session.token || session.settled) return root.dataset.prtsScheme
     await animateRevealTo(session, 1, session.duration, 'cubic-bezier(.4, 0, .2, 1)')
+    await releaseRevealHud(session)
     if (activeTransition?.token === session.token && !session.settled) finishRevealSession(session, { commit: true })
     return target
   }
@@ -451,39 +615,40 @@ export function createThemeController({ document, window, cssText, service, onTr
       if (finishPromise) return finishPromise
       if (session.settled || activeTransition?.token !== session.token) return Promise.resolve(root.dataset.prtsScheme)
       root.removeAttribute(TRANSITION_INTERACTIVE_ATTRIBUTE)
-      root.removeAttribute(TRANSITION_ARMED_ATTRIBUTE)
-      session.hud?.removeAttribute('data-prts-scheme-reveal-mode')
+      root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, commit)
+      if (session.hud) session.hud.dataset.prtsSchemeRevealMode = 'settling'
       const visualDuration = commit
         ? Math.max(90, Math.round(session.duration * (1 - session.progress)))
         : Math.max(90, Math.round(session.duration * session.progress * .72))
-      const visual = session.ready.then(() => animateRevealTo(
-        session,
-        commit ? 1 : 0,
-        visualDuration,
-        commit ? 'cubic-bezier(.22, 1, .36, 1)' : 'cubic-bezier(.4, 0, .2, 1)',
-      ))
+      const visual = session.ready.then(ready => {
+        if (!ready || session.settled) return false
+        return animateRevealTo(
+          session,
+          commit ? 1 : 0,
+          visualDuration,
+          commit ? 'cubic-bezier(.22, 1, .36, 1)' : 'cubic-bezier(.4, 0, .2, 1)',
+        )
+      })
 
       if (!commit) {
-        finishPromise = visual.finally(() => {
+        finishPromise = visual.then(async () => {
+          await releaseRevealHud(session)
+          await restoreRevealSource(session)
           if (!session.settled) finishRevealSession(session, { commit: false })
-        }).then(() => session.source)
+          return session.source
+        })
         return finishPromise
       }
 
-      let hostResult
-      try { hostResult = service?.setTheme?.(target) } catch { hostResult = Promise.reject(new Error('theme commit failed')) }
-      const host = Promise.resolve(hostResult).then(() => true, () => false)
-      finishPromise = Promise.all([visual, host]).then(async ([, accepted]) => {
-        if (accepted) {
-          if (!session.settled) finishRevealSession(session, { commit: true })
-          return target
+      finishPromise = visual.then(async () => {
+        if (!session.hostAccepted) {
+          if (!session.settled) finishRevealSession(session, { commit: false })
+          refresh()
+          return root.dataset.prtsScheme
         }
-        if (!session.settled) {
-          await animateRevealTo(session, 0, session.duration, 'cubic-bezier(.4, 0, .2, 1)')
-          finishRevealSession(session, { commit: false })
-        }
-        refresh()
-        return root.dataset.prtsScheme
+        await releaseRevealHud(session)
+        if (!session.settled) finishRevealSession(session, { commit: true })
+        return target
       })
       return finishPromise
     }
@@ -505,26 +670,16 @@ export function createThemeController({ document, window, cssText, service, onTr
   function setTheme(id, options = {}) {
     const target = id === 'dark' ? 'dark' : 'light'
     const revision = ++setRevision
-    const manual = options?.animate === true
-    const animationAvailable = canAnimateScheme(options)
-    const animate = animationAvailable && target !== root.dataset.prtsScheme
-    animatedRequest = undefined
-    if (manual) animatedRequest = { revision, target, hostScheme: undefined }
+    const animate = canAnimateScheme(options) && target !== root.dataset.prtsScheme
 
-    const clearAnimatedRequest = () => {
-      if (animatedRequest?.revision === revision) animatedRequest = undefined
-    }
+    if (animate) return commitAnimatedScheme(target, options.origin)
 
     const commit = () => {
       if (disposed || revision !== setRevision) return root.dataset.prtsScheme
-      clearAnimatedRequest()
-      if (!animate) return applyScheme(target)
-      return commitAnimatedScheme(target, options.origin)
+      return applyScheme(target)
     }
-
     const fail = () => {
       if (disposed || revision !== setRevision) return root.dataset.prtsScheme
-      clearAnimatedRequest()
       const result = refresh()
       if (result && typeof result.then === 'function') {
         return result.then(() => root.dataset.prtsScheme)
@@ -534,9 +689,7 @@ export function createThemeController({ document, window, cssText, service, onTr
 
     try {
       const result = service?.setTheme?.(target)
-      if (result && typeof result.then === 'function') {
-        return result.then(commit).catch(fail)
-      }
+      if (result && typeof result.then === 'function') return result.then(commit).catch(fail)
       return commit()
     } catch {
       return fail()
@@ -553,7 +706,6 @@ export function createThemeController({ document, window, cssText, service, onTr
       const preferences = normalizePreferences(value)
       ensureStyle()
       if (!preferences.enabled) {
-        animatedRequest = undefined
         cancelActiveTransition()
         clearThemeState()
         return
