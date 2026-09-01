@@ -221,6 +221,13 @@ test('supports fixed host-owned light and dark themes and accessibility fallback
   includesAll([
     '[data-prts-scheme-toggle]',
     '[data-prts-scheme-current="dark"]',
+    '[data-prts-scheme-transition]',
+    'view-transition-name: prts-scheme-toggle',
+    'view-transition-name: prts-scheme-icon',
+    '::view-transition-new(root)',
+    '@keyframes prts-scheme-reveal',
+    '450ms cubic-bezier(.22, 1, .36, 1)',
+    'scale(.96)',
     '@media (max-width: 640px)',
     '@media (prefers-reduced-motion: reduce)',
     '@media (prefers-reduced-transparency: reduce)',

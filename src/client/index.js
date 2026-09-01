@@ -160,8 +160,8 @@ export function applyPrtsPlugin(ctx, environment) {
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
       document, window, assets, adapter, hostGeometry,
-      onSchemeToggle(next) {
-        theme.setTheme(next)
+      onSchemeToggle(next, interaction) {
+        return theme.setTheme(next, { ...interaction, animate: true })
       },
       onThemeDisable() {
         persistAndApply(updatePreferenceValue(preferences, 'enabled', false))

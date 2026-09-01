@@ -38,6 +38,7 @@ test('mounts the shell without an operator dossier and restores the host', async
   const document = dom.window.document
   document.documentElement.dataset.prtsScheme = 'dark'
   const schemeToggles = []
+  const schemeInteractions = []
   const preferenceUpdates = []
   let disabled = 0
   let geometryFrame
@@ -58,7 +59,10 @@ test('mounts the shell without an operator dossier and restores the host', async
     assets: { emblem: '<svg></svg>' },
     adapter: createRc7Adapter({ document }),
     hostGeometry,
-    onSchemeToggle: current => schemeToggles.push(current),
+    onSchemeToggle(current, interaction) {
+      schemeToggles.push(current)
+      schemeInteractions.push(interaction)
+    },
     onThemeDisable: () => { disabled += 1 },
     onPreferenceChange: (...args) => preferenceUpdates.push(args),
   })
@@ -82,8 +86,12 @@ test('mounts the shell without an operator dossier and restores the host', async
   const schemeToggle = document.querySelector('[data-prts-scheme-toggle]')
   assert.equal(schemeToggle.parentElement.hasAttribute('data-prts-nav-bottom'), true)
   assert.equal(schemeToggle.dataset.prtsSchemeCurrent, 'dark')
+  schemeToggle.getBoundingClientRect = () => ({ left: 10, top: 20, width: 40, height: 60 })
   schemeToggle.click()
   assert.deepEqual(schemeToggles, ['light'])
+  assert.deepEqual(schemeInteractions[0].origin, { x: 30, y: 50 })
+  assert.equal(typeof schemeInteractions[0].ready?.then, 'function')
+  assert.equal(schemeToggle.hasAttribute('data-prts-scheme-press'), true)
   document.querySelector('[data-prts-theme-disable]').click()
   assert.equal(disabled, 1)
 

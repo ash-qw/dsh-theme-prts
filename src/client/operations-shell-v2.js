@@ -53,11 +53,47 @@ export function createOperationsShell({
   let railViewportQuery
   let settingsOverlay
   let schemeToggle
+  let schemeIntent
+  let schemePressRevision = 0
   let themeDisable
   let connectionIndicator
   let conversationObserver
   let schemeObserver
   let operationRegion
+  const schemePressDelays = new Set()
+
+  function reducedMotion() {
+    if (root.dataset.prtsMotion === 'reduced') return true
+    try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
+  }
+
+  function playSchemePress() {
+    if (!schemeToggle || reducedMotion()) return Promise.resolve()
+    const revision = ++schemePressRevision
+    schemeToggle.removeAttribute('data-prts-scheme-press')
+    void schemeToggle.offsetWidth
+    schemeToggle.setAttribute('data-prts-scheme-press', '')
+    return new Promise(resolve => {
+      const entry = { timer: undefined, resolve }
+      entry.timer = window.setTimeout(() => {
+        schemePressDelays.delete(entry)
+        if (revision === schemePressRevision) schemeToggle?.removeAttribute('data-prts-scheme-press')
+        resolve()
+      }, 100)
+      schemePressDelays.add(entry)
+    })
+  }
+
+  function clearSchemePressDelays() {
+    schemePressRevision += 1
+    schemeToggle?.removeAttribute('data-prts-scheme-press')
+    for (const entry of schemePressDelays) {
+      window.clearTimeout(entry.timer)
+      entry.resolve()
+    }
+    schemePressDelays.clear()
+  }
+
   function syncConversationState() {
     if (!operationRegion) return
     const candidate = operationRegion.querySelector(
@@ -68,13 +104,26 @@ export function createOperationsShell({
     settingsOverlay?.refreshScalePreview()
   }
 
-  function toggleScheme() {
-    onSchemeToggle(root.dataset.prtsScheme === 'dark' ? 'light' : 'dark')
+  function toggleScheme(event) {
+    const current = schemeIntent ?? (root.dataset.prtsScheme === 'dark' ? 'dark' : 'light')
+    const next = current === 'dark' ? 'light' : 'dark'
+    const rect = event?.currentTarget?.getBoundingClientRect?.()
+    const origin = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : undefined
+    schemeIntent = next
+    const ready = playSchemePress()
+    let request
+    try { request = onSchemeToggle(next, { origin, ready }) } catch { request = undefined }
+    Promise.resolve(request).catch(() => {}).finally(() => {
+      if (schemeIntent === next) schemeIntent = undefined
+    })
   }
 
   function syncSchemeToggle() {
     if (!schemeToggle) return
     const current = root.dataset.prtsScheme === 'dark' ? 'dark' : 'light'
+    if (schemeIntent === current) schemeIntent = undefined
     schemeToggle.dataset.prtsSchemeCurrent = current
     schemeToggle.setAttribute('aria-label', current === 'dark' ? '切换到日间模式' : '切换到夜间模式')
   }
@@ -205,6 +254,7 @@ export function createOperationsShell({
   }
 
   function dispose() {
+    clearSchemePressDelays()
     railLauncher?.removeEventListener('click', toggleRail)
     document.removeEventListener('keydown', onRailKeydown)
     document.removeEventListener('click', onDocumentClick)
@@ -223,6 +273,7 @@ export function createOperationsShell({
     root.removeAttribute('data-prts-rail-default-hidden')
     navRail = railLauncher = railMode = railViewport = undefined
     railDefaultHidden = false
+    schemeIntent = undefined
     shell = settingsOverlay = schemeToggle = themeDisable = connectionIndicator = undefined
     conversationObserver = schemeObserver = undefined
     operationRegion = undefined

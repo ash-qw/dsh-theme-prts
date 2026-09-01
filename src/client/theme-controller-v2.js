@@ -9,6 +9,13 @@ const ROOT_ATTRIBUTES = [
   'data-prts-particle-pattern',
 ]
 
+const TRANSITION_ATTRIBUTE = 'data-prts-scheme-transition'
+const TRANSITION_PROPERTIES = [
+  '--prts-scheme-origin-x',
+  '--prts-scheme-origin-y',
+  '--prts-scheme-radius',
+]
+
 function themeIdentity(value) {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return ''
@@ -33,15 +40,33 @@ export function createThemeController({ document, window, cssText, service }) {
   let disposed = false
   let refreshRevision = 0
   let setRevision = 0
+  let transitionRevision = 0
+  let activeTransition
+  let animatedRequest
+
+  function clearTransitionState() {
+    root.removeAttribute(TRANSITION_ATTRIBUTE)
+    for (const property of TRANSITION_PROPERTIES) root.style.removeProperty(property)
+  }
+
+  function cancelActiveTransition() {
+    const current = activeTransition
+    activeTransition = undefined
+    current?.viewTransition?.skipTransition?.()
+    clearTransitionState()
+  }
 
   function clearThemeState() {
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
+    clearTransitionState()
   }
 
   function removeOwnedState() {
     disposed = true
     refreshRevision += 1
     setRevision += 1
+    animatedRequest = undefined
+    cancelActiveTransition()
     clearThemeState()
     root.removeAttribute('data-dsh-prts-settings')
     style?.remove()
@@ -59,9 +84,22 @@ export function createThemeController({ document, window, cssText, service }) {
     root.setAttribute('data-dsh-prts-settings', '')
   }
 
+  function applyScheme(value) {
+    if (disposed) return
+    const next = resolveScheme(value)
+    root.dataset.prtsScheme = next
+    return next
+  }
+
   function sync(value) {
     if (disposed) return
-    root.dataset.prtsScheme = resolveScheme(value)
+    const next = resolveScheme(value)
+    if (animatedRequest) {
+      animatedRequest.hostScheme = next
+      return root.dataset.prtsScheme
+    }
+    if (activeTransition && next !== root.dataset.prtsScheme) cancelActiveTransition()
+    return applyScheme(next)
   }
 
   function fallbackTheme() {
@@ -84,25 +122,96 @@ export function createThemeController({ document, window, cssText, service }) {
     return value
   }
 
-  function setTheme(id) {
+  function prefersReducedMotion() {
+    if (root.dataset.prtsMotion === 'reduced') return true
+    try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
+  }
+
+  function canAnimateScheme(options) {
+    return options?.animate === true
+      && typeof document.startViewTransition === 'function'
+      && !prefersReducedMotion()
+  }
+
+  function transitionOrigin(origin) {
+    const width = Math.max(Number(window.innerWidth) || 0, Number(root.clientWidth) || 0)
+    const height = Math.max(Number(window.innerHeight) || 0, Number(root.clientHeight) || 0)
+    const clamp = (value, maximum, fallback) => Math.min(maximum, Math.max(0, Number.isFinite(Number(value)) ? Number(value) : fallback))
+    const x = clamp(origin?.x, width, width / 2)
+    const y = clamp(origin?.y, height, height / 2)
+    const radius = Math.hypot(Math.max(x, width - x), Math.max(y, height - y)) + 2
+    return { x, y, radius }
+  }
+
+  function commitAnimatedScheme(target, origin) {
+    cancelActiveTransition()
+    const token = ++transitionRevision
+    const geometry = transitionOrigin(origin)
+    root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
+    root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
+    root.style.setProperty('--prts-scheme-radius', `${geometry.radius}px`)
+    root.setAttribute(TRANSITION_ATTRIBUTE, target)
+
+    let viewTransition
+    try {
+      viewTransition = document.startViewTransition(() => applyScheme(target))
+    } catch {
+      clearTransitionState()
+      applyScheme(target)
+      return target
+    }
+
+    activeTransition = { token, viewTransition }
+    Promise.resolve(viewTransition?.finished).catch(() => {}).finally(() => {
+      if (activeTransition?.token !== token) return
+      activeTransition = undefined
+      clearTransitionState()
+    })
+    return target
+  }
+
+  function setTheme(id, options = {}) {
     const target = id === 'dark' ? 'dark' : 'light'
     const revision = ++setRevision
+    const manual = options?.animate === true
+    const animationAvailable = canAnimateScheme(options)
+    const animate = animationAvailable && target !== root.dataset.prtsScheme
+    animatedRequest = undefined
+    if (manual) animatedRequest = { revision, target, hostScheme: undefined }
+
+    const clearAnimatedRequest = () => {
+      if (animatedRequest?.revision === revision) animatedRequest = undefined
+    }
+
+    const commit = () => {
+      if (disposed || revision !== setRevision) return root.dataset.prtsScheme
+      clearAnimatedRequest()
+      if (!animate) return applyScheme(target)
+      return Promise.resolve(options.ready).catch(() => {}).then(() => {
+        if (disposed || revision !== setRevision) return root.dataset.prtsScheme
+        return commitAnimatedScheme(target, options.origin)
+      })
+    }
+
+    const fail = () => {
+      if (disposed || revision !== setRevision) return root.dataset.prtsScheme
+      clearAnimatedRequest()
+      const result = refresh()
+      if (result && typeof result.then === 'function') {
+        return result.then(() => root.dataset.prtsScheme)
+      }
+      return root.dataset.prtsScheme
+    }
+
     try {
       const result = service?.setTheme?.(target)
       if (result && typeof result.then === 'function') {
-        return result.then(() => {
-          if (!disposed && revision === setRevision) sync(target)
-          return target
-        }).catch(() => {
-          if (!disposed && revision === setRevision) refresh()
-          return root.dataset.prtsScheme
-        })
+        return result.then(commit).catch(fail)
       }
-      if (!disposed && revision === setRevision) sync(target)
+      return commit()
     } catch {
-      if (!disposed && revision === setRevision) sync(target)
+      return fail()
     }
-    return target
   }
 
   function toggle() {
@@ -115,6 +224,8 @@ export function createThemeController({ document, window, cssText, service }) {
       const preferences = normalizePreferences(value)
       ensureStyle()
       if (!preferences.enabled) {
+        animatedRequest = undefined
+        cancelActiveTransition()
         clearThemeState()
         return
       }
