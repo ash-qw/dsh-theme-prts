@@ -492,17 +492,73 @@ test('cycles official faction emblems as boundary transitions complete in either
 })
 
 test('uses a centered static emblem on phones and when reduced motion is requested', () => {
+  const emblems = [
+    { key: 'rhodes-island', label: '罗德岛', source: 'data:image/png;base64,AA==' },
+    { key: 'lungmen', label: '龙门', source: 'data:image/png;base64,AA==' },
+  ]
   for (const [width, reduced] of [[390, false], [1440, true]]) {
     const { dom, scroller } = fixture(width, reduced)
-    const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
-    adapter.update({ enabled: true, texture: 'restrained', motion: reduced ? 'system' : 'full' })
+    const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblems, emblemMasks: masksFor(emblems) })
+    adapter.update({ enabled: true, texture: 'restrained', motion: reduced ? 'system' : 'full', particleTraversalSpeed: 1 })
+    const initial = adapter.inspect()
     scroller.scrollTop = 900
     scroller.dispatchEvent(new dom.window.Event('scroll'))
     const state = adapter.inspect()
-    if (width <= 640) assert.equal(state.anchor.horizontalProgress, 0.5)
+    if (width <= 640) {
+      assert.equal(state.anchor.horizontalProgress, 0.5)
+      assert.equal(state.traversalSpeed, 0)
+      assert.equal(state.segment, 0)
+      assert.equal(state.emblemKey, 'rhodes-island')
+      assert.equal(state.particles, initial.particles)
+    }
     assert.equal(state.transition, null)
     adapter.dispose()
   }
+})
+
+test('reuses the static particle canvas when a phone conversation scroller is replaced', async () => {
+  const { dom, scroller, step } = fixture(390)
+  const operation = dom.window.document.querySelector('[data-prts-region="operation"]')
+  const adapter = createParticleFieldAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    emblem: '<svg />',
+    emblemMasks: masksFor(),
+  })
+  adapter.update({ enabled: true, texture: 'full', motion: 'full' })
+  const canvas = operation.querySelector('[data-prts-particle-layer]')
+  const nextScroller = scroller.cloneNode(true)
+  Object.defineProperty(nextScroller, 'clientHeight', { configurable: true, value: 800 })
+  scroller.replaceWith(nextScroller)
+  await new Promise(resolve => dom.window.setTimeout(resolve, 0))
+  step()
+  assert.equal(operation.querySelector('[data-prts-particle-layer]'), canvas)
+  assert.equal(adapter.inspect().emblemKey, 'rhodes-island')
+  adapter.dispose()
+})
+
+test('commits phone particle resizes immediately without a dimming transaction', () => {
+  const { dom } = fixture(390)
+  const operation = dom.window.document.querySelector('[data-prts-region="operation"]')
+  let resizeCallback
+  dom.window.ResizeObserver = class {
+    constructor(callback) { resizeCallback = callback }
+    observe() {}
+    disconnect() {}
+  }
+  const adapter = createParticleFieldAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    emblem: '<svg />',
+    emblemMasks: masksFor(),
+  })
+  adapter.update({ enabled: true, texture: 'full', motion: 'full' })
+  resizeCallback([{ target: operation, contentRect: { width: 420, height: 780 } }])
+  const state = adapter.inspect()
+  assert.equal(state.fieldWidth, 420)
+  assert.equal(state.resizing, false)
+  assert.equal(operation.querySelector('[data-prts-particle-layer]').hasAttribute('data-prts-resizing'), false)
+  adapter.dispose()
 })
 
 test('pins a fresh conversation hero to a large Rhodes Island mark and resets traversal state', async () => {

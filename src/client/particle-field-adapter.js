@@ -557,6 +557,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
 
 
   function particleTraversalSpeed(value = preferences) {
+    if (phoneStatic()) return 0
     const numeric = Number(value?.particleTraversalSpeed)
     return Number.isFinite(numeric) ? clamp(numeric, 0, 2) : 1
   }
@@ -1123,6 +1124,19 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     const entry = entries.find(candidate => candidate.target === operation) ?? entries[0]
     const contentRect = entry?.contentRect
     pendingResizeSize = contentRect ? sizeFromRect(contentRect) : readOperationSize()
+    if (phoneStatic()) {
+      const nextSize = pendingResizeSize
+      clearResizeState()
+      const changed = applyFieldSize(nextSize)
+      if (changed && particles.length) snapParticlesToCurrentLayout()
+      resizeCommits += changed ? 1 : 0
+      syncCanvasBackingStore()
+      geometryDirty = false
+      cancelFrame()
+      draw(Number(window.performance?.now?.()) || 0)
+      cancelFrame()
+      return
+    }
     if (resizeFrame !== undefined) return
     resizeFrame = window.requestAnimationFrame?.(() => {
       resizeFrame = undefined
@@ -1532,7 +1546,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     if (heroActive) leaveHero()
   }
   function onScroll() {
-    if (!scroller) return
+    if (!scroller || phoneStatic()) return
     if (heroActive) {
       scheduleFrame()
       return
@@ -1581,6 +1595,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function registerContentMutations(mutations) {
+    if (phoneStatic()) return
     let weight = mutations.length
     for (const mutation of mutations) {
       for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
@@ -1693,8 +1708,35 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     cancelFrame()
   }
 
+  function rebindScroller(nextScroller) {
+    scroller?.removeAttribute('data-prts-hero-active')
+    scroller?.removeEventListener('scroll', onScroll)
+    cancelHydrationResume()
+    hydrationPaused = false
+    mutationBurstScore = 0
+    if (mutationBurstTimer !== undefined) window.clearTimeout?.(mutationBurstTimer)
+    mutationBurstTimer = undefined
+    heroMarker = undefined
+    heroActive = false
+    scroller = nextScroller
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    syncHeroState()
+    if (!heroActive) {
+      resetTraversal()
+      if (!phoneStatic()) restoreTraversalFromScroll()
+      commitTransitionTargets(segment, true)
+    }
+    scheduleFrame()
+  }
+
   function mount(nextOperation, nextScroller) {
-    if (operation === nextOperation && scroller === nextScroller && ambient?.isConnected && canvas?.isConnected) return
+    if (operation === nextOperation && ambient?.isConnected && canvas?.isConnected) {
+      if (scroller === nextScroller) return
+      if (nextScroller) {
+        rebindScroller(nextScroller)
+        return
+      }
+    }
     unmount()
     operation = nextOperation
     scroller = nextScroller
@@ -1705,7 +1747,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     glow = created.glow
     canvas = document.createElement('canvas')
     canvas.setAttribute('data-prts-particle-layer', '')
-    canvas.setAttribute('aria-label', '随对话滚动轮换阵营标识的粒子画布')
+    canvas.setAttribute('aria-label', phoneStatic() ? '静态阵营标识粒子画布' : '随对话滚动轮换阵营标识的粒子画布')
     canvas.style.visibility = 'hidden'
     if (typeof window.CanvasRenderingContext2D === 'function') context = canvas.getContext('2d')
     targetCache.clear()

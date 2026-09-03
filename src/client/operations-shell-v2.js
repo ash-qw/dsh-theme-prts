@@ -1,6 +1,12 @@
 import { createThemeSettingsOverlay, themeSettingsMarkup } from './theme-settings-workbench.js'
 import { createResizeShieldAdapter } from './resize-shield-adapter.js'
 
+const PHONE_RAIL_BREAKPOINT = 640
+const RAIL_HOLD_DELAY_MS = 350
+const RAIL_HOLD_MOVE_TOLERANCE = 8
+const RAIL_SWIPE_THRESHOLD = 32
+const RAIL_SWIPE_AXIS_RATIO = 1.25
+
 function setText(root, selector, value) {
   const node = root?.querySelector(selector)
   const next = String(value ?? '')
@@ -9,7 +15,7 @@ function setText(root, selector, value) {
 
 function markup(emblem) {
   return `<div data-prts-shell data-plugin="dsh-theme-prts">
-    <button type="button" data-prts-rail-launcher aria-label="打开 P.R.T.S. 导航" aria-controls="prts-nav-rail" aria-expanded="false"><span aria-hidden="true">P.R.T.S.</span></button>
+    <button type="button" data-prts-rail-launcher aria-label="打开 P.R.T.S. 导航" aria-controls="prts-nav-rail" aria-expanded="false"><span aria-hidden="true">P.R.T.S.</span><i data-prts-rail-gesture-cue aria-hidden="true">⌄<br>⌄</i></button>
     <nav id="prts-nav-rail" data-prts-nav-rail aria-label="P.R.T.S. 导航">
       <button type="button" data-prts-rail-brand aria-label="P.R.T.S. 终端设置" aria-controls="prts-theme-settings" aria-expanded="false">${emblem || ''}<span>P.R.T.S.</span></button>
       <div data-prts-nav-bottom>
@@ -52,6 +58,10 @@ export function createOperationsShell({
   let railViewport
   let railDefaultHidden = false
   let railViewportQuery
+  let railPointerQuery
+  let railHoverQuery
+  let railPointer
+  let railHoldTimer
   let settingsOverlay
   let schemeToggle
   let schemeIntent
@@ -70,6 +80,89 @@ export function createOperationsShell({
   function reducedMotion() {
     if (root.dataset.prtsMotion === 'reduced') return true
     try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
+  }
+
+  function phoneRailGesture() {
+    if (railMode !== 'overlay' || Number(window.innerWidth) > PHONE_RAIL_BREAKPOINT) return false
+    return railPointerQuery?.matches === true
+      || railHoverQuery?.matches === true
+      || Number(window.navigator?.maxTouchPoints) > 0
+  }
+
+  function clearRailGesture({ release = true } = {}) {
+    if (railHoldTimer !== undefined) window.clearTimeout(railHoldTimer)
+    railHoldTimer = undefined
+    const pointer = railPointer
+    railPointer = undefined
+    if (release && pointer) {
+      try { railLauncher?.releasePointerCapture?.(pointer.pointerId) } catch {}
+    }
+    railLauncher?.removeAttribute('data-prts-rail-gesture-active')
+    railLauncher?.removeAttribute('data-prts-rail-gesture-ready')
+    railLauncher?.style?.removeProperty('--prts-rail-gesture-progress')
+  }
+
+  function armRailGesture() {
+    railHoldTimer = undefined
+    if (!railPointer || !phoneRailGesture()) return
+    railPointer.armed = true
+    railLauncher?.setAttribute('data-prts-rail-gesture-active', '')
+  }
+
+  function onRailPointerDown(event) {
+    if (!phoneRailGesture() || railPointer || (event.button ?? 0) !== 0) return
+    const pointerId = event.pointerId ?? 1
+    railPointer = {
+      pointerId,
+      startX: Number(event.clientX) || 0,
+      startY: Number(event.clientY) || 0,
+      armed: false,
+      ready: false,
+    }
+    try { railLauncher?.setPointerCapture?.(pointerId) } catch {}
+    railHoldTimer = window.setTimeout(armRailGesture, RAIL_HOLD_DELAY_MS)
+  }
+
+  function onRailPointerMove(event) {
+    const pointer = railPointer
+    if (!pointer || (event.pointerId ?? 1) !== pointer.pointerId) return
+    const deltaX = (Number(event.clientX) || 0) - pointer.startX
+    const deltaY = (Number(event.clientY) || 0) - pointer.startY
+    if (!pointer.armed) {
+      if (Math.hypot(deltaX, deltaY) > RAIL_HOLD_MOVE_TOLERANCE) clearRailGesture()
+      return
+    }
+    event.preventDefault?.()
+    if (Math.abs(deltaX) > Math.max(RAIL_HOLD_MOVE_TOLERANCE, Math.max(0, deltaY) / RAIL_SWIPE_AXIS_RATIO)) {
+      clearRailGesture()
+      return
+    }
+    const progress = Math.min(1, Math.max(0, deltaY) / RAIL_SWIPE_THRESHOLD)
+    pointer.ready = deltaY >= RAIL_SWIPE_THRESHOLD
+      && deltaY >= Math.abs(deltaX) * RAIL_SWIPE_AXIS_RATIO
+    railLauncher?.style?.setProperty('--prts-rail-gesture-progress', Math.round(progress * 12) + 'px')
+    railLauncher?.toggleAttribute('data-prts-rail-gesture-ready', pointer.ready)
+  }
+
+  function onRailPointerUp(event) {
+    const pointer = railPointer
+    if (!pointer || (event.pointerId ?? 1) !== pointer.pointerId) return
+    const shouldOpen = pointer.armed && pointer.ready
+    clearRailGesture()
+    if (shouldOpen) openRail()
+  }
+
+  function onRailLostPointerCapture(event) {
+    if (!railPointer || (event.pointerId ?? 1) !== railPointer.pointerId) return
+    clearRailGesture({ release: false })
+  }
+
+  function onRailClick(event) {
+    if (phoneRailGesture() && Number(event?.detail) > 0) {
+      event.preventDefault?.()
+      return
+    }
+    toggleRail()
   }
 
   function playSchemePress() {
@@ -257,7 +350,8 @@ export function createOperationsShell({
     const overlay = railMode === 'overlay'
     const open = overlay && root.hasAttribute('data-prts-rail-open')
     railLauncher.setAttribute('aria-expanded', String(open))
-    railLauncher.setAttribute('aria-label', open ? '关闭 P.R.T.S. 导航' : '打开 P.R.T.S. 导航')
+    const closedLabel = phoneRailGesture() ? '长按并向下滑动打开 P.R.T.S. 导航' : '打开 P.R.T.S. 导航'
+    railLauncher.setAttribute('aria-label', open ? '关闭 P.R.T.S. 导航' : closedLabel)
     if (overlay && !open) {
       navRail.setAttribute('aria-hidden', 'true')
       navRail.setAttribute('inert', '')
@@ -294,6 +388,7 @@ export function createOperationsShell({
     if (!viewportChanged && !modeChanged && !forceClose) return railMode
     railViewport = nextViewport
     railMode = nextMode
+    clearRailGesture()
     root.dataset.prtsRailMode = nextMode
     root.removeAttribute('data-prts-rail-open')
     syncRailState()
@@ -320,13 +415,19 @@ export function createOperationsShell({
   }
 
   function onResponsiveChange() {
+    clearRailGesture()
     setRailViewport(window.innerWidth)
+    syncRailState()
     settingsOverlay?.scheduleScalePreviewRefresh?.()
   }
 
   function bindResponsiveQueries() {
     railViewportQuery = window.matchMedia?.('(min-width: 1180px)')
+    railPointerQuery = window.matchMedia?.('(pointer: coarse)')
+    railHoverQuery = window.matchMedia?.('(hover: none)')
     railViewportQuery?.addEventListener?.('change', onResponsiveChange)
+    railPointerQuery?.addEventListener?.('change', onResponsiveChange)
+    railHoverQuery?.addEventListener?.('change', onResponsiveChange)
   }
   function disableTheme() { onThemeDisable() }
 
@@ -367,7 +468,12 @@ export function createOperationsShell({
     conversationObserver.observe(operationRegion, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-chat-flow-kind', 'data-message-role'] })
     schemeObserver = new window.MutationObserver(syncSchemeToggle)
     schemeObserver.observe(root, { attributes: true, attributeFilter: ['data-prts-scheme'] })
-    railLauncher.addEventListener('click', toggleRail)
+    railLauncher.addEventListener('click', onRailClick)
+    railLauncher.addEventListener('pointerdown', onRailPointerDown)
+    railLauncher.addEventListener('pointermove', onRailPointerMove)
+    railLauncher.addEventListener('pointerup', onRailPointerUp)
+    railLauncher.addEventListener('pointercancel', clearRailGesture)
+    railLauncher.addEventListener('lostpointercapture', onRailLostPointerCapture)
     document.addEventListener('keydown', onRailKeydown)
     document.addEventListener('click', onDocumentClick)
     schemeToggle.addEventListener('click', toggleScheme)
@@ -384,10 +490,16 @@ export function createOperationsShell({
   }
 
   function dispose() {
+    clearRailGesture()
     cancelSchemePointer()
     clearSchemeClickSuppression()
     clearSchemePressDelays()
-    railLauncher?.removeEventListener('click', toggleRail)
+    railLauncher?.removeEventListener('click', onRailClick)
+    railLauncher?.removeEventListener('pointerdown', onRailPointerDown)
+    railLauncher?.removeEventListener('pointermove', onRailPointerMove)
+    railLauncher?.removeEventListener('pointerup', onRailPointerUp)
+    railLauncher?.removeEventListener('pointercancel', clearRailGesture)
+    railLauncher?.removeEventListener('lostpointercapture', onRailLostPointerCapture)
     document.removeEventListener('keydown', onRailKeydown)
     document.removeEventListener('click', onDocumentClick)
     schemeToggle?.removeEventListener('click', toggleScheme)
@@ -399,7 +511,11 @@ export function createOperationsShell({
     window.removeEventListener?.('blur', cancelSchemePointer)
     themeDisable?.removeEventListener('click', disableTheme)
     railViewportQuery?.removeEventListener?.('change', onResponsiveChange)
+    railPointerQuery?.removeEventListener?.('change', onResponsiveChange)
+    railHoverQuery?.removeEventListener?.('change', onResponsiveChange)
     railViewportQuery = undefined
+    railPointerQuery = undefined
+    railHoverQuery = undefined
     resizeShield.dispose()
     settingsOverlay?.dispose()
     conversationObserver?.disconnect()

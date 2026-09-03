@@ -42,6 +42,21 @@ test('shields only registered operation surfaces during a resize burst and clear
   dom.window.close()
 })
 
+test('does not hide operation surfaces for phone viewport resizes', () => {
+  const dom = new JSDOM('<!doctype html><html><body><main data-operation></main></body></html>')
+  const { window } = dom
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+  const operation = window.document.querySelector('[data-operation]')
+  const adapter = createResizeShieldAdapter({ window, settleDelay: 20 })
+
+  adapter.start([operation])
+  window.dispatchEvent(new window.Event('resize'))
+  assert.equal(operation.hasAttribute('data-prts-resize-shield'), false)
+
+  adapter.dispose()
+  dom.window.close()
+})
+
 test('restarting and disposing remove shield state and stale listeners', () => {
   const dom = new JSDOM('<!doctype html><html><body><main data-first></main><main data-second></main></body></html>')
   const { window } = dom

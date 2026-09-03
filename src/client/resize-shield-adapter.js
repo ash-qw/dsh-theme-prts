@@ -29,6 +29,11 @@ export function createResizeShieldAdapter({
 
   function onResize() {
     if (!started) return
+    if (Number(window?.innerWidth) <= 640) {
+      clearTimer()
+      setActive(false)
+      return
+    }
     setActive(true)
     clearTimer()
     settleTimer = window?.setTimeout?.(settle, settleDelay)

@@ -193,6 +193,62 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.equal(geometryDisposed, 1)
 })
 
+test('requires a held downward swipe on coarse phones while preserving keyboard activation', async t => {
+  const dom = new JSDOM(fixture, { url: 'http://localhost/session/op-06', pretendToBeVisual: true })
+  Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 390 })
+  dom.window.matchMedia = query => ({
+    media: query,
+    matches: query.includes('pointer: coarse') || query.includes('hover: none'),
+    addEventListener() {},
+    removeEventListener() {},
+  })
+  const document = dom.window.document
+  const shell = createOperationsShell({
+    document,
+    window: dom.window,
+    adapter: createRc7Adapter({ document }),
+  })
+  t.after(() => shell.dispose())
+  shell.update(enabled, status)
+
+  const root = document.documentElement
+  const launcher = document.querySelector('[data-prts-rail-launcher]')
+  const pointer = (type, { x = 4, y = 300, detail = 0 } = {}) => {
+    const event = new dom.window.MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: x,
+      clientY: y,
+      detail,
+    })
+    Object.defineProperty(event, 'pointerId', { value: 7 })
+    return event
+  }
+
+  assert.equal(launcher.getAttribute('aria-label'), '长按并向下滑动打开 P.R.T.S. 导航')
+  launcher.dispatchEvent(pointer('click', { detail: 1 }))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), false, 'a coarse pointer tap is ignored')
+
+  launcher.dispatchEvent(pointer('pointerdown'))
+  launcher.dispatchEvent(pointer('pointermove', { y: 309 }))
+  assert.equal(launcher.hasAttribute('data-prts-rail-gesture-active'), false, 'movement before the hold threshold cancels recognition')
+
+  launcher.dispatchEvent(pointer('pointerdown'))
+  await new Promise(resolve => dom.window.setTimeout(resolve, 360))
+  assert.equal(launcher.hasAttribute('data-prts-rail-gesture-active'), true)
+  launcher.dispatchEvent(pointer('pointermove', { y: 332 }))
+  assert.equal(launcher.hasAttribute('data-prts-rail-gesture-ready'), true)
+  launcher.dispatchEvent(pointer('pointerup', { y: 332 }))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), true)
+  assert.equal(launcher.hasAttribute('data-prts-rail-gesture-active'), false)
+
+  document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), false)
+  launcher.dispatchEvent(pointer('click'))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), true, 'keyboard-generated click remains available')
+})
+
 test('leaves foreign details content and host sidebar geometry under host control', async t => {
   const dom = new JSDOM(fixture, { url: 'http://localhost/', pretendToBeVisual: true })
   dom.window.matchMedia = () => ({ addEventListener() {}, removeEventListener() {} })

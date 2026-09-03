@@ -294,17 +294,22 @@ html[data-dsh-prts][data-prts-rail-mode="overlay"] [data-prts-rail-launcher]:is(
 
 @media (hover: none), (pointer: coarse) {
   html[data-dsh-prts][data-prts-rail-mode="overlay"] [data-prts-rail-launcher] {
-    top: calc(var(--prts-host-top-inset) + 12px);
-    width: 40px;
-    height: 40px;
-    opacity: .92;
-    transform: none;
+    top: 50%; width: 24px; height: 88px; opacity: .58;
+    transform: translateY(-50%); touch-action: none;
   }
-
-  html[data-dsh-prts][data-prts-rail-mode="overlay"] [data-prts-rail-launcher] > span {
-    opacity: 1;
+  html[data-dsh-prts] [data-prts-rail-launcher] > span { opacity: 0; }
+  html[data-dsh-prts] [data-prts-rail-launcher][data-prts-rail-gesture-active] { width: 40px; opacity: 1; }
+  html[data-dsh-prts] [data-prts-rail-gesture-cue] {
+    position: absolute; inset: calc(27px + var(--prts-rail-gesture-progress, 0px)) 10px auto auto;
+    display: block; opacity: 0; font: 700 14px/8px sans-serif;
   }
+  html[data-dsh-prts] [data-prts-rail-gesture-active] [data-prts-rail-gesture-cue] {
+    opacity: 1; animation: prts-rail-swipe-cue 720ms ease-in-out infinite;
+  }
+  html[data-dsh-prts] [data-prts-rail-gesture-ready] [data-prts-rail-gesture-cue] { filter: drop-shadow(0 0 3px currentColor); }
 }
+
+@keyframes prts-rail-swipe-cue { 50% { opacity: .45; } }
 
 html[data-dsh-prts] [data-prts-rail-brand] {
   height: 64px;
@@ -811,10 +816,16 @@ html[data-dsh-prts] [data-prts-region="operation"] {
   color: var(--prts-ink);
 }
 
-html[data-dsh-prts][data-prts-sessions-collapsed] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"],
-html[data-dsh-prts][data-prts-sessions-collapsed] [data-prts-region="sessions"] [data-slot="sidebar.settings"] {
+html[data-dsh-prts] [data-prts-region="frame"][data-sidebar-collapsed] [data-prts-region="sessions"] :is(
+  [data-slot="sidebar.workspaces"],
+  [data-slot="sidebar.settings"]
+) {
   opacity: 0;
   pointer-events: none;
+}
+
+html[data-dsh-prts] [data-sidebar-collapsed] :is([data-prts-owned-facility], [data-prts-owned-facility-spine], [data-prts-owned-facility-vector]) {
+  visibility: hidden; content-visibility: hidden;
 }
 
 html[data-dsh-prts] [data-prts-region="sessions"] > *,
