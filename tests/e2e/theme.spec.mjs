@@ -840,6 +840,36 @@ test('places only the two basic controls under Settings → Plugins', async ({ p
   await expect(page.locator('[data-fixture-general]')).toBeVisible()
 })
 
+test('stacks P.R.T.S. plugin settings vertically in a narrow host panel', async ({ page }) => {
+  await setPreferences(page)
+  const pluginSettings = await openPrtsPluginSettings(page)
+  const rows = pluginSettings.locator('.prts-plugin-settings__row')
+  await expect(rows.first()).toHaveCSS('flex-direction', 'row')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first()).toHaveCSS('flex-direction', 'column')
+  await expect(rows.first()).toHaveCSS('align-items', 'stretch')
+
+  const geometry = await rows.evaluateAll(nodes => nodes.map(row => {
+    const copy = row.querySelector('.prts-plugin-settings__copy').getBoundingClientRect()
+    const control = row.querySelector('button[role="switch"]').getBoundingClientRect()
+    const box = row.getBoundingClientRect()
+    return {
+      copyBottom: copy.bottom,
+      copyWidth: copy.width,
+      controlTop: control.top,
+      controlRightInset: box.right - control.right,
+    }
+  }))
+  for (const row of geometry) {
+    expect(row.controlTop).toBeGreaterThanOrEqual(row.copyBottom)
+    expect(row.copyWidth).toBeGreaterThan(40)
+    expect(Math.abs(row.controlRightInset - 14)).toBeLessThanOrEqual(1)
+  }
+})
+
+
 test('keeps navigation accessible without overflow on tablet', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 })
   await setPreferences(page)

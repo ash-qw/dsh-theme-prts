@@ -1377,6 +1377,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings {
   width: 100%;
   display: grid;
   gap: 16px;
+  container: prts-plugin-settings / inline-size;
   color: inherit;
   font: inherit;
 }
@@ -1488,6 +1489,19 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     transition: none;
   }
 }
+
+@container prts-plugin-settings (max-width: 22rem) {
+  html[data-dsh-prts-settings] .prts-plugin-settings__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] {
+    align-self: flex-end;
+  }
+}
+
 
 
 @media (max-width: 640px) {
