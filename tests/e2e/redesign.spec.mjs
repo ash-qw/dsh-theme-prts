@@ -37,6 +37,9 @@ test('@redesign facility cards keep fixed-left spines, equal heights, and sequen
   await expect(page.locator('[data-prts-region="sessions"]')).toHaveCSS('width', '280px')
 
   const workspace = page.locator('[data-prts-workspace-row]')
+  const sessionTree = page.locator('[data-slot="sidebar.workspaces"] [role="tree"]')
+  await expect(sessionTree).toHaveCSS('overflow-x', 'hidden')
+  const sessionTreeClientHeight = await sessionTree.evaluate(node => node.clientHeight)
   const face = workspace.locator('[data-prts-facility-face="workspace"]')
   const workspaceSpine = await workspace.evaluate(row => getComputedStyle(row, "::before").backgroundColor)
   expect(workspaceSpine).toBe("rgb(92, 205, 219)")
@@ -52,6 +55,7 @@ test('@redesign facility cards keep fixed-left spines, equal heights, and sequen
   await expect.poll(async () => Math.abs(Math.round(await face.evaluate(node => node.getBoundingClientRect().x) - collapsedX))).toBe(0)
   await workspace.hover()
   await expect.poll(async () => Math.round(await face.evaluate(node => node.getBoundingClientRect().x) - collapsedX)).toBe(6)
+  await expect.poll(async () => sessionTree.evaluate(node => node.clientHeight)).toBe(sessionTreeClientHeight)
   await workspace.evaluate(row => row.setAttribute('aria-expanded', 'true'))
   await workspace.evaluate(row => row.setAttribute('aria-expanded', 'false'))
   await expect.poll(async () => Math.round(await face.evaluate(node => node.getBoundingClientRect().x) - collapsedX)).toBe(6)
@@ -86,6 +90,7 @@ test('@redesign facility cards keep fixed-left spines, equal heights, and sequen
   await expect(pickup).toHaveCSS('opacity', '0')
   await session.hover()
   await expect(pickup).toHaveCSS('opacity', '0.58')
+  await expect.poll(async () => sessionTree.evaluate(node => node.clientHeight)).toBe(sessionTreeClientHeight)
   await expect(session.locator('[data-prts-session-time]')).toHaveCSS('opacity', '0')
 
 })

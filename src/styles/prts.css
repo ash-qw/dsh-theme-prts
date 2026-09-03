@@ -838,9 +838,13 @@ html[data-dsh-prts] [data-prts-region="sessions"] [data-rc7-sidebar-root] {
   width: 100% !important;
   min-width: var(--prts-sessions-width);
   padding: 14px 10px;
-  overflow-y: auto;
+  overflow: hidden auto;
   background: transparent !important;
   color: var(--prts-ink);
+}
+
+html[data-dsh-prts] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"] [role="tree"] {
+  overflow-x: hidden;
 }
 
 html[data-dsh-prts] [data-prts-region="sessions"] > * > [data-slot="sidebar"] > :first-child > button[aria-label*="new session" i] {

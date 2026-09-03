@@ -37,7 +37,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 137_216, 'the replacement stylesheets must stay compact')
+  assert.ok(Buffer.byteLength(css) < 137_344, 'the replacement stylesheets must stay compact')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -69,6 +69,7 @@ test('models the facility card as one notched face and one notched side spine', 
 })
 
 test('keeps the spine left edge fixed and moves the facility face to the right on expansion', () => {
+  assert.match(css, /\[data-slot="sidebar\.workspaces"\] \[role="tree"\][^{]*\{[^}]*overflow-x:\s*hidden;/s)
   assert.match(css, /\[data-prts-(?:workspace|session)-row\]::before\s*\{[\s\S]*?inset:\s*0 auto 0 0;[\s\S]*?width:\s*var\(--prts-spine-width\);[\s\S]*?transform-origin:\s*left center;/)
   assert.match(css, /:is\(:hover, :focus-within, \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
   assert.match(css, /\[data-prts-facility-face\][^{]*\{[^}]*transform:\s*translate3d\(var\(--prts-row-shift\), 0, 0\)/s)
