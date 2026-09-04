@@ -9,7 +9,6 @@ const css = (await Promise.all([
   readFile(new URL('../src/styles/theme-settings-workbench.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/styles/facility-vector.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/styles/startup-sequence.css', import.meta.url), 'utf8'),
-  readFile(new URL('../src/styles/conversation-scale.css', import.meta.url), 'utf8'),
 ])).join('\n')
 
 function includesAll(values) {
@@ -152,54 +151,24 @@ test('replaces session projections with a hover-only pickup waveform and keeps t
   assert.doesNotMatch(css, /html\[data-dsh-prts\] \[data-prts-row-projection/)
   assert.doesNotMatch(css, /prts-projection-(?:acquire|scan)/)
 })
-test('uses a single-SVG Codex-like conversation scale while leaving assistant output native', () => {
+test('leaves the native dsh turn navigator untouched and emits no replacement gutter markers', () => {
   includesAll([
-    '[data-conversation-scroll]::before',
-    '[data-prts-conversation-scale]',
-    '[data-prts-conversation-scale-svg]',
-    '[data-prts-conversation-scale-gray]',
-    '[data-prts-conversation-scale-accent]',
-    '[data-prts-conversation-scale-history]',
-    '[data-prts-conversation-scale-hit]',
-    '[data-prts-conversation-scale-marks]',
-    '[data-prts-conversation-history-status]',
-    '[data-prts-conversation-history-action]',
-    '[data-prts-conversation-history-hint]',
-    '[data-prts-conversation-history-trigger]',
-    '[data-prts-conversation-history-tooltip]',
-    '[data-prts-conversation-preview]',
-    '[data-prts-conversation-history-tooltip-connector]',
-    'prts-conversation-history-tooltip-in',
-    '[data-prts-conversation-preview-question]',
-    '[data-prts-conversation-preview-answer]',
-    'width: 360px',
-    'height: 128px',
-    'width: 14px',
-    'font-size: 15px',
-    'font-size: 14px',
-    '-webkit-line-clamp: 3',
-    '[data-prts-conversation-scale-ready]',
-    'stroke-width: 1',
-    'vector-effect: non-scaling-stroke',
-    'touch-action: none',
     '[data-chat-flow-kind="user"] [class$="_bubble"]',
     '[data-message-role="user"] :is([data-markdown], [class*="markdown" i])',
-    '[data-message-role="user"] :is(pre, table, blockquote)',
-    'background: transparent !important',
   ])
-  assert.match(css, /\[data-message-role\]::before[^{]*\{[^}]*content:\s*none !important;/s)
+  assert.doesNotMatch(css, /\[data-conversation-scroll\]::before|\[data-(?:message-role|chat-flow-kind)[^\]]*\]::before/)
+  assert.doesNotMatch(css, /--turn-natural-height|--prts-turn-mark/)
+  assert.doesNotMatch(css, /data-prts-conversation-(?:scale|preview|history)/)
   assert.doesNotMatch(css, /data-prts-turn-summary|data-prts-timeline-active|data-prts-timeline-turn/)
-  assert.doesNotMatch(css, /\[data-prts-conversation-scale\]:is\(:hover, :focus\)\s*\{[^}]*opacity:/s)
-  assert.doesNotMatch(css, /transition:\s*d\b/)
-  assert.doesNotMatch(css, /PROCESS \/ 执行步骤/)
-  assert.doesNotMatch(css, /\[data-prts-ai-surface\]/)
-  assert.doesNotMatch(css, /\[data-chat-flow-kind="assistant-step"\]\s*\{/)
-  assert.doesNotMatch(css, /\[data-message-role="assistant"\]\s*\{/)
+  assert.equal(css.includes('PROCESS / 执行步骤'), false)
+  assert.equal(css.includes('[data-prts-ai-surface]'), false)
+  assert.equal(css.includes('[data-chat-flow-kind="assistant-step"] {'), false)
+  assert.equal(css.includes('[data-message-role="assistant"] {'), false)
   assert.equal(css.includes('[data-testid*="tool-call" i]'), false)
   assert.equal(css.includes('[data-testid*="subagent" i]'), false)
   assert.equal(css.includes('[data-testid*="deliverable" i]'), false)
   assert.doesNotMatch(css, /(?:width|max-width):\s*min\((?:760|880|960)px\b/)
-  assert.doesNotMatch(css, /\[data-prts-conversation-control\]\s*\{[^}]*min-height:\s*36px/s)
+  assert.equal(css.includes('[data-prts-conversation-control] { min-height: 36px'), false)
 })
 
 test('keeps particle emblems and composer geometry without retired dossier styles', () => {
@@ -299,10 +268,6 @@ test('retains scoped floating surfaces and a readable responsive settings workbe
     '@container prts-plugin-settings (max-width: 22rem)',
     '.prts-plugin-settings__safe',
     '[data-prts-setting-range]',
-    '[data-prts-scale-distance-output]',
-    '[data-prts-scale-calibration]',
-    '[data-prts-scale-calibration-rail]',
-    '[data-prts-scale-calibration-status]',
     '--prts-settings-text: .875rem',
     '--prts-settings-small: .75rem',
     'container: prts-settings / inline-size',
@@ -311,7 +276,6 @@ test('retains scoped floating surfaces and a readable responsive settings workbe
   assert.match(css, /\[data-prts-floating-glass="dialog"\][^{]*\{[^}]*backdrop-filter:\s*none/s)
   assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+button:not\(\[data-slot="sidebar\.settings"\] button\)/)
   assert.equal(css.includes('[data-sonner-toast]'), false)
-  assert.equal(css.includes('[role="tooltip"]'), false)
   assert.doesNotMatch(css, /\.prts-settings__(?:recovery|startup|meta)/)
   assert.match(css, /html\[data-dsh-prts-settings\] \.prts-plugin-settings button\[role='switch'\]/)
   assert.doesNotMatch(css, /\[data-prts-settings-grid\]/)

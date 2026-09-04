@@ -1,5 +1,4 @@
-import { CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT, CONVERSATION_SCALE_FOCUS_CONTRAST_MAX, CONVERSATION_SCALE_FOCUS_CONTRAST_MIN, CONVERSATION_SCALE_FOCUS_CONTRAST_STEP, PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, resolveParticleDetail } from './preferences.js'
-import { resolveConversationScaleLengths } from './conversation-scale-adapter.js'
+import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, resolveParticleDetail } from './preferences.js'
 
 const SETTINGS_FOCUSABLE = [
   'button:not([disabled])',
@@ -57,24 +56,6 @@ function particleMarkup() {
   </button>`).join('')
 }
 
-function calibrationMarkup() {
-  return `<div data-prts-scale-calibration data-prts-calibration-mode="hidden" data-prts-calibration-reason="unmeasured">
-    <div data-prts-scale-calibration-viewport>
-      <div data-prts-scale-calibration-canvas aria-hidden="true">
-        <i data-prts-scale-calibration-sidebar></i>
-        <span data-prts-scale-calibration-measure><i></i><output data-prts-scale-calibration-value>96 px</output></span>
-        <span data-prts-scale-calibration-rail>${Array.from({ length: 9 }, (_, index) => `<i style="--prts-calibration-tick:${index}"></i>`).join('')}</span>
-        <i data-prts-scale-calibration-gap></i>
-        <span data-prts-scale-calibration-content><i></i><small>会话内容区</small></span>
-      </div>
-    </div>
-    <div data-prts-scale-calibration-meta>
-      <span data-prts-scale-calibration-scale hidden>缩放预览</span>
-      <output data-prts-scale-calibration-status aria-live="polite">当前视图：几何测量中</output>
-    </div>
-  </div>`
-}
-
 export function themeSettingsMarkup() {
   return `<div data-prts-settings-backdrop hidden aria-hidden="true"></div>
     <dialog id="prts-theme-settings" data-prts-theme-settings aria-label="P.R.T.S. 主题设置" aria-hidden="true">
@@ -100,7 +81,7 @@ export function themeSettingsMarkup() {
           </section>
 
           <details data-prts-settings-advanced>
-            <summary><span><small>精细调整</small><strong>粒子与会话刻度</strong></span><output data-prts-advanced-summary>标准 / 96 px</output></summary>
+            <summary><span><small>精细调整</small><strong>粒子效果</strong></span><output data-prts-advanced-summary>标准 / 1×</output></summary>
             <div data-prts-settings-advanced-content>
               <section data-prts-particle-detail>
                 <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span></header>
@@ -110,22 +91,6 @@ export function themeSettingsMarkup() {
                   <div><input type="range" min="0" max="2" step="0.25" value="1" data-prts-setting-range data-prts-setting-key="particleTraversalSpeed" aria-label="粒子徽记跟随移动速度"><output data-prts-particle-traversal-output>1× · 每 1 个视口重组</output></div>
                 </label>
                 <span data-prts-particle-error role="alert" hidden>粒子资源加载异常，主题已使用静态后备效果</span>
-              </section>
-              <section data-prts-scale-adjustment>
-                <header><strong>会话刻度</strong><span>调整位置距离与悬停焦点的视觉区分</span></header>
-                ${calibrationMarkup()}
-                <label data-prts-setting-row="conversationScaleMaxDistance" data-prts-setting-range-row>
-                  <span>最大距离</span>
-                  <div><input type="range" min="16" max="240" step="8" value="96" data-prts-setting-range data-prts-setting-key="conversationScaleMaxDistance" aria-label="会话刻度最大距离"><output data-prts-scale-distance-output>96 px</output></div>
-                </label>
-                <label data-prts-setting-row="conversationScaleFocusContrast" data-prts-setting-range-row>
-                  <span>聚焦区分度</span>
-                  <div data-prts-scale-focus-control>
-                    <span data-prts-scale-focus-preview aria-hidden="true">${Array.from({ length: 5 }, (_, index) => `<i data-prts-scale-focus-preview-tick="${index}"></i>`).join('')}</span>
-                    <input type="range" min="0" max="100" step="10" value="70" data-prts-setting-range data-prts-setting-key="conversationScaleFocusContrast" aria-label="会话刻度聚焦区分度">
-                    <output data-prts-scale-focus-output>70</output>
-                  </div>
-                </label>
               </section>
             </div>
           </details>
@@ -160,7 +125,6 @@ export function createThemeSettingsOverlay({
   onPreferencePreview = () => {},
   onResetVisual = () => {},
   onRetrySave = () => {},
-  getConversationScalePreview = () => ({ visible: false, reason: 'unmeasured', mode: 'hidden' }),
 }) {
   const window = document?.defaultView
   const transparencyMedia = window?.matchMedia?.('(prefers-reduced-transparency: reduce)')
@@ -171,17 +135,8 @@ export function createThemeSettingsOverlay({
   let currentPreferences
   let currentStatus
   let currentPersistence = { phase: 'idle', revision: 0 }
-  let scaleDistanceDraft
-  let scaleDistanceDirty = false
-  let scaleFocusContrastDraft
-  let scaleFocusContrastDirty = false
   let particleTraversalSpeedDraft
   let particleTraversalSpeedDirty = false
-  let calibrationResizeObserver
-  let calibrationSettleTimer
-  let calibrationFrame
-  let calibrationViewportWidth
-  let calibrationFactor
   let savedTimer
   let feedbackTimer
   let feedbackTarget
@@ -230,8 +185,6 @@ export function createThemeSettingsOverlay({
     const value = Boolean(next)
     if (value === isOpen) return isOpen
     if (!value) {
-      commitScaleDistance()
-      commitScaleFocusContrast()
       commitParticleTraversalSpeed()
     }
     isOpen = value
@@ -243,7 +196,6 @@ export function createThemeSettingsOverlay({
       onOpen()
       showPanel()
       panel.setAttribute('data-prts-settings-visible', '')
-      renderScaleCalibration()
       ;(panel.querySelector('[data-prts-theme-settings-close]') ?? focusable()[0] ?? panel).focus?.()
     } else {
       panel.removeAttribute('data-prts-settings-visible')
@@ -252,27 +204,6 @@ export function createThemeSettingsOverlay({
       if (restoreFocus) (trigger.isConnected ? trigger : previousFocus)?.focus?.()
     }
     return isOpen
-  }
-
-  function normalizeScaleDistance(value) {
-    const numeric = Number(value)
-    if (!Number.isFinite(numeric)) return 96
-    return Math.min(240, Math.max(16, Math.round(numeric / 8) * 8))
-  }
-
-  function currentScaleDistance() {
-    return normalizeScaleDistance(scaleDistanceDirty ? scaleDistanceDraft : currentPreferences?.conversationScaleMaxDistance)
-  }
-
-  function normalizeScaleFocusContrast(value) {
-    const numeric = Number(value)
-    if (!Number.isFinite(numeric)) return CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT
-    const clamped = Math.min(CONVERSATION_SCALE_FOCUS_CONTRAST_MAX, Math.max(CONVERSATION_SCALE_FOCUS_CONTRAST_MIN, numeric))
-    return Math.round(clamped / CONVERSATION_SCALE_FOCUS_CONTRAST_STEP) * CONVERSATION_SCALE_FOCUS_CONTRAST_STEP
-  }
-
-  function currentScaleFocusContrast() {
-    return normalizeScaleFocusContrast(scaleFocusContrastDirty ? scaleFocusContrastDraft : currentPreferences?.conversationScaleFocusContrast)
   }
 
   function normalizeParticleTraversalSpeed(value) {
@@ -306,140 +237,8 @@ export function createThemeSettingsOverlay({
     setText(panel.querySelector('[data-prts-particle-traversal-output]'), particleTraversalLabel(value))
   }
 
-  function calibrationStatus(state, value) {
-    if (state?.mode === 'configured') return `当前视图：使用配置上限 / ${Math.round(Number(state.left) || value)} px`
-    if (state?.simulated) return `模拟布局：使用配置上限 / ${value} px`
-    if (state?.mode === 'centered') return `当前视图：自动居中 / 距侧栏 ${Math.round(Number(state.left) || 0)} px`
-    const reasons = {
-      drawer: '抽屉布局', phone: '手机布局', turns: '消息不足', corridor: '会话走廊不足',
-      preview: '会话预览空间不足', unmeasured: '模拟布局',
-    }
-    return `当前视图：隐藏 / ${reasons[state?.reason] || '空间不足'}`
-  }
-
   function setText(node, value) {
     if (node && node.textContent !== value) node.textContent = value
-  }
-
-  function setCalibrationResizeState(active) {
-    for (const node of [panel, backdrop]) {
-      if (!node || node.hasAttribute('data-prts-resizing') === active) continue
-      node.toggleAttribute('data-prts-resizing', active)
-    }
-  }
-
-  function cancelCalibrationFrame() {
-    if (calibrationFrame === undefined) return
-    window?.cancelAnimationFrame?.(calibrationFrame)
-    window?.clearTimeout?.(calibrationFrame)
-    calibrationFrame = undefined
-  }
-
-  function measureScaleCalibration() {
-    calibrationFrame = undefined
-    if (!isOpen) return
-    const viewport = panel?.querySelector?.('[data-prts-scale-calibration-viewport]')
-    const canvas = panel?.querySelector?.('[data-prts-scale-calibration-canvas]')
-    const calibration = panel?.querySelector?.('[data-prts-scale-calibration]')
-    const scaleNote = panel?.querySelector?.('[data-prts-scale-calibration-scale]')
-    if (!viewport || !canvas || !calibration) return
-    const available = calibrationViewportWidth || viewport.clientWidth
-    const factor = available > 0 ? Math.min(1, available / 360) : 1
-    const roundedFactor = Number(factor.toFixed(4))
-    const value = currentScaleDistance()
-    let state
-    try { state = getConversationScalePreview(value) } catch { state = { visible: false, reason: 'unmeasured', mode: 'hidden' } }
-
-    if (roundedFactor !== calibrationFactor) {
-      calibrationFactor = roundedFactor
-      canvas.style.transform = `scale(${roundedFactor})`
-      viewport.style.height = `${Math.ceil(94 * roundedFactor)}px`
-    }
-    const scaled = factor < .999
-    if (calibration.hasAttribute('data-prts-calibration-scaled') !== scaled) calibration.toggleAttribute('data-prts-calibration-scaled', scaled)
-    if (scaleNote && scaleNote.hidden !== !scaled) scaleNote.hidden = !scaled
-    const mode = state?.simulated ? 'simulated' : state?.mode || 'hidden'
-    const reason = state?.reason || 'unmeasured'
-    if (calibration.dataset.prtsCalibrationMode !== mode) calibration.dataset.prtsCalibrationMode = mode
-    if (calibration.dataset.prtsCalibrationReason !== reason) calibration.dataset.prtsCalibrationReason = reason
-    setText(panel.querySelector('[data-prts-scale-calibration-status]'), calibrationStatus(state, value))
-  }
-
-  function scheduleCalibrationMeasurement() {
-    if (!isOpen) return
-    cancelCalibrationFrame()
-    calibrationFrame = window?.requestAnimationFrame?.(measureScaleCalibration)
-      ?? window?.setTimeout?.(measureScaleCalibration, 16)
-  }
-
-  function scheduleScalePreviewRefresh(entries = []) {
-    const viewportEntry = entries.find?.(entry => entry.target?.matches?.('[data-prts-scale-calibration-viewport]'))
-    const observedWidth = Number(viewportEntry?.contentRect?.width)
-    if (Number.isFinite(observedWidth) && observedWidth > 0) {
-      calibrationViewportWidth = observedWidth
-    }
-    if (!isOpen) return
-    setCalibrationResizeState(true)
-    if (calibrationSettleTimer !== undefined) window?.clearTimeout?.(calibrationSettleTimer)
-    calibrationSettleTimer = window?.setTimeout?.(() => {
-      calibrationSettleTimer = undefined
-      setCalibrationResizeState(false)
-      renderScaleCalibration()
-    }, 160)
-  }
-
-  function renderScaleCalibration() {
-    if (!isOpen) return
-    if (!panel || !currentPreferences) return
-    const value = currentScaleDistance()
-    const contrast = currentScaleFocusContrast()
-    const lengths = resolveConversationScaleLengths(contrast)
-    const calibration = panel.querySelector('[data-prts-scale-calibration]')
-    const distanceRange = panel.querySelector('input[data-prts-setting-range][data-prts-setting-key="conversationScaleMaxDistance"]')
-    const contrastRange = panel.querySelector('input[data-prts-setting-range][data-prts-setting-key="conversationScaleFocusContrast"]')
-    const distanceOutput = panel.querySelector('[data-prts-scale-distance-output]')
-    const contrastOutput = panel.querySelector('[data-prts-scale-focus-output]')
-    const calibrationValue = panel.querySelector('[data-prts-scale-calibration-value]')
-    if (distanceRange && distanceRange.value !== String(value)) distanceRange.value = String(value)
-    if (contrastRange && contrastRange.value !== String(contrast)) contrastRange.value = String(contrast)
-    setText(distanceOutput, `${value} px`)
-    setText(contrastOutput, String(contrast))
-    setText(calibrationValue, `${value} px`)
-    for (const tick of panel.querySelectorAll('[data-prts-scale-focus-preview-tick]')) {
-      const length = lengths[Number(tick.dataset.prtsScaleFocusPreviewTick)] ?? lengths.at(-1)
-      const width = `${length}px`
-      if (tick.style.width !== width) tick.style.width = width
-    }
-    const detail = resolveParticleDetail(currentPreferences)
-    const detailLabels = { compact: '精简', standard: '标准', precise: '精细' }
-    const advanced = panel.querySelector('[data-prts-advanced-summary]')
-    setText(advanced, `${detailLabels[detail]} / ${conciseNumber(currentParticleTraversalSpeed())}× / 区分度 ${contrast} / ${value} px`)
-    if (!calibration) return
-    const distance = `${value}px`
-    if (calibration.style.getPropertyValue('--prts-calibration-distance') !== distance) {
-      calibration.style.setProperty('--prts-calibration-distance', distance)
-    }
-    scheduleCalibrationMeasurement()
-  }
-
-  function commitScaleDistance() {
-    if (!scaleDistanceDirty || !currentPreferences) return false
-    const value = currentScaleDistance()
-    scaleDistanceDirty = false
-    scaleDistanceDraft = value
-    if (value !== normalizeScaleDistance(currentPreferences.conversationScaleMaxDistance)) onPreferenceChange('conversationScaleMaxDistance', value)
-    else renderScaleCalibration()
-    return true
-  }
-
-  function commitScaleFocusContrast() {
-    if (!scaleFocusContrastDirty || !currentPreferences) return false
-    const value = currentScaleFocusContrast()
-    scaleFocusContrastDirty = false
-    scaleFocusContrastDraft = value
-    if (value !== normalizeScaleFocusContrast(currentPreferences.conversationScaleFocusContrast)) onPreferenceChange('conversationScaleFocusContrast', value)
-    else renderScaleCalibration()
-    return true
   }
 
   function commitParticleTraversalSpeed() {
@@ -495,11 +294,8 @@ export function createThemeSettingsOverlay({
     if (transparency) transparency.hidden = !(currentPreferences.glass !== 'off' && transparencyMedia?.matches)
     const particleError = panel.querySelector('[data-prts-particle-error]')
     if (particleError) particleError.hidden = currentStatus?.particle?.phase !== 'error'
-    if (!scaleDistanceDirty) scaleDistanceDraft = normalizeScaleDistance(currentPreferences.conversationScaleMaxDistance)
-    if (!scaleFocusContrastDirty) scaleFocusContrastDraft = normalizeScaleFocusContrast(currentPreferences.conversationScaleFocusContrast)
     if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(currentPreferences.particleTraversalSpeed)
     renderParticleTraversal()
-    renderScaleCalibration()
     renderPersistence()
   }
 
@@ -531,10 +327,6 @@ export function createThemeSettingsOverlay({
     if (target.hasAttribute('data-prts-reset-visual')) { setResetConfirmation(true); return }
     if (target.hasAttribute('data-prts-reset-cancel')) { setResetConfirmation(false); return }
     if (target.hasAttribute('data-prts-reset-confirm-action')) {
-      scaleDistanceDirty = false
-      scaleDistanceDraft = undefined
-      scaleFocusContrastDirty = false
-      scaleFocusContrastDraft = undefined
       particleTraversalSpeedDirty = false
       particleTraversalSpeedDraft = undefined
       setResetConfirmation(false)
@@ -547,13 +339,7 @@ export function createThemeSettingsOverlay({
     if (!target?.matches?.('input[data-prts-setting-range]')) return
     const value = Number(target.value)
     if (!Number.isFinite(value)) return
-    if (target.dataset.prtsSettingKey === 'conversationScaleMaxDistance') {
-      scaleDistanceDraft = value
-      scaleDistanceDirty = true
-    } else if (target.dataset.prtsSettingKey === 'conversationScaleFocusContrast') {
-      scaleFocusContrastDraft = value
-      scaleFocusContrastDirty = true
-    } else if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') {
+    if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') {
       particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(value)
       particleTraversalSpeedDirty = true
       renderParticleTraversal()
@@ -562,7 +348,6 @@ export function createThemeSettingsOverlay({
     } else {
       return
     }
-    renderScaleCalibration()
   }
 
   function onKeydown(event) {
@@ -584,8 +369,6 @@ export function createThemeSettingsOverlay({
   const commitFromControl = event => {
     const target = event.target
     if (!target?.matches?.('input[data-prts-setting-range]')) return
-    if (target.dataset.prtsSettingKey === 'conversationScaleMaxDistance') commitScaleDistance()
-    if (target.dataset.prtsSettingKey === 'conversationScaleFocusContrast') commitScaleFocusContrast()
     if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') commitParticleTraversalSpeed()
   }
 
@@ -600,24 +383,15 @@ export function createThemeSettingsOverlay({
   document.addEventListener('keydown', onKeydown)
   transparencyMedia?.addEventListener?.('change', renderMediaState)
   motionMedia?.addEventListener?.('change', renderMediaState)
-  if (typeof window?.ResizeObserver === 'function') {
-    calibrationResizeObserver = new window.ResizeObserver(scheduleScalePreviewRefresh)
-    const viewport = panel?.querySelector?.('[data-prts-scale-calibration-viewport]')
-    if (viewport) calibrationResizeObserver.observe(viewport)
-  }
 
   return {
     update(preferences, status, persistenceState = currentPersistence) {
       currentPreferences = preferences
       currentStatus = status
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
-      if (!scaleDistanceDirty) scaleDistanceDraft = normalizeScaleDistance(preferences?.conversationScaleMaxDistance)
-      if (!scaleFocusContrastDirty) scaleFocusContrastDraft = normalizeScaleFocusContrast(preferences?.conversationScaleFocusContrast)
       if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(preferences?.particleTraversalSpeed)
       renderState()
     },
-    refreshScalePreview: renderScaleCalibration,
-    scheduleScalePreviewRefresh,
     open: () => setOpen(true),
     close: () => setOpen(false),
     toggle,
@@ -626,10 +400,6 @@ export function createThemeSettingsOverlay({
       hidePanel()
       if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)
       if (feedbackTimer !== undefined) window?.clearTimeout?.(feedbackTimer)
-      if (calibrationSettleTimer !== undefined) window?.clearTimeout?.(calibrationSettleTimer)
-      calibrationSettleTimer = undefined
-      cancelCalibrationFrame()
-      setCalibrationResizeState(false)
       feedbackTarget?.removeAttribute?.('data-prts-setting-feedback')
       trigger?.setAttribute('aria-expanded', 'false')
       trigger?.removeEventListener('click', toggle)
@@ -643,7 +413,6 @@ export function createThemeSettingsOverlay({
       document.removeEventListener('keydown', onKeydown)
       transparencyMedia?.removeEventListener?.('change', renderMediaState)
       motionMedia?.removeEventListener?.('change', renderMediaState)
-      calibrationResizeObserver?.disconnect()
       document.documentElement.removeAttribute('data-prts-settings-open')
     },
   }

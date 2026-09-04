@@ -16,6 +16,7 @@ html[data-dsh-prts] {
   --prts-cyan: #5ccddb;
   --prts-red: #ee625a;
   --prts-green: #8fcf79;
+  --dsw-alias-label-primary-inverted: #15191c;
   --prts-host-top-inset: 0px;
   --prts-rail-width: 52px;
   --prts-nav-width: 52px;
@@ -65,6 +66,7 @@ html[data-dsh-prts][data-prts-scheme="light"] {
   --prts-dim: #738087;
   --prts-line: #9eabb1;
   --prts-line-strong: #65727a;
+  --dsw-alias-label-primary-inverted: #edf1f2;
   --prts-glass-border: rgba(62, 82, 92, .48);
   --prts-glass-soft-surface: rgba(247, 250, 251, .9);
   --prts-glass-standard-surface: rgba(244, 249, 251, .94);
@@ -99,10 +101,6 @@ html[data-dsh-prts] :is(
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],
@@ -114,10 +112,6 @@ html[data-dsh-prts] :is(
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],
@@ -129,10 +123,6 @@ html[data-dsh-prts] :is(
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],
@@ -1077,35 +1067,10 @@ html[data-dsh-prts] [data-conversation-scroll] {
   z-index: 2;
 }
 
-html[data-dsh-prts] [data-conversation-scroll]::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 28px;
-  bottom: 140px;
-  left: clamp(30px, 3.6vw, 52px);
-  width: 1px;
-  background: linear-gradient(var(--prts-line-strong), var(--prts-line), transparent);
-}
-
 html[data-dsh-prts] [data-message-role="user"],
 html[data-dsh-prts] [data-chat-flow-kind="user"] {
   position: relative;
   color: var(--prts-ink);
-}
-
-html[data-dsh-prts] [data-message-role="user"]::before,
-html[data-dsh-prts] [data-chat-flow-kind="user"]::before {
-  content: "";
-  position: absolute;
-  top: 8px;
-  left: calc(clamp(-66px, -4vw, -42px));
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--prts-canvas);
-  background: var(--prts-yellow);
-  box-shadow: 0 0 0 1px var(--prts-yellow);
-  transform: rotate(45deg);
 }
 
 
@@ -1224,9 +1189,6 @@ html[data-dsh-prts] [data-prts-ambient-layer][data-prts-resizing] :is(
 }
 
 html[data-dsh-prts] :is(
-  [data-prts-conversation-preview][data-prts-resizing],
-  [data-prts-conversation-history-hint][data-prts-resizing],
-  [data-prts-conversation-history-status][data-prts-resizing],
   [data-prts-theme-settings][data-prts-resizing],
   [data-prts-settings-backdrop][data-prts-resizing]
 ),
@@ -1509,15 +1471,6 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     --prts-nav-width: 52px;
   }
 
-  html[data-dsh-prts] [data-conversation-scroll]::before {
-    left: 18px;
-  }
-
-  html[data-dsh-prts] [data-message-role]::before,
-  html[data-dsh-prts] [data-chat-flow-kind]::before {
-    left: -25px;
-  }
-
   html[data-dsh-prts] [data-slot="conversation.session.header"] {
     padding-inline: 12px;
   }
@@ -1561,10 +1514,6 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],
@@ -1576,10 +1525,6 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],
@@ -1591,10 +1536,6 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
   [data-prts-shell] *,
   [data-prts-particle-layer],
   [data-prts-ambient-layer],
-  [data-prts-conversation-scale],
-  [data-prts-conversation-scale] *,
-  [data-prts-conversation-preview],
-  [data-prts-conversation-preview] *,
   [data-prts-facility-face],
   [data-composer-card],
   [data-prts-composer-fallback],

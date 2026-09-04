@@ -325,7 +325,7 @@ const fixtureBootstrap = `
     load(definition) {
       const require = id => {
         if (id === 'react') return React
-        if (id === '@deepseek-ai/dsh-client-runtime/client') return runtime
+        if (id === '@deepseek-ai/dsh-client-store') return runtime
         throw new Error('Unexpected fixture module: ' + id)
       }
       const module = definition.factory(require)

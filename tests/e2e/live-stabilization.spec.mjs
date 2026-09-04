@@ -25,23 +25,21 @@ test('@live-stabilization deployed theme mounts and exposes the stabilized contr
   await expect(page.locator('[data-prts-new-session-action]')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /new session/i }).first()).toBeVisible()
 
-  const deployedScale = page.locator('[data-prts-conversation-scale]')
-  const deployedScaleCount = await deployedScale.count()
-  const deployedTurnCount = deployedScaleCount
-    ? Number(await deployedScale.getAttribute('data-prts-scale-count') || 0)
-    : 0
-  if (deployedTurnCount >= 2) {
-    await expect(deployedScale).toBeVisible()
-    await expect(deployedScale).toHaveAttribute('tabindex', '0')
-    await expect(deployedScale.locator('[data-prts-conversation-scale-svg]')).toHaveCount(1)
-    await expect(deployedScale.locator('[data-prts-conversation-scale-gray]')).toHaveCount(1)
-    await expect(deployedScale.locator('[data-prts-conversation-scale-accent]')).toHaveCount(1)
-    await expect(page.locator('[data-prts-timeline-turn]')).toHaveCount(0)
-  } else if (deployedScaleCount) {
-    await expect(deployedScale).toBeHidden()
-  } else {
-    await expect(deployedScale).toHaveCount(0)
+  await expect(page.locator('[data-prts-conversation-scale]')).toHaveCount(0)
+
+  const nativeRail = page.locator('[data-conversation-scroll] nav[style*="--turn-natural-height"]')
+  if (!(await nativeRail.count())) {
+    const sessions = page.locator('[data-prts-session-row]:not([aria-selected="true"])')
+    for (let index = 0; index < await sessions.count(); index += 1) {
+      await sessions.nth(index).click()
+      await page.waitForTimeout(400)
+      if (await nativeRail.count()) break
+    }
   }
+  await expect(nativeRail).toHaveCount(1)
+  const marks = nativeRail.locator('button')
+  expect(await marks.count()).toBeGreaterThanOrEqual(2)
+  await expect(nativeRail.locator('button[aria-current="true"]')).toHaveCount(1)
 
   await page.locator('[data-prts-rail-brand]').click()
   await expect(page.locator('[data-prts-theme-settings]')).toBeVisible()
@@ -51,32 +49,4 @@ test('@live-stabilization deployed theme mounts and exposes the stabilized contr
   await page.locator('[data-prts-scheme-toggle]').click()
   await expect(page.locator('html')).toHaveAttribute('data-prts-scheme', beforeScheme === 'dark' ? 'light' : 'dark')
   expect(errors).toEqual([])
-})
-
-test('@live-stabilization knowledge and SSH workspaces release and restore the conversation scale', async ({ page }) => {
-  const liveUrl = process.env.PRTS_LIVE_URL
-  test.skip(!liveUrl, 'PRTS_LIVE_URL is not configured')
-
-  for (const target of ['知识库', 'SSH 面板']) {
-    await page.addInitScript(value => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify(value)), enabled)
-    await page.goto(liveUrl)
-    await expect(page.locator('html')).toHaveAttribute('data-dsh-prts', '')
-
-    const scale = page.locator('[data-prts-conversation-scale]')
-    const preview = page.locator('[data-prts-conversation-preview]')
-    await expect(scale).toHaveCount(1)
-    await expect(page.locator('[data-conversation-scroll]')).toHaveCount(1)
-    await scale.evaluate(node => { node.dataset.liveInstance = 'before-workspace' })
-
-    await page.getByRole('button', { name: target, exact: true }).click()
-    await expect(scale).toHaveCount(0)
-    await expect(preview).toHaveCount(0)
-    await expect(page.locator('[data-conversation-scroll]')).toHaveCount(0)
-
-    await page.getByRole('button', { name: '返回会话', exact: true }).click()
-    await expect(scale).toHaveCount(1)
-    await expect(preview).toHaveCount(1)
-    await expect(page.locator('[data-conversation-scroll]')).toHaveCount(1)
-    await expect(scale).not.toHaveAttribute('data-live-instance', 'before-workspace')
-  }
 })

@@ -11,7 +11,7 @@ A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harne
 >
 > This project and its release packages may be suspended, restricted, or have relevant material removed at any time in response to a rights-holder request, platform policy, or maintainer decision. Continued availability is not guaranteed.
 
-Tested with DeepSeek Harness Web `0.1.1-rc.2`. The theme is disabled by default.
+Tested with DeepSeek Harness Web `0.1.2-rc.1`. The theme is disabled by default.
 
 ## Install and update
 
@@ -30,13 +30,13 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - Facility-style P.R.T.S. / Rhodes Island / RIIC workspaces, sessions, and conversations;
 - day/night modes synchronized with Harness, three appearance presets, and four material levels;
 - city silhouettes, faction particle marks, session waveforms, and a P.R.T.S. startup sequence;
-- a conversation scale with Q/A previews and click-to-message navigation;
+- the Harness-native conversation navigator, without overriding its structure, behavior, or appearance;
 - desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations;
 - no runtime network requests, analytics, or telemetry.
 
 ## Usage and settings
 
-“Settings → Plugins → P.R.T.S.” provides the theme and startup-animation switches. The Rhodes Island emblem at the upper left of the main interface provides presets, environment texture, particle marks, interface material, navigation, accessibility, and conversation navigation controls.
+“Settings → Plugins → P.R.T.S.” provides the theme and startup-animation switches. The Rhodes Island emblem at the upper left of the main interface provides presets, environment texture, particle marks, interface material, navigation, and accessibility controls.
 
 The theme does not proactively restyle menus, dialogs, or overlays created by third-party plugins.
 

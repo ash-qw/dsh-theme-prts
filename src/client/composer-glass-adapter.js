@@ -9,6 +9,7 @@ const COMPOSER_RELEVANCE_SELECTOR = [
   'button[aria-haspopup="listbox"]',
   '[role="menu"]',
   '[role="listbox"]',
+  '[data-trigger-menu]',
   '[data-slot="conversation.input.overlay"]',
 ].join(', ')
 const PRESET_TRIGGER_SELECTOR = [
@@ -27,7 +28,7 @@ function controlledPopup(document, trigger) {
 }
 
 function localPopup(trigger) {
-  const selector = '[role="menu"], [role="listbox"], [class*="mufS8W_card"]'
+  const selector = '[role="menu"], [role="listbox"], [data-trigger-menu], [class*="mufS8W_card"]'
   const sibling = trigger.nextElementSibling
   if (sibling?.matches(selector)) return sibling
   return trigger.parentElement?.querySelector(`:scope > ${selector}`) ?? null
@@ -36,7 +37,7 @@ function localPopup(trigger) {
 function overlayPopup(document) {
   const overlay = document.querySelector('[data-slot="conversation.input.overlay"]')
   if (!overlay) return null
-  return overlay.querySelector('[role="listbox"], [role="menu"], [class*="mufS8W_card"]')
+  return overlay.querySelector('[data-trigger-menu], [role="listbox"], [role="menu"], [class*="mufS8W_card"]')
 }
 
 function linkedMenu(document, trigger) {
@@ -48,9 +49,9 @@ function linkedMenu(document, trigger) {
 function markPopup(popup, kind) {
   if (!popup) return
   mark(popup, MENU_ATTRIBUTE, kind)
-  const card = popup.closest?.('[class*="mufS8W_card"]')
+  const card = popup.closest?.('[data-trigger-menu], [class*="mufS8W_card"]')
   mark(card, MENU_ATTRIBUTE, kind)
-  for (const nested of popup.querySelectorAll?.('[role="menu"], [role="listbox"], [class*="mufS8W_card"]') ?? []) {
+  for (const nested of popup.querySelectorAll?.('[role="menu"], [role="listbox"], [data-trigger-menu], [class*="mufS8W_card"]') ?? []) {
     mark(nested, MENU_ATTRIBUTE, kind)
   }
 }
@@ -162,7 +163,7 @@ export function createComposerGlassAdapter({ document, window }) {
 
     const overlay = document?.querySelector?.('[data-slot="conversation.input.overlay"]')
     if (overlay) {
-      for (const popup of overlay.querySelectorAll('[role="menu"], [role="listbox"], [class*="mufS8W_card"]')) {
+      for (const popup of overlay.querySelectorAll('[data-trigger-menu], [role="menu"], [role="listbox"], [class*="mufS8W_card"]')) {
         markPopup(popup, popup.hasAttribute('aria-busy') ? 'model' : 'action')
       }
     }

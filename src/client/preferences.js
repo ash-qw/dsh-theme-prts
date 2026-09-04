@@ -1,15 +1,5 @@
 export const PRTS_STORAGE_KEY = 'dsh.ui.prts.v1'
 
-export const CONVERSATION_SCALE_DISTANCE_MIN = 16
-export const CONVERSATION_SCALE_DISTANCE_MAX = 240
-export const CONVERSATION_SCALE_DISTANCE_STEP = 8
-export const CONVERSATION_SCALE_DISTANCE_DEFAULT = 96
-
-export const CONVERSATION_SCALE_FOCUS_CONTRAST_MIN = 0
-export const CONVERSATION_SCALE_FOCUS_CONTRAST_MAX = 100
-export const CONVERSATION_SCALE_FOCUS_CONTRAST_STEP = 10
-export const CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT = 70
-
 export const PARTICLE_TRAVERSAL_SPEED_MIN = 0
 export const PARTICLE_TRAVERSAL_SPEED_MAX = 2
 export const PARTICLE_TRAVERSAL_SPEED_STEP = 0.25
@@ -28,8 +18,6 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
-  conversationScaleMaxDistance: CONVERSATION_SCALE_DISTANCE_DEFAULT,
-  conversationScaleFocusContrast: CONVERSATION_SCALE_FOCUS_CONTRAST_DEFAULT,
 })
 
 export const VISUAL_PRESETS = Object.freeze({
@@ -70,7 +58,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation']),
-  navigation: Object.freeze(['railDefaultHidden', 'conversationScaleMaxDistance', 'conversationScaleFocusContrast']),
+  navigation: Object.freeze(['railDefaultHidden']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -105,20 +93,6 @@ function booleanOr(value, fallback) {
 
 function enumOr(value, allowed, fallback) {
   return allowed.has(value) ? value : fallback
-}
-
-function scaleDistanceOr(value, fallback) {
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) return fallback
-  const clamped = Math.min(CONVERSATION_SCALE_DISTANCE_MAX, Math.max(CONVERSATION_SCALE_DISTANCE_MIN, numeric))
-  return Math.round(clamped / CONVERSATION_SCALE_DISTANCE_STEP) * CONVERSATION_SCALE_DISTANCE_STEP
-}
-
-function scaleFocusContrastOr(value, fallback) {
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) return fallback
-  const clamped = Math.min(CONVERSATION_SCALE_FOCUS_CONTRAST_MAX, Math.max(CONVERSATION_SCALE_FOCUS_CONTRAST_MIN, numeric))
-  return Math.round(clamped / CONVERSATION_SCALE_FOCUS_CONTRAST_STEP) * CONVERSATION_SCALE_FOCUS_CONTRAST_STEP
 }
 
 function particleTraversalSpeedOr(value, fallback) {
@@ -170,14 +144,6 @@ export function normalizePreferences(value) {
     ),
     particlePattern: 'orthogonal',
     railDefaultHidden: booleanOr(input.railDefaultHidden, DEFAULT_PREFERENCES.railDefaultHidden),
-    conversationScaleMaxDistance: scaleDistanceOr(
-      input.conversationScaleMaxDistance,
-      DEFAULT_PREFERENCES.conversationScaleMaxDistance,
-    ),
-    conversationScaleFocusContrast: scaleFocusContrastOr(
-      input.conversationScaleFocusContrast,
-      DEFAULT_PREFERENCES.conversationScaleFocusContrast,
-    ),
   }
   normalized.preset = matchedVisualPreset(normalized)
   return normalized

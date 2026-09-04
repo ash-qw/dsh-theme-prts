@@ -46,7 +46,6 @@ export function createOperationsShell({
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
   onVisualReset = () => {},
-  getConversationScalePreview = () => ({ visible: false, reason: 'unmeasured', mode: 'hidden' }),
   onRetrySave = () => {},
 }) {
   const root = document.documentElement
@@ -222,7 +221,6 @@ export function createOperationsShell({
     )
     const active = Boolean(candidate)
     root.dataset.prtsConversationState = active ? 'active' : 'idle'
-    settingsOverlay?.refreshScalePreview()
   }
 
   function toggleScheme(event) {
@@ -418,7 +416,6 @@ export function createOperationsShell({
     clearRailGesture()
     setRailViewport(window.innerWidth)
     syncRailState()
-    settingsOverlay?.scheduleScalePreviewRefresh?.()
   }
 
   function bindResponsiveQueries() {
@@ -457,7 +454,6 @@ export function createOperationsShell({
       onPreferencePreview,
       onResetVisual: onVisualReset,
       onRetrySave,
-      getConversationScalePreview,
     })
     resizeShield.start([
       operationRegion,

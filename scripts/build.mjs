@@ -44,13 +44,12 @@ function encodeBinaryAlphaMask(alpha, threshold = 40) {
   return Buffer.from(bytes).toString('base64')
 }
 
-const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, conversationScaleCss, startupSequenceCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
+const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
   readFile(resolve(root, 'src/styles/prts.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/stabilization.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/refinement.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/theme-settings-workbench.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/facility-vector.css'), 'utf8'),
-  readFile(resolve(root, 'src/styles/conversation-scale.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/startup-sequence.css'), 'utf8'),
   readFile(resolve(root, 'src/assets/rhodes-dsh.svg'), 'utf8'),
   readFile(resolve(root, 'src/assets/prts-original-avatar.png')),
@@ -70,7 +69,7 @@ function compactCss(source) {
     .replace(/\s*,\s*/g, ',')
 }
 
-const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${conversationScaleCss}\n${startupSequenceCss}`)
+const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,
@@ -112,7 +111,6 @@ const clientModulePaths = [
   'src/client/particle-field-adapter.js',
   'src/client/to-bottom-adapter.js',
   'src/client/conversation-control-adapter.js',
-  'src/client/conversation-scale-adapter.js',
   'src/client/layout-stability-diagnostics.js',
   'src/client/facility-geometry.js',
   'src/client/facility-vector.js',

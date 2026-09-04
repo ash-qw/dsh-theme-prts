@@ -55,8 +55,6 @@ test('loads and migrates a complete version-one payload without losing independe
     particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
     railDefaultHidden: false,
-    conversationScaleMaxDistance: 96,
-    conversationScaleFocusContrast: 70,
   })
 })
 
@@ -93,27 +91,18 @@ test('drops retired fields from legacy payloads', () => {
   }
 })
 
-test('normalizes, migrates, and resets the conversation scale controls', () => {
-  assert.equal(api.normalizePreferences({ version: 4, conversationScaleMaxDistance: 8 }).conversationScaleMaxDistance, 16)
-  assert.equal(api.normalizePreferences({ version: 4, conversationScaleMaxDistance: 101 }).conversationScaleMaxDistance, 104)
-  assert.equal(api.normalizePreferences({ version: 4, conversationScaleMaxDistance: 999 }).conversationScaleMaxDistance, 240)
-  assert.equal(api.normalizePreferences({ version: 4, conversationScaleMaxDistance: 'bad' }).conversationScaleMaxDistance, 96)
-  assert.equal(api.loadPreferences({ getItem: () => JSON.stringify({ version: 3, enabled: true }) }).conversationScaleMaxDistance, 96)
-  assert.equal(api.loadPreferences({ getItem: () => JSON.stringify({ version: 4, enabled: true }) }).conversationScaleFocusContrast, 70)
-  assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: -1 }).conversationScaleFocusContrast, 0)
-  assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 64 }).conversationScaleFocusContrast, 60)
-  assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 999 }).conversationScaleFocusContrast, 100)
-  assert.equal(api.normalizePreferences({ version: 6, conversationScaleFocusContrast: 'bad' }).conversationScaleFocusContrast, 70)
-  let edited = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'railDefaultHidden', true)
-  assert.equal(edited.railDefaultHidden, true)
-  edited = api.updatePreferenceValue(edited, 'conversationScaleMaxDistance', 184)
-  edited = api.updatePreferenceValue(edited, 'conversationScaleFocusContrast', 100)
-  assert.equal(edited.conversationScaleMaxDistance, 184)
-  assert.equal(edited.conversationScaleFocusContrast, 100)
-  const reset = api.resetPreferenceGroup(edited, 'navigation')
+test('drops retired conversation scale preferences and keeps navigation reset scoped to the shell rail', () => {
+  const normalized = api.normalizePreferences({
+    version: 8,
+    railDefaultHidden: true,
+    conversationScaleMaxDistance: 184,
+    conversationScaleFocusContrast: 100,
+  })
+  assert.equal(normalized.railDefaultHidden, true)
+  assert.equal(Object.hasOwn(normalized, 'conversationScaleMaxDistance'), false)
+  assert.equal(Object.hasOwn(normalized, 'conversationScaleFocusContrast'), false)
+  const reset = api.resetPreferenceGroup(normalized, 'navigation')
   assert.equal(reset.railDefaultHidden, false)
-  assert.equal(reset.conversationScaleMaxDistance, 96)
-  assert.equal(reset.conversationScaleFocusContrast, 70)
 })
 
 test('normalizes, migrates, presets, and resets particle traversal speed independently', () => {
@@ -143,12 +132,12 @@ test('recognizes only the explicit safe-mode query', () => {
 })
 
 test('applies presets without changing independent navigation preferences', () => {
-  const original = { ...api.DEFAULT_PREFERENCES, conversationScaleFocusContrast: 100 }
+  const original = { ...api.DEFAULT_PREFERENCES, railDefaultHidden: true }
   const quiet = api.applyVisualPreset(original, 'quiet-reading')
   assert.equal(quiet.preset, 'quiet-reading')
   assert.equal(quiet.glass, 'soft')
   assert.equal(quiet.motion, 'reduced')
-  assert.equal(quiet.conversationScaleFocusContrast, 100)
+  assert.equal(quiet.railDefaultHidden, true)
   const standard = api.applyVisualPreset(quiet, 'standard-tactical')
   assert.equal(standard.preset, 'standard-tactical')
   const visualEdit = api.updatePreferenceValue(standard, 'texture', 'off')

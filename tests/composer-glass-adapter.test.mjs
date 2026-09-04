@@ -65,13 +65,14 @@ test('releases the signal owned by a composer after that composer is replaced', 
   adapter.dispose()
 })
 
-test('marks the real slash listbox overlay and nested parameter card as one glass stack', async t => {
+test('marks the 0.1.2-rc.1 trigger menu and nested parameter card as one glass stack', async t => {
   const dom = new JSDOM(`<!doctype html><body>
     <div data-composer-card>
       <button class="uV2eYG_add" aria-label="Commands" aria-haspopup="listbox" aria-expanded="true">+</button>
     </div>
     <div data-slot="conversation.input.overlay">
-      <div class="mufS8W_card"><div role="listbox"><button role="option" aria-selected="true">命令</button></div></div>
+      <div data-trigger-menu><div role="listbox"><button role="option" aria-selected="true">命令</button></div></div>
+      <div class="mufS8W_card"><div role="listbox"><button role="option">参数</button></div></div>
     </div>
   </body>`, { pretendToBeVisual: true })
   const adapter = createComposerGlassAdapter({ document: dom.window.document, window: dom.window })
@@ -79,8 +80,9 @@ test('marks the real slash listbox overlay and nested parameter card as one glas
   adapter.start()
 
   assert.equal(dom.window.document.querySelector('.uV2eYG_add').dataset.prtsGlassControl, 'action')
+  assert.equal(dom.window.document.querySelector('[data-trigger-menu]').dataset.prtsGlassMenu, 'action')
   assert.equal(dom.window.document.querySelector('.mufS8W_card').dataset.prtsGlassMenu, 'action')
-  assert.equal(dom.window.document.querySelector('[role="listbox"]').dataset.prtsGlassMenu, 'action')
+  for (const listbox of dom.window.document.querySelectorAll('[role="listbox"]')) assert.equal(listbox.dataset.prtsGlassMenu, 'action')
 })
 
 test('marks the rc.2 agent preset trigger and its semantic portal without touching unrelated portals', async t => {

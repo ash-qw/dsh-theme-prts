@@ -393,27 +393,14 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelectorAll('[data-prts-reset-visual]').length, 1)
   assert.equal(document.querySelectorAll('[data-prts-reset-confirm]').length, 1)
   assert.equal(document.querySelectorAll('[data-prts-retry-save]').length, 1)
-  const scaleDistance = document.querySelector('[data-prts-setting-range][data-prts-setting-key="conversationScaleMaxDistance"]')
-  assert.equal(scaleDistance.min, '16')
-  assert.equal(scaleDistance.max, '240')
-  assert.equal(scaleDistance.step, '8')
-  assert.equal(scaleDistance.value, '96')
-  const scaleContrast = document.querySelector('[data-prts-setting-range][data-prts-setting-key="conversationScaleFocusContrast"]')
-  assert.equal(scaleContrast.min, '0')
-  assert.equal(scaleContrast.max, '100')
-  assert.equal(scaleContrast.step, '10')
-  assert.equal(scaleContrast.value, '70')
+  assert.equal(document.querySelectorAll('[data-prts-setting-key="conversationScaleMaxDistance"]').length, 0)
+  assert.equal(document.querySelectorAll('[data-prts-setting-key="conversationScaleFocusContrast"]').length, 0)
   const traversalSpeed = document.querySelector('[data-prts-setting-range][data-prts-setting-key="particleTraversalSpeed"]')
   assert.equal(traversalSpeed.min, '0')
   assert.equal(traversalSpeed.max, '2')
   assert.equal(traversalSpeed.step, '0.25')
   assert.equal(traversalSpeed.value, '1')
   assert.equal(document.querySelector('[data-prts-particle-traversal-output]').textContent, '1× · 每 1 个视口重组')
-  assert.equal(document.querySelectorAll('[data-prts-scale-focus-preview-tick]').length, 5)
-  assert.equal(document.querySelector('[data-prts-scale-focus-output]').textContent, '70')
-  assert.ok(document.querySelector('[data-prts-scale-calibration]'))
-  assert.ok(document.querySelector('[data-prts-scale-calibration-rail]'))
-  assert.ok(document.querySelector('[data-prts-scale-calibration-status]'))
   assert.equal(document.querySelector('[data-prts-setting-key="glassEnabled"]'), null)
   assert.equal(document.querySelector('[data-prts-setting-key="glassHighlight"]'), null)
   assert.equal(document.querySelector('[data-prts-particle-status]'), null)
@@ -422,74 +409,12 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.ok(document.querySelector('[data-prts-effective-motion]'))
   assert.ok(document.querySelector('[data-prts-setting-row="glass"] [data-prts-transparency-status]'))
   assert.ok(document.querySelector('[data-prts-setting-row="motion"] [data-prts-effective-motion]'))
+  assert.equal(document.querySelectorAll('[data-prts-scale-calibration]').length, 0)
+  assert.match(advanced.querySelector('summary').textContent, /粒子效果/)
   assert.ok(document.querySelector('[data-prts-persistence-status]'))
 })
 
 
-test('conversation scale calibration previews drafts and commits only after interaction completes', async () => {
-  const api = await load('../src/client/theme-settings-workbench.js')
-  const dom = new JSDOM(`<!doctype html><html><body>
-    <button type="button" data-trigger></button>
-    ${api.themeSettingsMarkup()}
-  </body></html>`, { pretendToBeVisual: true })
-  dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
-  const { document } = dom.window
-  const updates = []
-  const candidates = []
-  const overlay = api.createThemeSettingsOverlay({
-    document,
-    trigger: document.querySelector('[data-trigger]'),
-    panel: document.querySelector('[data-prts-theme-settings]'),
-    backdrop: document.querySelector('[data-prts-settings-backdrop]'),
-    onPreferenceChange(key, value) { updates.push([key, value]) },
-    getConversationScalePreview(value) {
-      candidates.push(value)
-      return { visible: true, reason: 'ready', mode: 'configured', left: value }
-    },
-  })
-  overlay.update({ conversationScaleMaxDistance: 96, conversationScaleFocusContrast: 70 }, {})
-  assert.equal(candidates.length, 0, 'a closed settings panel must not measure conversation geometry')
-  document.querySelector('[data-trigger]').click()
-  await new Promise(resolve => dom.window.requestAnimationFrame(resolve))
-  assert.equal(candidates.at(-1), 96)
-
-  const range = document.querySelector('[data-prts-setting-range][data-prts-setting-key="conversationScaleMaxDistance"]')
-  range.value = '184'
-  range.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
-  await new Promise(resolve => dom.window.requestAnimationFrame(resolve))
-  assert.equal(updates.length, 0, 'input should update only the calibration draft')
-  assert.equal(document.querySelector('[data-prts-scale-distance-output]').textContent, '184 px')
-  assert.equal(document.querySelector('[data-prts-scale-calibration-value]').textContent, '184 px')
-  assert.equal(document.querySelector('[data-prts-scale-calibration]').style.getPropertyValue('--prts-calibration-distance'), '184px')
-  assert.match(document.querySelector('[data-prts-scale-calibration-status]').textContent, /使用配置上限.*184 px/)
-  assert.equal(candidates.at(-1), 184)
-
-  range.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
-  assert.deepEqual(updates, [['conversationScaleMaxDistance', 184]])
-  overlay.update({ conversationScaleMaxDistance: 184, conversationScaleFocusContrast: 70 }, {})
-
-  const contrastRange = document.querySelector('[data-prts-setting-range][data-prts-setting-key="conversationScaleFocusContrast"]')
-  contrastRange.value = '100'
-  contrastRange.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
-  assert.deepEqual(updates, [['conversationScaleMaxDistance', 184]], 'contrast input should remain a preview draft')
-  assert.equal(document.querySelector('[data-prts-scale-focus-output]').textContent, '100')
-  assert.equal(range.value, '184', 'contrast input must not overwrite the distance slider')
-  assert.deepEqual(
-    [...document.querySelectorAll('[data-prts-scale-focus-preview-tick]')].map(tick => tick.style.width),
-    ['29px', '15px', '10px', '6px', '3px'],
-  )
-
-  contrastRange.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
-  assert.deepEqual(updates.at(-1), ['conversationScaleFocusContrast', 100])
-  overlay.update({ conversationScaleMaxDistance: 184, conversationScaleFocusContrast: 100 }, {})
-  assert.equal(range.value, '184')
-
-  range.value = '208'
-  range.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
-  overlay.close()
-  assert.deepEqual(updates.at(-1), ['conversationScaleMaxDistance', 208], 'closing should commit the latest draft')
-  overlay.dispose()
-})
 test('particle traversal speed previews live and persists only when range interaction completes', async () => {
   const api = await load('../src/client/theme-settings-workbench.js')
   const dom = new JSDOM(`<!doctype html><html><body>
@@ -513,8 +438,6 @@ test('particle traversal speed previews live and persists only when range intera
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
     particleTraversalSpeed: 1,
-    conversationScaleMaxDistance: 96,
-    conversationScaleFocusContrast: 70,
   }, {})
   overlay.open()
 
@@ -532,8 +455,6 @@ test('particle traversal speed previews live and persists only when range intera
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
     particleTraversalSpeed: 0.25,
-    conversationScaleMaxDistance: 96,
-    conversationScaleFocusContrast: 70,
   }, {})
 
   range.value = '0'
@@ -578,7 +499,6 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
     railDefaultHidden: false,
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
-    conversationScaleMaxDistance: 96,
   }, {}, { phase: 'error', revision: 1 })
 
   trigger.click()
@@ -636,7 +556,7 @@ test('workbench prefers the native modal top layer when available', async () => 
     panel,
     backdrop: document.querySelector('[data-prts-settings-backdrop]'),
   })
-  overlay.update({ conversationScaleMaxDistance: 96 }, {})
+  overlay.update({}, {})
   overlay.open()
   assert.equal(modalCalls, 1)
 
@@ -674,7 +594,6 @@ test('workbench keeps system overrides contextual and success feedback transient
     motion: 'system',
     conversationParticleDensity: 'light',
     heroParticleDensity: 'standard',
-    conversationScaleMaxDistance: 96,
   }, {}, { phase: 'saved', revision: 1 })
 
   assert.equal(document.querySelector('[data-prts-effective-motion]').hidden, false)
@@ -690,7 +609,6 @@ test('workbench keeps system overrides contextual and success feedback transient
     motion: 'reduced',
     conversationParticleDensity: 'light',
     heroParticleDensity: 'standard',
-    conversationScaleMaxDistance: 96,
   }, {}, { phase: 'error', revision: 2 })
 
   assert.equal(document.querySelector('[data-prts-effective-motion]').hidden, true)

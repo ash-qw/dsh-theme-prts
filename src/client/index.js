@@ -12,7 +12,6 @@ import { createThemeController } from './theme-controller-v2.js'
 import { createParticleFieldAdapter } from './particle-field-adapter.js'
 import { createToBottomAdapter } from './to-bottom-adapter.js'
 import { createConversationControlAdapter } from './conversation-control-adapter.js'
-import { createConversationScaleAdapter } from './conversation-scale-adapter.js'
 import { createLayoutStabilityDiagnostics } from './layout-stability-diagnostics.js'
 import { createSidebarControlAdapter } from './sidebar-control-adapter.js'
 import { createFloatingGlassAdapter } from './floating-glass-adapter.js'
@@ -68,10 +67,8 @@ export function applyPrtsPlugin(ctx, environment) {
       particleField.setSchemeTransitionActive(active)
     },
   })
-  const sessions = contextService(ctx, 'sessions')
   const toBottom = createToBottomAdapter({ document, window })
   const conversationControls = createConversationControlAdapter({ document, window })
-  const conversationScale = createConversationScaleAdapter({ document, window, sessions })
   const layoutDiagnostics = createLayoutStabilityDiagnostics({ document, window })
   const sidebarControls = createSidebarControlAdapter({ document, window })
   const floatingGlass = createFloatingGlassAdapter({ document, window })
@@ -153,7 +150,6 @@ export function applyPrtsPlugin(ctx, environment) {
     particleField.update({ ...preferences, enabled: false })
     toBottom.dispose()
     conversationControls.dispose()
-    conversationScale.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
     floatingGlass.dispose()
@@ -194,9 +190,6 @@ export function applyPrtsPlugin(ctx, environment) {
       onRetrySave() {
         retryPersistence()
       },
-      getConversationScalePreview(value) {
-        return conversationScale.getCalibrationState(value)
-      },
     })
     if (!operations.update(preferences, status, settingsPersistence)) {
       if (!mountWarningIssued) {
@@ -216,8 +209,6 @@ export function applyPrtsPlugin(ctx, environment) {
     assistantGlass.start()
     toBottom.start()
     conversationControls.start()
-    conversationScale.update(preferences)
-    conversationScale.start()
     layoutDiagnostics.start()
     sidebarControls.start()
     floatingGlass.start()
@@ -315,7 +306,6 @@ export function applyPrtsPlugin(ctx, environment) {
     particleField.dispose()
     toBottom.dispose()
     conversationControls.dispose()
-    conversationScale.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
     floatingGlass.dispose()
@@ -361,7 +351,7 @@ export function applyPrtsPlugin(ctx, environment) {
 
 export function apply(ctx) {
   const React = require('react')
-  const { defineStore } = require('@deepseek-ai/dsh-client-runtime/client')
+  const { defineStore } = require('@deepseek-ai/dsh-client-store')
   applyPrtsPlugin(ctx, {
     document,
     window,

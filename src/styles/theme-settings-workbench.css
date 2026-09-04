@@ -408,7 +408,7 @@ html[data-dsh-prts] [data-prts-settings-advanced] summary::after {
 html[data-dsh-prts] [data-prts-settings-advanced][open] summary::after { content: "−"; }
 html[data-dsh-prts] [data-prts-settings-advanced-content] {
   display: grid;
-  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1fr);
   border-top: 1px solid var(--prts-line-strong);
 }
 
@@ -458,151 +458,6 @@ html[data-dsh-prts] [data-prts-particle-traversal-output] {
 }
 html[data-dsh-prts] [data-prts-particle-error] { margin: 8px 0 0; color: var(--prts-yellow); font: 700 8px/1.4 var(--prts-mono); }
 
-html[data-dsh-prts] [data-prts-scale-calibration] {
-  --prts-calibration-distance: 96px;
-  margin: 8px 0 0;
-  padding: 8px;
-  overflow: hidden;
-  border: 1px solid var(--prts-line);
-  background: color-mix(in srgb, var(--prts-panel-raised) 84%, transparent);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-viewport] {
-  position: relative;
-  width: 100%;
-  height: 94px;
-  overflow: hidden;
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-canvas] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 360px;
-  height: 94px;
-  transform-origin: top left;
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-sidebar] {
-  position: absolute;
-  inset: 8px auto 8px 0;
-  width: 4px;
-  background: var(--prts-line-strong);
-  box-shadow: 8px 0 0 color-mix(in srgb, var(--prts-line) 45%, transparent);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-measure] {
-  position: absolute;
-  top: 6px;
-  left: 0;
-  width: var(--prts-calibration-distance);
-  height: 18px;
-  border-top: 1px solid var(--prts-cyan);
-  color: var(--prts-cyan);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-measure]::before,
-html[data-dsh-prts] [data-prts-scale-calibration-measure]::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  width: 1px;
-  height: 7px;
-  background: currentColor;
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-measure]::before { left: 0; }
-html[data-dsh-prts] [data-prts-scale-calibration-measure]::after { right: 0; }
-
-html[data-dsh-prts] [data-prts-scale-calibration-value] {
-  position: absolute;
-  top: 4px;
-  right: 3px;
-  padding-left: 4px;
-  background: var(--prts-panel-raised);
-  color: currentColor;
-  font: 800 8px/1 var(--prts-mono);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-rail] {
-  position: absolute;
-  top: 29px;
-  left: var(--prts-calibration-distance);
-  width: 32px;
-  height: 58px;
-  border: 1px solid var(--prts-line-strong);
-  background: color-mix(in srgb, var(--prts-canvas) 62%, transparent);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-rail] i {
-  position: absolute;
-  top: calc(5px + var(--prts-calibration-tick) * 6px);
-  left: 2px;
-  width: 9px;
-  height: 1px;
-  background: var(--prts-muted);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-rail] i:nth-child(4n + 1) { width: 24px; }
-html[data-dsh-prts] [data-prts-scale-calibration-rail] i:nth-child(4n + 2) { width: 18px; }
-html[data-dsh-prts] [data-prts-scale-calibration-rail] i:last-child { width: 24px; background: var(--prts-yellow); }
-
-html[data-dsh-prts] [data-prts-scale-calibration-gap] {
-  position: absolute;
-  top: 29px;
-  left: calc(var(--prts-calibration-distance) + 32px);
-  width: 12px;
-  height: 58px;
-  background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--prts-line) 42%, transparent) 3px 4px);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-content] {
-  position: absolute;
-  inset: 29px 0 7px calc(var(--prts-calibration-distance) + 44px);
-  min-width: 16px;
-  overflow: hidden;
-  border-left: 1px solid var(--prts-cyan);
-  background: color-mix(in srgb, var(--prts-panel) 84%, transparent);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-content] i {
-  display: block;
-  width: min(78%, 138px);
-  height: 1px;
-  margin: 18px 10px 9px;
-  background: var(--prts-line-strong);
-  box-shadow: 0 8px 0 var(--prts-line);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-content] small {
-  margin-left: 10px;
-  color: var(--prts-dim);
-  font: 700 7px/1 var(--prts-mono);
-  white-space: nowrap;
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-meta] {
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-  padding-top: 7px;
-  border-top: 1px solid var(--prts-line);
-  font: 700 8px/1.3 var(--prts-mono);
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration-status] {
-  margin-left: auto;
-  color: var(--prts-muted);
-  text-align: right;
-}
-
-html[data-dsh-prts] [data-prts-scale-calibration][data-prts-calibration-mode="configured"] [data-prts-scale-calibration-status],
-html[data-dsh-prts] [data-prts-scale-calibration][data-prts-calibration-mode="simulated"] [data-prts-scale-calibration-status] { color: var(--prts-cyan); }
-html[data-dsh-prts] [data-prts-scale-calibration][data-prts-calibration-mode="centered"] [data-prts-scale-calibration-status],
-html[data-dsh-prts] [data-prts-scale-calibration-scale] { color: var(--prts-yellow); }
 html[data-dsh-prts] [data-prts-setting-range-row] {
   display: grid;
   gap: 7px;
@@ -619,30 +474,6 @@ html[data-dsh-prts] [data-prts-setting-range-row] input[type="range"] {
   flex: 1;
 }
 html[data-dsh-prts] [data-prts-setting-range] { accent-color: var(--prts-cyan); }
-html[data-dsh-prts] :is([data-prts-scale-distance-output], [data-prts-scale-focus-output]) {
-  min-width: 42px;
-  color: var(--prts-cyan);
-  font: 800 8px/1 var(--prts-mono);
-  text-align: right;
-}
-
-html[data-dsh-prts] [data-prts-scale-focus-preview] {
-  width: 34px;
-  min-width: 34px;
-  height: 30px;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-}
-
-html[data-dsh-prts] [data-prts-scale-focus-preview] i {
-  display: block;
-  height: 1px;
-  max-width: 30px;
-  background: var(--prts-yellow);
-  transition: width 100ms ease;
-}
-
 html[data-dsh-prts] [data-prts-settings-actions] {
   min-height: 58px;
   display: block;
@@ -690,10 +521,6 @@ html[data-dsh-prts] :is(
   [data-prts-setting-note],
   [data-prts-settings-advanced-content] section > header span,
   [data-prts-particle-error],
-  [data-prts-scale-calibration-value],
-  [data-prts-scale-calibration-content] small,
-  [data-prts-scale-calibration-meta],
-  [data-prts-scale-distance-output],
   [data-prts-reset-confirm]
 ) {
   font-size: var(--prts-settings-small);

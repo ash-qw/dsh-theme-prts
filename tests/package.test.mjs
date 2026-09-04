@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares the rc.2 DSH client bundle contract', async () => {
+test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -74,7 +74,7 @@ test('build writes Host and browser module-loader entries', async () => {
   assert.equal(moduleLoaderId, pkg.name, 'client ModuleLoader ID must match package.json')
 })
 
-test('Host entry imports under the package ESM contract used by rc.2', async () => {
+test('Host entry imports under the package ESM contract used by dsh 0.1.2-rc.1', async () => {
   await execFileAsync(process.execPath, ['scripts/build.mjs'], {
     cwd: new URL('..', import.meta.url),
   })
@@ -163,6 +163,8 @@ test('build bundles the real browser plugin and settings modules', async () => {
   assert.match(client, /function createComposerGlassAdapter\(/)
   assert.match(client, /function createAssistantGlassAdapter\(/)
   assert.match(client, /function createConversationControlAdapter\(/)
+  assert.doesNotMatch(client, /function createConversationScaleAdapter\(/)
+  assert.doesNotMatch(client, /--turn-natural-height/)
   assert.match(client, /function createSidebarControlAdapter\(/)
   assert.match(client, /function createPrtsUiStore\(/)
   assert.match(client, /function createSettingsPage\(React, meta/)
@@ -173,6 +175,8 @@ test('build bundles the real browser plugin and settings modules', async () => {
   assert.doesNotMatch(client, /function createDrawerController\(/)
   assert.doesNotMatch(client, /function createTacticalShell\(/)
   assert.match(client, /function createParticleFieldAdapter\(/)
+  assert.match(client, /require\('@deepseek-ai\/dsh-client-store'\)/)
+  assert.doesNotMatch(client, /@deepseek-ai\/dsh-client-runtime/)
   assert.doesNotMatch(client, /settings\.general\.item/)
   assert.doesNotMatch(client, /^import /m)
   assert.doesNotMatch(client, /watchHarnessStatus|data-prts-source/)
@@ -214,6 +218,9 @@ test('package manifest exposes only the installable plugin and user-facing docum
     '../src/client/details-panel.js',
     '../src/client/drawer-controller.js',
     '../src/client/theme-settings-overlay.js',
+    '../src/client/conversation-scale-adapter.js',
+    '../src/styles/conversation-scale.css',
+    '../src/styles/native-turn-rail.css',
     '../src/assets/amiya-operator-portrait.png',
     '../src/assets/class-icons.svg',
   ]) assert.equal(await readBytes(retired), null, `retired file still present: ${retired}`)

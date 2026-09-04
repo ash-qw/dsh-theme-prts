@@ -286,10 +286,12 @@ test('keeps assistant output native while glass controls continue to theme user 
   const root = page.locator('html')
   const messageOuter = page.locator('[data-glass-complex]')
   const simpleMessageOuter = page.locator('[data-glass-simple]')
+  const userTurn = page.locator('[data-chat-flow-kind="user"]')
   const userBubble = page.locator('[data-chat-flow-kind="user"] [class$="_bubble"]')
   const composer = page.locator('[data-composer-card]')
   await expect(root).toHaveAttribute('data-prts-glass', 'standard')
   await expect(userBubble).not.toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  expect(await userTurn.evaluate(node => getComputedStyle(node, '::before').content)).toBe('none')
   await expect(userBubble).toHaveCSS('border-left-width', '4px')
   await expect(userBubble).toHaveCSS('border-radius', '3px')
   await expect(userBubble).toHaveCSS('padding', '10px 14px')
@@ -320,43 +322,10 @@ test('keeps assistant output native while glass controls continue to theme user 
   const appearance = page.locator('[data-prts-theme-settings]')
   await expect(appearance).toBeVisible()
   await appearance.locator('[data-prts-settings-advanced] summary').click()
-  const scaleDistance = appearance.locator('[data-prts-setting-range][data-prts-setting-key="conversationScaleMaxDistance"]')
-  const scaleContrast = appearance.locator('[data-prts-setting-range][data-prts-setting-key="conversationScaleFocusContrast"]')
-  await expect(scaleDistance).toHaveValue('96')
-  await expect(scaleContrast).toHaveValue('70')
-  const persistedScaleDistance = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance ?? null)
-  const calibration = appearance.locator('[data-prts-scale-calibration]')
-  await expect(calibration).toBeVisible()
-  await expect(calibration.locator('[data-prts-scale-calibration-status]')).toContainText('当前视图')
-  await expect(page.locator('[data-prts-conversation-scale]')).toBeHidden()
-  await scaleDistance.evaluate(node => {
-    node.value = '184'
-    node.dispatchEvent(new Event('input', { bubbles: true }))
-  })
-  await expect(appearance.locator('[data-prts-scale-distance-output]')).toHaveText('184 px')
-  await expect(appearance.locator('[data-prts-scale-calibration-value]')).toHaveText('184 px')
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance ?? null)).toBe(persistedScaleDistance)
-  await scaleDistance.evaluate(node => node.dispatchEvent(new Event('change', { bubbles: true })))
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance)).toBe(184)
-  const persistedScaleContrast = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleFocusContrast)
-  expect(persistedScaleContrast).toBe(70)
-  await scaleContrast.evaluate(node => {
-    node.value = '100'
-    node.dispatchEvent(new Event('input', { bubbles: true }))
-  })
-  await expect(appearance.locator('[data-prts-scale-focus-output]')).toHaveText('100')
-  await expect.poll(() => appearance.locator('[data-prts-scale-focus-preview-tick]').evaluateAll(nodes => nodes.map(node => node.style.width))).toEqual([
-    '29px',
-    '15px',
-    '10px',
-    '6px',
-    '3px',
-  ])
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleFocusContrast)).toBe(70)
-  await scaleContrast.evaluate(node => node.dispatchEvent(new Event('change', { bubbles: true })))
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleFocusContrast)).toBe(100)
-  await appearance.locator('[data-prts-preset-card][data-prts-setting-value="quiet-reading"]').click()
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleFocusContrast)).toBe(100)
+  await expect(appearance.locator('[data-prts-setting-key="conversationScaleMaxDistance"]')).toHaveCount(0)
+  await expect(appearance.locator('[data-prts-setting-key="conversationScaleFocusContrast"]')).toHaveCount(0)
+  await expect(appearance.locator('[data-prts-scale-calibration]')).toHaveCount(0)
+  await expect(appearance.locator('[data-prts-settings-advanced] summary')).toContainText('粒子效果')
 
   const glassControls = appearance.locator('[data-prts-setting-row="glass"]')
   await glassControls.getByRole('button', { name: '柔和' }).click()
@@ -1107,7 +1076,7 @@ test('separates the native DeepSeek brand banner from animated session index row
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(page.locator('[data-prts-session-projection]')).toHaveCount(0)
 })
-test('@live installed rc.2 plugin mounts, preserves native text, and honors safe mode', async ({ page, request }) => {
+test('@live installed 0.1.2-rc.1 plugin mounts, preserves native text, and honors safe mode', async ({ page, request }) => {
   const liveUrl = process.env.PRTS_LIVE_URL
   test.skip(!liveUrl, 'PRTS_LIVE_URL is not configured')
   const response = await request.get(liveUrl)
@@ -1126,8 +1095,8 @@ test('@live installed rc.2 plugin mounts, preserves native text, and honors safe
   await expect(page.locator('[data-prts-sessions-toggle]')).toHaveCount(0)
   const liveWorkspaceRow = page.locator('[data-prts-workspace-row]').first()
   const liveSessionRow = page.locator('[data-prts-session-row]:has([data-prts-session-menu])').first()
-  const liveCreate = page.locator('[data-prts-workspace-create]').first()
-  const liveWorkspaceMenu = page.locator('[data-prts-workspace-menu]').first()
+  const liveCreate = liveWorkspaceRow.locator('[data-prts-workspace-create]')
+  const liveWorkspaceMenu = liveWorkspaceRow.locator('[data-prts-workspace-menu]')
   const liveSessionMenu = page.locator('[data-prts-session-menu]').first()
   if (await liveWorkspaceRow.count() && await liveSessionRow.count()) {
   await expect(liveWorkspaceRow).toBeVisible()
@@ -1142,7 +1111,7 @@ test('@live installed rc.2 plugin mounts, preserves native text, and honors safe
   await expect(liveWorkspaceMenu).toBeVisible()
   await expect(liveSessionMenu).toBeHidden()
   await page.waitForTimeout(650)
-  const liveWorkspaceGeometry = await page.locator([
+  const liveWorkspaceGeometry = await liveWorkspaceRow.locator([
     '[data-prts-workspace-create]',
     '[data-prts-workspace-menu]',
   ].join(',')).evaluateAll(tabs => tabs.map(tab => {
@@ -1257,12 +1226,14 @@ test('@live installed rc.2 plugin mounts, preserves native text, and honors safe
   })
   expect(liveSafety).toEqual({ brandFits: true, executeFits: true })
 
-  await page.goto(`${liveUrl}${liveUrl.includes('?') ? '&' : '?'}prts-safe=1`)
+  const safeUrl = new URL(page.url())
+  safeUrl.searchParams.set('prts-safe', '1')
+  await page.goto(safeUrl.href)
   await expect(page.locator('[data-prts-shell]')).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
-test('@live-write rc.2 real composer menus, messages, streaming, and stop stay compatible', async ({ page }) => {
+test('@live-write 0.1.2-rc.1 real composer menus, messages, streaming, and stop stay compatible', async ({ page }) => {
   test.setTimeout(180_000)
   const liveUrl = process.env.PRTS_LIVE_URL
   test.skip(!liveUrl || process.env.PRTS_LIVE_WRITE !== '1', 'writable live acceptance is not enabled')
@@ -1278,7 +1249,7 @@ test('@live-write rc.2 real composer menus, messages, streaming, and stop stay c
   expect(await page.evaluate(() => ({ secure: isSecureContext, randomUUID: typeof crypto.randomUUID })))
     .toEqual({ secure: true, randomUUID: 'function' })
 
-  const input = page.locator('[data-composer-card] textarea')
+  const input = page.locator('[data-composer-input][contenteditable="true"], [data-composer-card] textarea').first()
   await expect(input).toBeEditable()
 
   const preset = page.locator('[data-slot="conversation.hero.agentPreset"] button[aria-haspopup="menu"]').first()
@@ -1292,7 +1263,12 @@ test('@live-write rc.2 real composer menus, messages, streaming, and stop stay c
   const commands = page.getByRole('button', { name: 'Commands' })
   await expect(commands).toHaveAttribute('data-prts-glass-control', 'action')
   await commands.click()
-  await expect(page.locator('[role="listbox"][data-prts-glass-menu="action"]')).toBeVisible()
+  const commandMenu = page.locator('[role="listbox"][data-prts-glass-menu="action"]')
+  if (!(await commandMenu.isVisible())) {
+    const commandInput = page.locator('[data-composer-input][contenteditable="true"], [data-composer-card] textarea').first()
+    await commandInput.fill('/')
+  }
+  await expect(commandMenu).toBeVisible()
   await page.keyboard.press('Escape')
 
   const permission = page.getByRole('button', { name: /Access mode/ })
@@ -1344,7 +1320,7 @@ test('@live-write rc.2 real composer menus, messages, streaming, and stop stay c
   expect(errors).toEqual([])
 })
 
-test('@live-matrix rc.2 settings, daylight controls, and phone fallback stay readable', async ({ page }) => {
+test('@live-matrix 0.1.2-rc.1 settings, daylight controls, and phone fallback stay readable', async ({ page }) => {
   const liveUrl = process.env.PRTS_LIVE_URL
   test.skip(!liveUrl, 'PRTS_LIVE_URL is not configured')
 
@@ -1386,21 +1362,9 @@ test('@live-matrix rc.2 settings, daylight controls, and phone fallback stay rea
   await expect(settings.locator('[data-prts-setting-row="particlePattern"]')).toHaveCount(0)
   await expect(settings).toContainText('粒子精度')
   await settings.locator('[data-prts-settings-advanced] summary').click()
-  const scaleDistance = settings.locator('[data-prts-setting-range][data-prts-setting-key="conversationScaleMaxDistance"]')
-  await expect(scaleDistance).toHaveValue('96')
-  const persistedScaleDistance = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance ?? null)
-  const calibration = settings.locator('[data-prts-scale-calibration]')
-  await expect(calibration).toBeVisible()
-  await expect(calibration.locator('[data-prts-scale-calibration-status]')).toContainText('当前视图')
-  await scaleDistance.evaluate(node => {
-    node.value = '184'
-    node.dispatchEvent(new Event('input', { bubbles: true }))
-  })
-  await expect(settings.locator('[data-prts-scale-distance-output]')).toHaveText('184 px')
-  await expect(settings.locator('[data-prts-scale-calibration-value]')).toHaveText('184 px')
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance ?? null)).toBe(persistedScaleDistance)
-  await scaleDistance.evaluate(node => node.dispatchEvent(new Event('change', { bubbles: true })))
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).conversationScaleMaxDistance)).toBe(184)
+  await expect(settings.locator('[data-prts-setting-key="conversationScaleMaxDistance"]')).toHaveCount(0)
+  await expect(settings.locator('[data-prts-setting-key="conversationScaleFocusContrast"]')).toHaveCount(0)
+  await expect(settings.locator('[data-prts-scale-calibration]')).toHaveCount(0)
 
   const particleDetail = settings.locator('[data-prts-particle-detail]')
   await particleDetail.getByRole('radio', { name: '标准', exact: true }).click()
@@ -1419,6 +1383,10 @@ test('@live-matrix rc.2 settings, daylight controls, and phone fallback stay rea
   if (await commands.isEnabled()) {
     await commands.click()
     const menu = page.locator('[role="listbox"][data-prts-glass-menu="action"]')
+    if (!(await menu.isVisible())) {
+      const commandInput = page.locator('[data-composer-input][contenteditable="true"], [data-composer-card] textarea').first()
+      await commandInput.fill('/')
+    }
     await expect(menu).toBeVisible()
     await expect(menu).toHaveCSS('color', expectedInk)
     await page.keyboard.press('Escape')
@@ -1428,7 +1396,7 @@ test('@live-matrix rc.2 settings, daylight controls, and phone fallback stay rea
   await expectNoHorizontalOverflow(page)
 
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.locator('html')).toHaveAttribute('data-prts-drawer-mode', 'overlay')
+  await expect(page.locator('html')).toHaveAttribute('data-prts-rail-mode', 'overlay')
   const composer = page.locator('[data-composer-card]')
   await expect(composer).toBeVisible()
   await expect.poll(() => composer.evaluate(node => {
