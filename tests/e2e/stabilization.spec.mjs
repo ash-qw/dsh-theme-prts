@@ -151,6 +151,81 @@ for (const scheme of ['dark', 'light']) {
   }
 }
 
+test("@composer-attachments keeps pasted previews painted above the display-contents slot", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await enable(page)
+  await page.addStyleTag({ content: `
+    .JVDQca_root { min-width: 0; position: relative; }
+    .JVDQca_rail { gap: 10px; display: flex; overflow: auto hidden; }
+    .JVDQca_item { width: 64px; height: 64px; position: relative; }
+    .JVDQca_thumbnail { width: 64px; height: 64px; padding: 0; overflow: hidden; border: .5px solid white; border-radius: 16px; background: #333; }
+    .JVDQca_thumbnail img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  ` })
+  await page.locator("[data-composer-card]").evaluate(card => {
+    const slot = document.createElement("div")
+    slot.dataset.slot = "conversation.input.attachments"
+    slot.style.display = "contents"
+    slot.innerHTML = `
+      <div class="JVDQca_root">
+        <div class="JVDQca_rail">
+          <div class="JVDQca_item">
+            <button type="button" class="JVDQca_thumbnail" aria-label="Open pasted image">
+              <img alt="Pasted preview" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22%3E%3Crect width=%2264%22 height=%2264%22 fill=%22%23ff00ff%22/%3E%3Crect x=%2216%22 y=%2216%22 width=%2232%22 height=%2232%22 fill=%22%2300ff00%22/%3E%3C/svg%3E">
+            </button>
+          </div>
+        </div>
+      </div>
+    `
+    card.prepend(slot)
+  })
+
+  const preview = page.getByAltText("Pasted preview")
+  await preview.evaluate(image => image.decode())
+  const styles = await preview.evaluate(image => {
+    const slot = image.closest("[data-slot=\"conversation.input.attachments\"]")
+    const surface = slot.firstElementChild
+    const button = image.closest("button")
+    return {
+      slotDisplay: getComputedStyle(slot).display,
+      slotPosition: getComputedStyle(slot).position,
+      slotZ: getComputedStyle(slot).zIndex,
+      surfacePosition: getComputedStyle(surface).position,
+      surfaceZ: getComputedStyle(surface).zIndex,
+      buttonRadius: getComputedStyle(button).borderRadius,
+      buttonClip: getComputedStyle(button).clipPath,
+      buttonBefore: getComputedStyle(button, "::before").content,
+    }
+  })
+  expect(styles).toEqual({
+    slotDisplay: "contents",
+    slotPosition: "static",
+    slotZ: "auto",
+    surfacePosition: "relative",
+    surfaceZ: "2",
+    buttonRadius: "16px",
+    buttonClip: "none",
+    buttonBefore: "none",
+  })
+
+  const screenshot = await preview.screenshot()
+  const pixels = await page.evaluate(async source => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${source}`
+    await image.decode()
+    const canvas = document.createElement("canvas")
+    canvas.width = image.width
+    canvas.height = image.height
+    const context = canvas.getContext("2d")
+    context.drawImage(image, 0, 0)
+    return {
+      corner: [...context.getImageData(8, 8, 1, 1).data],
+      center: [...context.getImageData(32, 32, 1, 1).data],
+    }
+  }, screenshot.toString("base64"))
+  expect(pixels.corner).toEqual([255, 0, 255, 255])
+  expect(pixels.center).toEqual([0, 255, 0, 255])
+})
+
 test('@stabilization Desktop titlebar inset keeps the shell, overlays, and composer inside the host viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await enable(page)

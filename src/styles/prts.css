@@ -1237,7 +1237,7 @@ html[data-dsh-prts] [data-prts-composer-fallback] textarea {
   caret-color: var(--prts-yellow);
 }
 
-html[data-dsh-prts] [data-composer-card] button,
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
 html[data-dsh-prts] [data-prts-conversation-control] {
   border: 1px solid var(--prts-line) !important;
   border-radius: var(--prts-radius-control) !important;
@@ -1247,7 +1247,7 @@ html[data-dsh-prts] [data-prts-conversation-control] {
 }
 
 
-html[data-dsh-prts] [data-composer-card] button:is(:hover, :focus-visible),
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):is(:hover, :focus-visible),
 html[data-dsh-prts] [data-prts-conversation-control]:is(:hover, :focus-visible) {
   border-color: var(--prts-yellow) !important;
 }
@@ -1258,7 +1258,7 @@ html[data-dsh-prts] [data-composer-card] button[type="submit"] {
   color: var(--prts-yellow-ink) !important;
 }
 
-html[data-dsh-prts] [data-composer-card] button:active,
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):active,
 html[data-dsh-prts] [data-prts-conversation-control]:active {
   transform: translateY(1px) scale(.98);
 }

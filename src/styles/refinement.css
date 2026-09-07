@@ -205,8 +205,16 @@ html[data-dsh-prts] [data-prts-composer-fallback]::after {
   pointer-events: none;
 }
 
-html[data-dsh-prts] [data-composer-card] > :not([data-prts-composer-signal]),
-html[data-dsh-prts] [data-prts-composer-fallback] > :not([data-prts-composer-signal]) {
+html[data-dsh-prts] [data-composer-card] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]),
+html[data-dsh-prts] [data-prts-composer-fallback] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]) {
+  position: relative;
+  z-index: 2;
+}
+
+/* Slot entries use display: contents, so lifting the slot wrapper itself does
+   not create a stacking box. Lift the rendered attachment surface instead. */
+html[data-dsh-prts] [data-composer-card] > [data-slot="conversation.input.attachments"] > *,
+html[data-dsh-prts] [data-prts-composer-fallback] > [data-slot="conversation.input.attachments"] > * {
   position: relative;
   z-index: 2;
 }
@@ -296,8 +304,8 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control="action"] {
 
 /* Chamfered controls use their own polygonal outline and inset material layer. */
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
   [data-produced-files-row] > button[type="button"]
@@ -319,8 +327,8 @@ html[data-dsh-prts] :is(
 }
 
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
   [data-produced-files-row] > button[type="button"]
@@ -339,8 +347,8 @@ html[data-dsh-prts] :is(
 }
 
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
   [data-produced-files-row] > button[type="button"]
@@ -405,7 +413,7 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textar
   resize: vertical;
 }
 
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button,
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
 html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control] {
   min-height: 36px;
 }

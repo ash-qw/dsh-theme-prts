@@ -105,7 +105,7 @@ html[data-dsh-prts] [data-message-role="user"],
 html[data-dsh-prts] [data-chat-flow-kind="user"] [class$="_bubble"],
 html[data-dsh-prts] [data-composer-card],
 html[data-dsh-prts] [data-prts-composer-fallback],
-html[data-dsh-prts] [data-composer-card] button,
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
 html[data-dsh-prts] [data-prts-conversation-control],
 html[data-dsh-prts] [data-produced-files-row] > button[type="button"],
 html[data-dsh-prts] [data-prts-to-bottom] {

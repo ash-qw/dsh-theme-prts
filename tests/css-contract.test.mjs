@@ -108,7 +108,7 @@ test('draws complete layered contours without styling popup items', () => {
     'animation-duration: 6.4s',
     'animation-play-state: paused',
     '[data-produced-files-row] > button[type="button"]',
-    'button:not([data-prts-glass-menu] *)',
+    'button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *)',
     'inset: 1px',
     'stroke-width: 1',
     'stroke-linejoin: miter',
@@ -185,6 +185,14 @@ test('keeps particle emblems and composer geometry without retired dossier style
   assert.match(css, /\[data-composer-card\]::after[^{]*\{[^}]*inset:\s*1px 1px 3px;[^}]*clip-path:\s*polygon/s)
   assert.match(css, /\[data-prts-composer-signal\]::before[^{]*\{[^}]*transition:\s*transform 160ms[^;]*, opacity 160ms/s)
   assert.doesNotMatch(css, /\[data-prts-composer-signal\]::after/)
+})
+
+test("keeps display-contents attachment slots above composer glass without restyling native controls", () => {
+  assert.match(css, /\[data-composer-card\] > \[data-slot="conversation\.input\.attachments"\] > \*[^{]*\{[^}]*position:\s*relative;[^}]*z-index:\s*2;/s)
+  assert.ok((css.match(/:not\(\[data-slot="conversation\.input\.attachments"\] \*\)/g) || []).length >= 10)
+  assert.equal(css.includes("[data-composer-card] button,"), false)
+  assert.equal(css.includes("[data-composer-card] button:is(:hover, :focus-visible)"), false)
+  assert.equal(css.includes("[data-composer-card] button:active"), false)
 })
 
 test('supports fixed host-owned themes, tactical takeover, and accessibility fallbacks', () => {
