@@ -39,6 +39,10 @@ test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
     registry: 'https://registry.npmjs.org',
   })
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
+  assert.deepEqual(pkg.engines, {
+    node: '>=18',
+    dsh: '>=0.1.2-rc.1 <0.1.3-0',
+  })
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.exports['./client'].default, './lib/client.js')
@@ -57,6 +61,11 @@ test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
   assert.match(patch, /id: theme-prts/)
   const patchPackageName = patch.match(/\bname:\s*['"]([^'"]+)['"]/)?.[1]
   assert.equal(patchPackageName, pkg.name, 'bundle patch package name must match package.json')
+
+  const readmeZh = await readText('../README.md')
+  const readmeEn = await readText('../README.en.md')
+  assert.match(readmeZh, />=0\.1\.2-rc\.1 <0\.1\.3-0/)
+  assert.match(readmeEn, />=0\.1\.2-rc\.1 <0\.1\.3-0/)
 })
 
 test('build writes Host and browser module-loader entries', async () => {

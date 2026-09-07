@@ -11,7 +11,13 @@ A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harne
 >
 > This project and its release packages may be suspended, restricted, or have relevant material removed at any time in response to a rights-holder request, platform policy, or maintainer decision. Continued availability is not guaranteed.
 
-Tested with DeepSeek Harness Web `0.1.2-rc.1`. The theme is disabled by default.
+The theme is disabled by default.
+
+## Compatibility
+
+- Declared support covers DeepSeek Harness Web `>=0.1.2-rc.1 <0.1.3-0`, the `0.1.2` release line beginning with `0.1.2-rc.1`;
+- the current build has been verified on `0.1.2-rc.1`;
+- `engines.dsh` in `package.json` exposes the same machine-readable range so plugin markets can evaluate compatibility with the current DSH host. Versions outside this range are not yet declared supported.
 
 ## Install and update
 
