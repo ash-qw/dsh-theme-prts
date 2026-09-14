@@ -6,6 +6,7 @@ import { createRc7Adapter } from '../src/client/rc7-adapter.js'
 import { createOperationsShell } from '../src/client/operations-shell-v2.js'
 
 const fixture = await readFile(new URL('./fixtures/rc7-harness.html', import.meta.url), 'utf8')
+const currentFixture = await readFile(new URL('./fixtures/rc2-harness.html', import.meta.url), 'utf8')
 const enabled = { version: 9, enabled: true, preset: 'standard-tactical', texture: 'full', glass: 'standard', motion: 'reduced', bootAnimation: true, railDefaultHidden: false, conversationStyle: 'deck-chat' }
 const status = { connection: 'connected', connectionLabel: '已连接' }
 
@@ -89,7 +90,7 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.equal(document.querySelector('[data-prts-dossier-overlay]'), null)
   assert.equal(document.querySelector('[data-prts-runtime-model]'), null)
   assert.equal(geometryFrame, document.querySelector('[data-prts-region="frame"]'))
-  for (const region of ['frame', 'sessions', 'operation', 'details']) {
+  for (const region of ['frame', 'sessions', 'operation', 'auxiliary']) {
     assert.ok(document.querySelector('[data-prts-region="' + region + '"]'))
   }
   assert.equal(document.querySelector('[data-slot="details"]').children.length, 0)
@@ -192,6 +193,34 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.equal(document.documentElement.hasAttribute('data-prts-rail-mode'), false)
   assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), false)
   assert.equal(geometryDisposed, 1)
+})
+
+test('mounts against the 0.1.5 main/rightbar shell and preserves the current composer', t => {
+  const dom = new JSDOM(currentFixture, { url: 'http://localhost/session/current', pretendToBeVisual: true })
+  dom.window.matchMedia = query => ({
+    media: query,
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  })
+  const document = dom.window.document
+  const rightbar = document.querySelector('[data-slot="rightbar"]').parentElement
+  rightbar.dataset.prtsRegion = 'host-owned'
+  const shell = createOperationsShell({
+    document,
+    window: dom.window,
+    adapter: createRc7Adapter({ document }),
+  })
+  t.after(() => shell.dispose())
+
+  assert.equal(shell.update(enabled, status), true)
+  assert.ok(document.querySelector('[data-prts-shell]'))
+  assert.ok(document.querySelector('[data-prts-region="operation"] [data-slot="main"]'))
+  assert.equal(document.querySelector('[data-composer-input]').textContent, 'Ready')
+  assert.equal(rightbar.dataset.prtsRegion, 'auxiliary')
+
+  shell.dispose()
+  assert.equal(rightbar.dataset.prtsRegion, 'host-owned')
 })
 
 test('requires a held downward swipe on coarse phones while preserving keyboard activation', async t => {

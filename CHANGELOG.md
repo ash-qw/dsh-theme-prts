@@ -1,6 +1,10 @@
 # 变更记录
 
-## 未发布
+## 0.1.97 - 2026-09-14
+
+- 适配已部署的 DeepSeek Harness Web `0.1.5-rc.1`（内置前端包 `0.1.5-rc.2`）的 `main` / `rightbar` 主布局槽位，同时保留 `0.1.2` 的 `conversation` / `details` 兼容路径。
+- 适配新版 `main.conversation` 会话根与 `data-composer-input` contenteditable Composer，并保持旧版 textarea 输入框外观。
+- 将 `engines.dsh` 扩展为经过验证的 `0.1.2` 与 `0.1.5` 两条发布线。
 
 ## 0.1.96 - 2026-09-07
 

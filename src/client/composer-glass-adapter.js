@@ -187,7 +187,7 @@ export function createComposerGlassAdapter({ document, window }) {
       const Observer = window?.MutationObserver
       if (!Observer) return
       const observationRoot = document.querySelector('[data-prts-region="operation"]')
-        ?? document.querySelector('[data-slot="conversation"]')
+        ?? document.querySelector('[data-slot="main.conversation"], [data-slot="conversation"]')
       if (!observationRoot) return
       observer = new Observer(onMutations)
       observer.observe(observationRoot, {

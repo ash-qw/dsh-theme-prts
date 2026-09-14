@@ -5,6 +5,7 @@ import test from 'node:test'
 import { createRc7Adapter, resolveRc7Regions } from '../src/client/rc7-adapter.js'
 
 const fixture = await readFile(new URL('./fixtures/rc7-harness.html', import.meta.url), 'utf8')
+const currentFixture = await readFile(new URL('./fixtures/rc2-harness.html', import.meta.url), 'utf8')
 
 test('marks the real rc.7 host columns without observing or rewriting native width', async () => {
   const dom = new JSDOM(fixture)
@@ -17,7 +18,8 @@ test('marks the real rc.7 host columns without observing or rewriting native wid
   assert.equal(regions.frame.dataset.prtsRegion, 'frame')
   assert.equal(regions.sidebar.dataset.prtsRegion, 'sessions')
   assert.equal(regions.center.dataset.prtsRegion, 'operation')
-  assert.equal(regions.details.dataset.prtsRegion, 'details')
+  assert.equal(regions.auxiliary.dataset.prtsRegion, 'auxiliary')
+  assert.equal(regions.layoutVersion, '0.1.2')
   assert.equal(adapter.mount(), regions)
   assert.equal(regions.frame.style.getPropertyValue('--prts-native-sessions-column'), '')
   regions.frame.style.gridTemplateColumns = '148px minmax(0px, 1fr) 0px'
@@ -31,6 +33,31 @@ test('marks the real rc.7 host columns without observing or rewriting native wid
   assert.equal(regions.sidebar.dataset.prtsRegion, 'host-owned')
   assert.equal(regions.center.hasAttribute('data-prts-region'), false)
   assert.equal(regions.details.hasAttribute('data-prts-region'), false)
+})
+
+test('resolves the 0.1.5 main and rightbar layout while keeping legacy aliases', () => {
+  const dom = new JSDOM(currentFixture)
+  const document = dom.window.document
+  const regions = resolveRc7Regions(document)
+
+  assert.equal(regions.layoutVersion, '0.1.5')
+  assert.equal(regions.frame, document.querySelector('[data-slot="root"] > :first-child'))
+  assert.equal(regions.sidebar, document.querySelector('[data-slot="sidebar"]').parentElement)
+  assert.equal(regions.center, document.querySelector('[data-slot="main"]').parentElement)
+  assert.equal(regions.auxiliary, document.querySelector('[data-slot="rightbar"]').parentElement)
+  assert.equal(regions.conversationSlot, regions.centerSlot)
+  assert.equal(regions.details, regions.auxiliary)
+  assert.equal(regions.detailsSlot, regions.auxiliarySlot)
+
+  regions.auxiliary.setAttribute('data-prts-region', 'host-owned')
+  const adapter = createRc7Adapter({ document })
+  assert.ok(adapter.mount())
+  assert.equal(regions.frame.dataset.prtsRegion, 'frame')
+  assert.equal(regions.sidebar.dataset.prtsRegion, 'sessions')
+  assert.equal(regions.center.dataset.prtsRegion, 'operation')
+  assert.equal(regions.auxiliary.dataset.prtsRegion, 'auxiliary')
+  adapter.dispose()
+  assert.equal(regions.auxiliary.dataset.prtsRegion, 'host-owned')
 })
 
 test('resolves rc.7 regions when product wrappers sit between the frame and columns', () => {

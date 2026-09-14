@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
+test('declares the verified dsh 0.1.2 and 0.1.5 client bundle contracts', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -41,7 +41,7 @@ test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
     node: '>=18',
-    dsh: '>=0.1.2-rc.1 <0.1.3-0',
+    dsh: '>=0.1.2-rc.1 <0.1.3-0 || >=0.1.5-rc.1 <0.1.6-0',
   })
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
@@ -66,6 +66,8 @@ test('declares the dsh 0.1.2-rc.1 client bundle contract', async () => {
   const readmeEn = await readText('../README.en.md')
   assert.match(readmeZh, />=0\.1\.2-rc\.1 <0\.1\.3-0/)
   assert.match(readmeEn, />=0\.1\.2-rc\.1 <0\.1\.3-0/)
+  assert.match(readmeZh, />=0\.1\.5-rc\.1 <0\.1\.6-0/)
+  assert.match(readmeEn, />=0\.1\.5-rc\.1 <0\.1\.6-0/)
 })
 
 test('build writes Host and browser module-loader entries', async () => {
@@ -83,7 +85,7 @@ test('build writes Host and browser module-loader entries', async () => {
   assert.equal(moduleLoaderId, pkg.name, 'client ModuleLoader ID must match package.json')
 })
 
-test('Host entry imports under the package ESM contract used by dsh 0.1.2-rc.1', async () => {
+test('Host entry imports under the package ESM contract used by supported dsh releases', async () => {
   await execFileAsync(process.execPath, ['scripts/build.mjs'], {
     cwd: new URL('..', import.meta.url),
   })

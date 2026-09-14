@@ -841,7 +841,8 @@ html[data-dsh-prts] [data-prts-region="sessions"] [data-slot="sidebar"] {
   height: 100%;
 }
 
-html[data-dsh-prts] [data-prts-region="sessions"] [data-rc7-sidebar-root] {
+html[data-dsh-prts] [data-prts-region="sessions"] :is(
+  [data-rc7-sidebar-root], [data-slot="sidebar"] > :first-child) {
   box-sizing: border-box;
   width: 100% !important;
   min-width: var(--prts-sessions-width);
@@ -1058,7 +1059,8 @@ html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible
 }
 
 /* OPERATION AREA */
-html[data-dsh-prts] [data-slot="conversation"] {
+html[data-dsh-prts] :is(
+  [data-slot="main.conversation"], [data-slot="conversation"]) {
   min-width: 0;
   height: 100%;
   background: transparent;
@@ -1067,7 +1069,8 @@ html[data-dsh-prts] [data-slot="conversation"] {
 /* The rc.7 conversation root owns an opaque host surface above the ambient
    siblings. Keep it transparent only for the chat theme so its backdrop remains
    behind native messages and controls. */
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-slot="conversation"] > [data-phase] {
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
+  [data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase] {
   background: transparent !important;
 }
 
@@ -1505,8 +1508,8 @@ html[data-dsh-prts] [data-prts-composer-fallback] {
   -webkit-backdrop-filter: var(--prts-active-glass-filter);
 }
 
-html[data-dsh-prts] [data-composer-card] textarea,
-html[data-dsh-prts] [data-prts-composer-fallback] textarea {
+html[data-dsh-prts] [data-composer-card] :is(textarea, [data-composer-input]),
+html[data-dsh-prts] [data-prts-composer-fallback] :is(textarea, [data-composer-input]) {
   border: 0 !important;
   background: transparent !important;
   color: var(--prts-ink) !important;

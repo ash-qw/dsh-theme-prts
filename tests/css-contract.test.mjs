@@ -121,7 +121,8 @@ test('draws complete layered contours without styling popup items', () => {
 test('limits custom composer geometry to the empty-session hero', () => {
   includesAll([
     '[data-prts-hero-active] [data-composer-card]',
-    '[data-prts-hero-active] [data-composer-card] textarea',
+    '[data-prts-hero-active] [data-composer-card] :is(textarea, [data-composer-input])',
+    '[data-prts-hero-active] [data-prts-composer-fallback] :is(textarea, [data-composer-input])',
     '[data-prts-hero-active] [data-prts-glass-control]',
     'min-height: 64px',
     'width: min(calc(780px + 32px), 100%)',
@@ -158,7 +159,8 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     '--prts-assistant-avatar-image',
     '[data-prts-conversation-style="native"]',
     '[data-prts-conversation-style="deck-chat"]',
-    '[data-slot="conversation"] > [data-phase]',
+    '[data-slot="main.conversation"]',
+    '[data-slot="conversation"]) > [data-phase]',
     '[data-chat-flow-kind="assistant-step"]::before',
     '[data-chat-flow-kind="user"]::after',
     '[data-chat-flow-kind="user"] [class$="_bubble"]',

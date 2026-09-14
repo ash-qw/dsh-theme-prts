@@ -15,9 +15,9 @@ The theme is disabled by default.
 
 ## Compatibility
 
-- Declared support covers DeepSeek Harness Web `>=0.1.2-rc.1 <0.1.3-0`, the `0.1.2` release line beginning with `0.1.2-rc.1`;
-- the current build has been verified on `0.1.2-rc.1`;
-- `engines.dsh` in `package.json` exposes the same machine-readable range so plugin markets can evaluate compatibility with the current DSH host. Versions outside this range are not yet declared supported.
+- Declared support covers DeepSeek Harness Web `>=0.1.2-rc.1 <0.1.3-0 || >=0.1.5-rc.1 <0.1.6-0`, spanning the `0.1.2` and `0.1.5` release lines;
+- the current build has been verified against the client contracts of `0.1.2-rc.1` and the deployed `0.1.5-rc.1` Harness (which bundles `0.1.5-rc.2` frontend packages);
+- `engines.dsh` in `package.json` exposes the same machine-readable range so plugin markets can evaluate compatibility with the current DSH host. Unlisted intermediate versions and versions outside these ranges are not yet declared supported.
 
 ## Install and update
 

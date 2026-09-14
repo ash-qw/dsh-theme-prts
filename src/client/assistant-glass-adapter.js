@@ -251,7 +251,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
       if (!document) return
       mountAvatarImage()
       const observationRoot = document.querySelector('[data-prts-region="operation"]')
-        ?? document.querySelector('[data-slot="conversation"]')
+        ?? document.querySelector('[data-slot="main.conversation"], [data-slot="conversation"]')
       if (!observationRoot) return
       if (observer) return
       collectInitialSteps(observationRoot)

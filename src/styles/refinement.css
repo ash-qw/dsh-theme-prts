@@ -254,8 +254,8 @@ html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback]):foc
   transform: translateX(-50%) scaleX(1);
 }
 
-html[data-dsh-prts] [data-composer-card] textarea:focus-visible,
-html[data-dsh-prts] [data-prts-composer-fallback] textarea:focus-visible {
+html[data-dsh-prts] [data-composer-card] :is(textarea, [data-composer-input]):focus-visible,
+html[data-dsh-prts] [data-prts-composer-fallback] :is(textarea, [data-composer-input]):focus-visible {
   outline: none !important;
 }
 
@@ -406,10 +406,14 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] {
   padding: 10px 12px;
 }
 
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] textarea,
-html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textarea {
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] :is(textarea, [data-composer-input]),
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] :is(textarea, [data-composer-input]) {
   min-height: 64px;
   line-height: 1.55;
+}
+
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] textarea,
+html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textarea {
   resize: vertical;
 }
 

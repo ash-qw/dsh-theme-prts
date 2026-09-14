@@ -5,6 +5,7 @@ import { extname, resolve, sep } from 'node:path'
 const root = process.cwd()
 const port = Number(process.env.PORT || 4173)
 const fixturePath = '/tests/fixtures/rc7-harness.html'
+const injectedFixturePaths = new Set([fixturePath, '/tests/fixtures/rc2-harness.html'])
 
 const fixtureBootstrap = `
 (() => {
@@ -361,7 +362,7 @@ createServer(async (request, response) => {
     if (path !== root && !path.startsWith(root + sep)) throw new Error('Path outside fixture root')
     if (!(await stat(path)).isFile()) throw new Error('Not a file')
     let content = await readFile(path)
-    if (relative === fixturePath) {
+    if (injectedFixturePaths.has(relative)) {
       content = Buffer.from(content.toString('utf8').replace(
         '</body>',
         '<script src="/__fixture_bootstrap.js"></script><script src="/lib/client.js"></script></body>',

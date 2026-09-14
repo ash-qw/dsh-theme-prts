@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><title>DeepSeek Harness 0.1.5 Fixture</title>
+  <style>
+    .frame {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 0;
+      width: 100vw;
+      min-height: 100vh;
+    }
+    [data-slot],
+    [data-slot="root"] { display: contents; }
+    [role="treeitem"] { display: flex; align-items: center; }
+    [data-chat-flow-kind],
+    [data-composer-seat] { width: 100%; max-width: 780px; margin-inline: auto; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div data-slot="root">
+      <div class="frame" data-rightbar-collapsed="true">
+        <aside class="sidebar-col">
+          <div data-slot="sidebar">
+            <div class="sidebar-root">
+              <button type="button" aria-label="New session">New Session</button>
+              <div data-slot="sidebar.workspaces">
+                <div role="tree" aria-label="Sessions">
+                  <div role="treeitem" aria-expanded="true" class="project-row">
+                    <span aria-hidden="true">◇</span>
+                    <span aria-hidden="true">⌄</span>
+                    <span class="project-text"><span class="title">PRTS Workspace</span></span>
+                    <span class="row-actions">
+                      <span><button type="button" aria-label="Workspace actions">…</button></span>
+                      <button type="button" aria-label="New workspace session">＋</button>
+                    </span>
+                  </div>
+                  <div role="treeitem" aria-selected="true" class="session-row">
+                    <span aria-hidden="true">●</span>
+                    <span class="title">Harness 0.1.5 adaptation</span>
+                    <span class="time">Now</span>
+                    <span class="row-actions"><span><button type="button" aria-label="Session actions">…</button></span></span>
+                  </div>
+                </div>
+              </div>
+              <div data-slot="sidebar.settings"><button type="button">Settings</button></div>
+            </div>
+          </div>
+        </aside>
+        <main class="center-col">
+          <div data-slot="main">
+            <div data-slot="main.conversation">
+              <div data-phase="active">
+                <div data-slot="conversation.session.header"><strong>Harness 0.1.5</strong></div>
+                <div data-conversation-scroll>
+                  <div data-chat-flow-kind="assistant-step">Current Harness message</div>
+                  <div data-composer-seat>
+                    <div data-slot="conversation.composer">
+                      <div data-composer-card>
+                        <div role="textbox" aria-multiline="true" contenteditable="true" data-composer-input><p>Ready</p></div>
+                        <button type="button" aria-label="Send message">Send</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <aside class="rightbar-col" data-rightbar-col><div data-slot="rightbar"></div></aside>
+        <div data-shell-overlay><div data-slot="shell.overlay"></div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

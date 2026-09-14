@@ -7,36 +7,73 @@ function closestCommonContainer(root, nodes) {
   return root && nodes.every(node => root.contains(node)) ? root : null
 }
 
+const LAYOUT_CONTRACTS = [
+  {
+    version: '0.1.5',
+    center: '[data-slot="main"]',
+    auxiliary: '[data-slot="rightbar"]',
+  },
+  {
+    version: '0.1.2',
+    center: '[data-slot="conversation"]',
+    auxiliary: '[data-slot="details"]',
+  },
+]
+
 export function resolveRc7Regions(document, report = () => {}) {
   const root = document?.querySelector('[data-slot="root"]')
   const sidebarSlot = root?.querySelector('[data-slot="sidebar"]')
-  const conversationSlot = root?.querySelector('[data-slot="conversation"]')
-  const detailsSlot = root?.querySelector('[data-slot="details"]')
-  if (!root || !sidebarSlot || !conversationSlot || !detailsSlot) {
+  const contract = LAYOUT_CONTRACTS
+    .map(candidate => ({
+      ...candidate,
+      centerSlot: root?.querySelector(candidate.center),
+      auxiliarySlot: root?.querySelector(candidate.auxiliary),
+    }))
+    .find(candidate => candidate.centerSlot && candidate.auxiliarySlot)
+  if (!root || !sidebarSlot || !contract) {
     report('required layout slots are unavailable', {
       root: Boolean(root), sidebar: Boolean(sidebarSlot),
-      conversation: Boolean(conversationSlot), details: Boolean(detailsSlot),
+      main: Boolean(root?.querySelector('[data-slot="main"]')),
+      rightbar: Boolean(root?.querySelector('[data-slot="rightbar"]')),
+      conversation: Boolean(root?.querySelector('[data-slot="conversation"]')),
+      details: Boolean(root?.querySelector('[data-slot="details"]')),
     })
     return null
   }
+  const { centerSlot, auxiliarySlot } = contract
   const sidebar = sidebarSlot?.parentElement
-  const center = conversationSlot?.parentElement
-  const details = detailsSlot?.parentElement
+  const center = centerSlot?.parentElement
+  const auxiliary = auxiliarySlot?.parentElement
 
-  if (!sidebar || !center || !details) {
+  if (!sidebar || !center || !auxiliary) {
     report('required layout region containers are unavailable', {
-      sidebar: Boolean(sidebar), conversation: Boolean(center), details: Boolean(details),
+      sidebar: Boolean(sidebar), center: Boolean(center), auxiliary: Boolean(auxiliary),
     })
     return null
   }
 
-  const frame = closestCommonContainer(root, [sidebar, center, details])
+  const frame = closestCommonContainer(root, [sidebar, center, auxiliary])
   if (!frame) {
     report('common layout container is unavailable')
     return null
   }
 
-  return { root, frame, sidebar, center, details, sidebarSlot, conversationSlot, detailsSlot }
+  return {
+    root,
+    frame,
+    sidebar,
+    center,
+    auxiliary,
+    sidebarSlot,
+    centerSlot,
+    auxiliarySlot,
+    layoutVersion: contract.version,
+    // Legacy aliases keep the internal adapter face compatible with callers
+    // built against the 0.1.2 layout vocabulary.
+    conversationSlot: centerSlot,
+    details: auxiliary,
+    detailsSlot: auxiliarySlot,
+  }
 }
 
 export function createRc7Adapter({ document, warn } = {}) {
@@ -64,7 +101,7 @@ export function createRc7Adapter({ document, warn } = {}) {
         [regions.frame, 'frame'],
         [regions.sidebar, 'sessions'],
         [regions.center, 'operation'],
-        [regions.details, 'details'],
+        [regions.auxiliary, 'auxiliary'],
       ]) {
         owned.push([node, node.getAttribute('data-prts-region')])
         node.setAttribute('data-prts-region', value)
