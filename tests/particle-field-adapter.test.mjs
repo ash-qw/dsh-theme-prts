@@ -97,6 +97,53 @@ test('mounts one ambient field and particle canvas, then removes every owned lay
   assert.equal(dom.window.document.querySelector('[data-prts-particle-layer]'), null)
 })
 
+test('defers particle construction and rendering while the startup sequence is active', () => {
+  const { dom, pendingFrames } = fixture()
+  let arcs = 0
+  dom.window.CanvasRenderingContext2D = class {}
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({
+    setTransform() {},
+    clearRect() {},
+    beginPath() {},
+    arc() { arcs += 1 },
+    fill() {},
+    set fillStyle(value) {},
+  })
+  const adapter = createParticleFieldAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    emblem: '<svg />',
+    emblemMasks: masksFor(),
+  })
+
+  adapter.setStartupActive(true)
+  adapter.update({
+    enabled: true,
+    texture: 'full',
+    motion: 'system',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+  })
+
+  const paused = adapter.inspect()
+  assert.equal(paused.startupPaused, true)
+  assert.equal(paused.suspended, true)
+  assert.equal(paused.particles, 0)
+  assert.equal(paused.targetParticles, 0)
+  assert.equal(paused.firstFrameReady, true)
+  assert.equal(pendingFrames(), 0)
+  assert.equal(dom.window.document.querySelector('[data-prts-particle-layer]').style.visibility, '')
+
+  adapter.setStartupActive(false)
+  const resumed = adapter.inspect()
+  assert.equal(resumed.startupPaused, false)
+  assert.equal(resumed.suspended, false)
+  assert.ok(resumed.particles > 0)
+  assert.ok(arcs > 0)
+  assert.ok(pendingFrames() > 0)
+  adapter.dispose()
+})
+
 test('keeps the communication backdrop mounted when ambient texture is disabled', () => {
   const { dom } = fixture()
   const adapter = createParticleFieldAdapter({

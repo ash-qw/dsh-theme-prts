@@ -220,8 +220,8 @@ test('plays the staged P.R.T.S. sequence only on manual enable', async ({ page }
 
   const startup = page.locator('[data-prts-startup]')
   await expect(startup).toBeVisible()
-  await expect(startup).toHaveAttribute('popover', 'manual')
-  expect(await startup.evaluate(node => node.matches(':popover-open'))).toBe(true)
+  await expect(startup).not.toHaveAttribute('popover', 'manual')
+  expect(await startup.evaluate(node => getComputedStyle(node).zIndex)).toBe('2147483647')
   await expect(page.locator('html')).toHaveAttribute('data-prts-startup-active', '')
   await expect(startup.locator('[data-prts-startup-emblem]')).toHaveJSProperty('naturalWidth', 180)
   await expect(startup.locator('[data-prts-startup-percent]')).toHaveText('100%', { timeout: 2_500 })
@@ -257,7 +257,7 @@ test('takes over only an initial persisted-theme Harness boot surface', async ({
     const style = getComputedStyle(node)
     return { position: style.position, zIndex: style.zIndex, inset: style.inset }
   })
-  expect(startupStyle).toEqual({ position: 'fixed', zIndex: '2147480000', inset: '0px' })
+  expect(startupStyle).toEqual({ position: 'fixed', zIndex: '2147483647', inset: '0px' })
   await startup.evaluate(node => node.setAttribute('data-test-continuity', ''))
 
   await page.locator('[data-dsh-boot]').evaluate(node => node.remove())

@@ -44,7 +44,6 @@ export function applyPrtsPlugin(ctx, environment) {
   const safeMode = isSafeMode(window?.location?.search ?? '')
   const storage = window?.localStorage
   const themeService = contextService(ctx, 'theme')
-  const startup = createPrtsStartupSequence({ document, window, prtsEmblem: assets.prtsEmblem, rhodesEmblem: assets.emblem, timings: startupTimings })
   const composerGlass = createComposerGlassAdapter({ document, window })
   const assistantGlass = createAssistantGlassAdapter({
     document,
@@ -60,6 +59,19 @@ export function applyPrtsPlugin(ctx, environment) {
     onStateChange(next) {
       status = { ...status, particle: next }
       sync()
+    },
+  })
+  const startup = createPrtsStartupSequence({
+    document,
+    window,
+    prtsEmblem: assets.prtsEmblem,
+    rhodesEmblem: assets.emblem,
+    timings: startupTimings,
+    onActiveChange(active) {
+      particleField.setStartupActive(active)
+    },
+    onReady() {
+      particleField.setStartupActive(false)
     },
   })
   const theme = createThemeController({
@@ -144,6 +156,7 @@ export function applyPrtsPlugin(ctx, environment) {
   }
 
   const disposeVisualState = () => {
+    particleField.update({ ...preferences, enabled: false })
     startup.stop({ restoreFocus: false })
     stopStartupReadyWatch()
     stopMountWatch()
@@ -151,7 +164,6 @@ export function applyPrtsPlugin(ctx, environment) {
     disposeOperations()
     composerGlass.dispose()
     assistantGlass.dispose()
-    particleField.update({ ...preferences, enabled: false })
     toBottom.dispose()
     conversationControls.dispose()
     layoutDiagnostics.dispose()
@@ -227,9 +239,11 @@ export function applyPrtsPlugin(ctx, environment) {
       phase: result.persisted ? 'saved' : 'error',
       revision: settingsPersistence.revision + 1,
     }
+    const shouldPlayStartup = !safeMode && !wasEnabled && preferences.enabled && preferences.bootAnimation
+    if (shouldPlayStartup) particleField.setStartupActive(true)
     applyVisualState()
     sync()
-    if (!safeMode && !wasEnabled && preferences.enabled && preferences.bootAnimation) startup.play()
+    if (shouldPlayStartup && !startup.play()) particleField.setStartupActive(false)
   }
 
 
@@ -302,13 +316,13 @@ export function applyPrtsPlugin(ctx, environment) {
   }
   ctx.effect(() => () => {
     statusSource.dispose()
+    particleField.dispose()
     startup.dispose({ restoreFocus: false })
     stopStartupReadyWatch()
     stopMountWatch()
     disposeOperations()
     composerGlass.dispose()
     assistantGlass.dispose()
-    particleField.dispose()
     toBottom.dispose()
     conversationControls.dispose()
     layoutDiagnostics.dispose()

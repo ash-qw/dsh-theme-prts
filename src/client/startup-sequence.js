@@ -24,7 +24,7 @@ const STARTUP_STAGES = Object.freeze({
 
 function startupMarkup(prtsEmblem = '', rhodesEmblem = '') {
   const ticks = Array.from({ length: 21 }, (_, index) => `<i${index % 5 === 0 ? ' data-major' : ''}></i>`).join('')
-  return `<section data-prts-startup data-stage="boot" popover="manual" role="status" aria-live="assertive" aria-label="P.R.T.S. 启动序列" tabindex="-1">
+  return `<section data-prts-startup data-stage="boot" popover="manual" role="status" aria-live="assertive" aria-label="P.R.T.S. 启动序列">
     <div data-prts-startup-grid aria-hidden="true"></div>
     <div data-prts-startup-scan aria-hidden="true"></div>
     <div data-prts-startup-cut="left" aria-hidden="true"></div>
@@ -73,8 +73,50 @@ function easeOutCubic(value) {
   return 1 - Math.pow(1 - clamp01(value), 3)
 }
 
+function approachProgressAt(elapsed, duration) {
+  if (!(duration > 0)) return 90
+  return 90 * easeOutCubic(elapsed / duration)
+}
+
+function approachVelocityAt(elapsed, duration) {
+  if (!(duration > 0)) return 0
+  const remaining = 1 - clamp01(elapsed / duration)
+  return 270 * remaining * remaining / duration
+}
+
+function finishProgressAt(startProgress, startVelocity, elapsed, duration) {
+  if (!(duration > 0)) return 100
+  const progressDelta = Math.max(0, 100 - startProgress)
+  if (progressDelta === 0) return 100
+  const time = clamp01(elapsed / duration)
+  const timeSquared = time * time
+  const timeCubed = timeSquared * time
+  const startWeight = 2 * timeCubed - 3 * timeSquared + 1
+  const velocityWeight = timeCubed - 2 * timeSquared + time
+  const endWeight = -2 * timeCubed + 3 * timeSquared
+  const startTangent = Math.min(progressDelta * 3, Math.max(0, startVelocity) * duration)
+  const progress = startWeight * startProgress
+    + velocityWeight * startTangent
+    + endWeight * 100
+  return Math.max(startProgress, Math.min(100, progress))
+}
+
 export function findNativeHarnessLoader(document) {
   return document?.querySelector?.('[data-dsh-boot]') ?? null
+}
+
+function matchesOpenTopLayer(node) {
+  for (const selector of [':modal', ':popover-open']) {
+    try {
+      if (node?.matches?.(selector)) return true
+    } catch {}
+  }
+  return false
+}
+
+function hostHasOpenTopLayer(document, overlay) {
+  const candidates = [...(document?.querySelectorAll?.('dialog[open], [popover]') ?? [])]
+  return candidates.some(node => node !== overlay && matchesOpenTopLayer(node))
 }
 
 export function createPrtsStartupSequence({
@@ -83,6 +125,8 @@ export function createPrtsStartupSequence({
   prtsEmblem = '',
   rhodesEmblem = '',
   timings = PRTS_STARTUP_TIMINGS,
+  onActiveChange = () => {},
+  onReady = () => {},
 } = {}) {
   const schedule = { ...PRTS_STARTUP_TIMINGS, ...timings }
   let overlay
@@ -95,6 +139,7 @@ export function createPrtsStartupSequence({
   let hostReady = false
   let finishStartedAt
   let finishStartedProgress = 0
+  let finishStartedVelocity = 0
   let readyStartedAt
   let exitStartedAt
   let timeoutStartedAt
@@ -102,7 +147,12 @@ export function createPrtsStartupSequence({
   let pendingStage
   let copyTransitionStartedAt
   let lastProgress = -1
+  let lastRoundedProgress = -1
   let useReducedMotion = false
+  let progressFill
+  let progressPercent
+  let activeReported = false
+  let readyReported = false
 
   const now = () => window?.performance?.now?.() ?? Date.now()
   const requestFrame = callback => window?.requestAnimationFrame?.(callback)
@@ -111,6 +161,21 @@ export function createPrtsStartupSequence({
     if (id === undefined) return
     if (window?.cancelAnimationFrame) window.cancelAnimationFrame(id)
     else window?.clearTimeout?.(id)
+  }
+
+  function notify(callback, value) {
+    try {
+      callback(value)
+    } catch {
+      // Startup remains fail-open when an integration callback fails.
+    }
+  }
+
+  function reportActive(active) {
+    const next = Boolean(active)
+    if (activeReported === next) return
+    activeReported = next
+    notify(onActiveChange, next)
   }
 
   function restoreInteractivity() {
@@ -135,9 +200,12 @@ export function createPrtsStartupSequence({
     }
     overlay?.remove?.()
     overlay = undefined
+    progressFill = undefined
+    progressPercent = undefined
     restoreInteractivity()
     if (restoreFocus && previousFocus?.isConnected) previousFocus.focus?.()
     previousFocus = undefined
+    reportActive(false)
   }
 
   function updateProgress(progress) {
@@ -145,9 +213,12 @@ export function createPrtsStartupSequence({
     const safeProgress = Math.max(0, Math.min(100, progress))
     if (Math.abs(safeProgress - lastProgress) < .01) return
     lastProgress = safeProgress
-    overlay.style.setProperty('--prts-startup-progress', (safeProgress / 100).toFixed(4))
-    const percent = overlay.querySelector('[data-prts-startup-percent]')
-    if (percent) percent.textContent = `${String(Math.round(safeProgress)).padStart(3, '0')}%`
+    if (progressFill) progressFill.style.transform = `scaleX(${(safeProgress / 100).toFixed(4)})`
+    const roundedProgress = Math.round(safeProgress)
+    if (progressPercent && roundedProgress !== lastRoundedProgress) {
+      lastRoundedProgress = roundedProgress
+      progressPercent.textContent = `${String(roundedProgress).padStart(3, '0')}%`
+    }
   }
 
   function applyStage(name) {
@@ -161,6 +232,10 @@ export function createPrtsStartupSequence({
     if (label) label.textContent = stage.label
     if (detail) detail.textContent = stage.detail
     overlay.setAttribute('aria-label', `P.R.T.S. 启动序列：${stage.detail}`)
+    if (name === 'ready' && !readyReported) {
+      readyReported = true
+      notify(onReady)
+    }
   }
 
   function requestStage(name, elapsed) {
@@ -218,7 +293,14 @@ export function createPrtsStartupSequence({
   }
 
   function promoteToTopLayer() {
-    if (typeof overlay?.showPopover !== 'function') return
+    if (!hostHasOpenTopLayer(document, overlay)) {
+      overlay?.removeAttribute('popover')
+      return
+    }
+    if (typeof overlay?.showPopover !== 'function') {
+      overlay?.removeAttribute('popover')
+      return
+    }
     try {
       overlay.showPopover()
     } catch {
@@ -266,7 +348,7 @@ export function createPrtsStartupSequence({
       updateProgress(90)
       if (elapsed - timeoutStartedAt >= schedule.timeoutHold) beginExit(elapsed, { failOpen: true })
     } else {
-      const approachProgress = 90 * easeOutCubic(elapsed / schedule.approach)
+      const approachProgress = approachProgressAt(elapsed, schedule.approach)
       let progress = Math.min(90, approachProgress)
 
       if (!hostReady && elapsed >= schedule.timeout) {
@@ -275,9 +357,14 @@ export function createPrtsStartupSequence({
         if (finishStartedAt === undefined) {
           finishStartedAt = elapsed
           finishStartedProgress = progress
+          finishStartedVelocity = approachVelocityAt(elapsed, schedule.approach)
         }
-        progress = finishStartedProgress
-          + (100 - finishStartedProgress) * easeOutCubic((elapsed - finishStartedAt) / schedule.finish)
+        progress = finishProgressAt(
+          finishStartedProgress,
+          finishStartedVelocity,
+          elapsed - finishStartedAt,
+          schedule.finish,
+        )
         if (elapsed - finishStartedAt >= schedule.finish) {
           progress = 100
           requestStage('ready', elapsed)
@@ -332,18 +419,24 @@ export function createPrtsStartupSequence({
     readyStartedAt = undefined
     exitStartedAt = undefined
     timeoutStartedAt = undefined
+    finishStartedVelocity = 0
     currentStage = 'boot'
     pendingStage = undefined
     copyTransitionStartedAt = undefined
     lastProgress = -1
+    activeReported = false
+    readyReported = false
     useReducedMotion = reducedMotionRequested(reduced)
 
     previousFocus = document.activeElement
+    lastRoundedProgress = -1
     document.body.appendChild(overlay)
+    progressFill = overlay.querySelector('[data-prts-startup-fill]')
+    progressPercent = overlay.querySelector('[data-prts-startup-percent]')
     promoteToTopLayer()
     document.documentElement.setAttribute('data-prts-startup-active', '')
     lockSiblings()
-    overlay.focus?.({ preventScroll: true })
+    reportActive(true)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     if (useReducedMotion) {

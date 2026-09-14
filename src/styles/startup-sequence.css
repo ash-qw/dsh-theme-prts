@@ -1,13 +1,12 @@
-/* P.R.T.S. startup overlay. Popover promotes it above host dialogs; z-index is the legacy fallback. */
+/* P.R.T.S. startup overlay. Fixed composition is the fast path; Popover is reserved for an active Host top layer. */
 html[data-dsh-prts] [data-prts-startup] {
   --prts-startup-bg: #07090b;
   --prts-startup-ink: #e8edef;
   --prts-startup-muted: #7d898f;
   --prts-startup-line: #394349;
   --prts-startup-accent: #f0c800;
-  --prts-startup-progress: 0;
   position: fixed;
-  z-index: 2147480000;
+  z-index: 2147483647;
   inset: 0;
   width: 100vw;
   max-width: none;
@@ -20,10 +19,10 @@ html[data-dsh-prts] [data-prts-startup] {
   overflow: hidden;
   isolation: isolate;
   box-sizing: border-box;
-  background: transparent;
+  background: var(--prts-startup-bg);
   color: var(--prts-startup-ink);
   font-family: var(--prts-body, sans-serif);
-  opacity: 0;
+  opacity: 1;
   outline: 0;
   pointer-events: auto;
   transition: opacity 120ms ease;
@@ -44,7 +43,9 @@ html[data-dsh-prts] [data-prts-startup]::after {
 html[data-dsh-prts] [data-prts-startup]::before { left: 0; }
 html[data-dsh-prts] [data-prts-startup]::after { right: 0; }
 
-html[data-dsh-prts] [data-prts-startup][data-visible] { opacity: 1; }
+html[data-dsh-prts] [data-prts-startup][data-exiting]:not([data-reduced-motion]) {
+  background: transparent;
+}
 
 html[data-dsh-prts] [data-prts-startup][data-exiting]::before {
   transform: translate3d(-101%, 0, 0);
@@ -347,6 +348,7 @@ html[data-dsh-prts] [data-prts-startup-track] {
 }
 
 html[data-dsh-prts] [data-prts-startup-fill] {
+  --prts-startup-progress: 0;
   position: absolute;
   top: -2px;
   right: 0;
@@ -356,6 +358,7 @@ html[data-dsh-prts] [data-prts-startup-fill] {
   transform: scaleX(var(--prts-startup-progress));
   transform-origin: left center;
   will-change: transform;
+  transition: transform 80ms linear;
 }
 
 html[data-dsh-prts] [data-prts-startup-ticks] {
@@ -404,6 +407,10 @@ html[data-dsh-prts] [data-prts-startup][data-reduced-motion] [data-prts-startup-
   clip-path: none;
   transform: none;
   animation: none;
+  transition: none;
+}
+
+html[data-dsh-prts] [data-prts-startup][data-reduced-motion] [data-prts-startup-fill] {
   transition: none;
 }
 

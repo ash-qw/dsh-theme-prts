@@ -326,7 +326,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   const rhodesIndex = Math.max(0, emblemSequence.findIndex(entry => entry.key === 'rhodes-island'))
   const suppliedHeroMask = normalizeEmblemMasks(heroEmblemMask ? [heroEmblemMask] : [], window).get('rhodes-island-hero')
   const empty = { mounted: false, hero: false, side: -1, transition: null, anchor: { horizontalProgress: 0, verticalProgress: 0 }, phase: 'error', error: '徽记资源异常' }
-  if (!document || !window) return { update() {}, setSchemeTransitionActive() {}, inspect: () => empty, dispose() {} }
+  if (!document || !window) return { update() {}, setStartupActive() {}, setSchemeTransitionActive() {}, inspect: () => empty, dispose() {} }
 
   let preferences = {}
   let operation
@@ -396,6 +396,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   let pauseStartedAt
   let hydrationPaused = false
   let schemeTransitionPaused = false
+  let startupPaused = false
   let hydrationTimer
   let hydrationFrame
   let hydrationStableFrames = 0
@@ -429,7 +430,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     : preferences.conversationParticleDensity
   const densityProfile = density => PARTICLE_DENSITY_PROFILES[density] ?? PARTICLE_DENSITY_PROFILES.standard
   const particleRadius = density => densityProfile(density ?? activeDensity()).radius
-  const canRenderFrame = () => !disposed && documentVisible && canvasVisible && !hydrationPaused && !schemeTransitionPaused && !resizing
+  const canRenderFrame = () => !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && !schemeTransitionPaused && !resizing
   const layoutWidth = () => width
   const layoutHeight = () => height
   const layoutShiftX = () => 0
@@ -707,6 +708,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function buildParticles() {
+    if (startupPaused) return false
     const selected = populationSource()
     if (!selected.length) {
       reportState({ phase: 'error', error: '徽记资源异常' })
@@ -1646,14 +1648,17 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       cancelFrame()
       return
     }
-    if (pauseStartedAt !== undefined) {
-      resumePausedTimelines(now)
-      if (canvas && particles.length) {
-        syncCanvasBackingStore()
-        cancelFrame()
-        draw(now)
-        return
-      }
+    const resumedFromPause = pauseStartedAt !== undefined
+    if (resumedFromPause) resumePausedTimelines(now)
+    let particlesBuilt = false
+    if (canvas && !particles.length && maskRecords.length) {
+      particlesBuilt = buildParticles()
+    }
+    if (canvas && particles.length && (resumedFromPause || particlesBuilt)) {
+      syncCanvasBackingStore()
+      cancelFrame()
+      draw(now)
+      return
     }
     scheduleFrame()
   }
@@ -1819,6 +1824,12 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   if (!mediaQuery?.addEventListener) mediaQuery?.addListener?.(mediaListener)
   document.addEventListener?.('visibilitychange', onVisibilityChange)
   return {
+    setStartupActive(active) {
+      const next = Boolean(active)
+      if (startupPaused === next) return
+      startupPaused = next
+      updateFrameGate()
+    },
     setSchemeTransitionActive(active) {
       const next = Boolean(active)
       if (schemeTransitionPaused === next) return
@@ -1903,12 +1914,13 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
           : transition?.toCount !== undefined
             ? Math.round(transition.fromCount + (transition.toCount - transition.fromCount) * easeInOut(transition.progress))
             : particles.length,
-        targetParticles: transition?.toCount ?? targetParticleCount(),
+        targetParticles: startupPaused && !particles.length ? 0 : transition?.toCount ?? targetParticleCount(),
         density: activeDensity() || 'standard',
         firstFrameReady: canvas?.hasAttribute('data-prts-particle-ready') === true,
         hydrationPaused,
         sleeping: Boolean(context && particles.length && frame === undefined && canRenderFrame() && !motionReduced() && !phoneStatic()),
         schemeTransitionPaused,
+        startupPaused,
         pointer: {
           active: pointerActive,
           clientX: pointerClientX,

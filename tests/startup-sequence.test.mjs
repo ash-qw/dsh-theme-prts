@@ -21,6 +21,38 @@ function createFixture({ boot = false } = {}) {
   return dom
 }
 
+function controlAnimationFrames(window) {
+  let pendingFrame
+  let nextId = 0
+  window.requestAnimationFrame = callback => {
+    pendingFrame = callback
+    nextId += 1
+    return nextId
+  }
+  window.cancelAnimationFrame = () => {
+    pendingFrame = undefined
+  }
+  return {
+    step(timestamp) {
+      const callback = pendingFrame
+      pendingFrame = undefined
+      assert.equal(typeof callback, 'function', 'an animation frame must be pending')
+      callback(timestamp)
+    },
+  }
+}
+
+function renderedProgress(fill) {
+  return Number.parseFloat(fill.style.transform.match(/scaleX\(([^)]+)\)/)?.[1] ?? '0') * 100
+}
+
+function markHostTopLayer(document) {
+  const host = document.querySelector('[data-host]')
+  host.setAttribute('popover', 'manual')
+  const matches = host.matches.bind(host)
+  host.matches = selector => selector === ':popover-open' || matches(selector)
+}
+
 const fastTimings = Object.freeze({
   enter: 0,
   minimum: 0,
@@ -43,28 +75,39 @@ test('runs one coordinated sequence, preserves the exact emblem source, and rest
   const { document } = dom.window
   const button = document.querySelector('button')
   button.focus()
+  const lifecycle = []
   const startup = createPrtsStartupSequence({
     document,
     window: dom.window,
     prtsEmblem: 'data:image/png;base64,EXACT-PRTS',
     rhodesEmblem: '<svg viewBox="0 0 10 10"></svg>',
     timings: { ...fastTimings, exitLead: 30, exit: 50 },
+    onActiveChange(active) {
+      lifecycle.push(`active:${active}`)
+    },
+    onReady() {
+      lifecycle.push('ready')
+    },
   })
 
   assert.equal(startup.play({ reduced: false }), true)
   assert.equal(startup.play({ reduced: false }), false, 'duplicate triggers must be ignored')
   const overlay = document.querySelector('[data-prts-startup]')
   assert.ok(overlay)
-  assert.equal(overlay.getAttribute('popover'), 'manual')
+  assert.equal(overlay.hasAttribute('popover'), false)
   assert.equal(overlay.querySelector('[data-prts-startup-emblem]').getAttribute('src'), 'data:image/png;base64,EXACT-PRTS')
   assert.ok(overlay.querySelector('[data-prts-startup-signature] svg'))
   assert.equal(document.querySelector('[data-host]').hasAttribute('inert'), true)
   assert.equal(document.documentElement.hasAttribute('data-prts-startup-active'), true)
+  assert.equal(overlay.hasAttribute('tabindex'), false)
+  assert.equal(document.activeElement, button, 'startup must not synchronously steal focus')
+  assert.deepEqual(lifecycle, ['active:true'])
 
   await waitFor(dom.window, () => overlay.dataset.stage === 'ready')
   assert.equal(overlay.dataset.stage, 'ready')
   assert.equal(overlay.querySelector('[data-prts-startup-percent]').textContent, '100%')
   assert.equal(overlay.querySelector('[data-prts-startup-label]').textContent, 'P.R.T.S. READY')
+  assert.deepEqual(lifecycle, ['active:true', 'ready'])
 
   await waitFor(dom.window, () => overlay.hasAttribute('data-exit-content'))
   assert.equal(overlay.hasAttribute('data-exiting'), false, 'content must settle before the curtains open')
@@ -76,6 +119,39 @@ test('runs one coordinated sequence, preserves the exact emblem source, and rest
   assert.equal(document.documentElement.hasAttribute('data-prts-startup-active'), false)
   assert.equal(document.activeElement, button)
   assert.equal(startup.isActive(), false)
+  assert.deepEqual(lifecycle, ['active:true', 'ready', 'active:false'])
+})
+
+test('keeps completion velocity continuous and skips duplicate percentage writes', () => {
+  const dom = createFixture()
+  const { document } = dom.window
+  const frames = controlAnimationFrames(dom.window)
+  const startup = createPrtsStartupSequence({ document, window: dom.window })
+
+  assert.equal(startup.play({ reduced: false }), true)
+  const overlay = document.querySelector('[data-prts-startup]')
+  const fill = overlay.querySelector('[data-prts-startup-fill]')
+  const percent = overlay.querySelector('[data-prts-startup-percent]')
+
+  frames.step(0)
+  const initialTextNode = percent.firstChild
+  frames.step(1)
+  assert.equal(percent.firstChild, initialTextNode, 'an unchanged rounded percentage must not rewrite text')
+  assert.equal(overlay.style.getPropertyValue('--prts-startup-progress'), '')
+
+  frames.step(544)
+  const beforeSwitch = renderedProgress(fill)
+  frames.step(560)
+  const atSwitch = renderedProgress(fill)
+  frames.step(576)
+  const afterSwitch = renderedProgress(fill)
+  const approachDelta = atSwitch - beforeSwitch
+  const finishDelta = afterSwitch - atSwitch
+
+  assert.ok(approachDelta > 0)
+  assert.ok(finishDelta > 0)
+  assert.ok(finishDelta < approachDelta * 2, `completion delta ${finishDelta} must remain close to approach delta ${approachDelta}`)
+  startup.stop()
 })
 
 test('holds below completion until the native Harness boot surface leaves, then finishes', async () => {
@@ -139,6 +215,7 @@ test('fails open without presenting a host readiness delay as an error', async (
 test('promotes the overlay to the top layer and leaves it safely on cleanup', () => {
   const dom = createFixture()
   const { document, HTMLElement } = dom.window
+  markHostTopLayer(document)
   let showCalls = 0
   let hideCalls = 0
   HTMLElement.prototype.showPopover = function showPopover() {
@@ -163,6 +240,7 @@ test('promotes the overlay to the top layer and leaves it safely on cleanup', ()
 test('keeps the fixed fallback visible when top-layer promotion fails', () => {
   const dom = createFixture()
   const { document, HTMLElement } = dom.window
+  markHostTopLayer(document)
   HTMLElement.prototype.showPopover = () => {
     throw new dom.window.DOMException('Unavailable', 'InvalidStateError')
   }
