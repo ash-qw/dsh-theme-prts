@@ -3,12 +3,12 @@ import test from 'node:test'
 
 import * as api from '../src/client/preferences.js'
 
-test('normalizes unsupported values into the disabled version-eight defaults', () => {
+test('normalizes unsupported values into the disabled version-nine defaults', () => {
   assert.deepEqual(
     api.normalizePreferences({ enabled: 'yes', scheme: 'neon', dossier: 0 }),
     api.DEFAULT_PREFERENCES,
   )
-  assert.equal(api.DEFAULT_PREFERENCES.version, 8)
+  assert.equal(api.DEFAULT_PREFERENCES.version, 9)
   assert.equal(api.DEFAULT_PREFERENCES.railDefaultHidden, false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassHighlight'), false)
@@ -24,6 +24,18 @@ test('uses one four-state glass preference while migrating version-one controls'
   const migrated = api.normalizePreferences({ version: 1, glassHighlight: false })
   assert.equal(Object.hasOwn(migrated, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(migrated, 'glassHighlight'), false)
+})
+
+test('keeps the conversation theme switch independent from visual presets', () => {
+  assert.equal(api.DEFAULT_PREFERENCES.conversationStyle, 'deck-chat')
+  assert.equal(api.normalizePreferences({ version: 8 }).conversationStyle, 'deck-chat')
+  assert.equal(api.normalizePreferences({ version: 9, conversationStyle: 'unsupported' }).conversationStyle, 'deck-chat')
+
+  const native = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationStyle', 'native')
+  assert.equal(native.conversationStyle, 'native')
+  assert.equal(native.preset, 'standard-tactical')
+  assert.equal(api.applyVisualPreset(native, 'quiet-reading').conversationStyle, 'native')
+  assert.equal(api.resetPreferenceGroup(native, 'conversation').conversationStyle, 'deck-chat')
 })
 
 test('loads and migrates a complete version-one payload without losing independent choices', () => {
@@ -43,7 +55,7 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
-    version: 8,
+    version: 9,
     enabled: true,
     preset: 'custom',
     texture: 'full',
@@ -55,6 +67,7 @@ test('loads and migrates a complete version-one payload without losing independe
     particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
     railDefaultHidden: false,
+    conversationStyle: 'deck-chat',
   })
 })
 
@@ -64,13 +77,13 @@ test('falls back after malformed, unsupported, and unavailable storage', () => {
   assert.deepEqual(api.loadPreferences({ getItem: () => { throw new Error('blocked') } }), api.DEFAULT_PREFERENCES)
 })
 
-test('persists only the normalized version-eight payload', () => {
+test('persists only the normalized version-nine payload', () => {
   let written
   const storage = { setItem: (key, value) => { written = [key, value] } }
   const saved = api.savePreferences(storage, { version: 1, enabled: true, texture: 'off', glassEnabled: false })
   assert.equal(written[0], 'dsh.ui.prts.v1')
   assert.deepEqual(JSON.parse(written[1]), saved)
-  assert.equal(saved.version, 8)
+  assert.equal(saved.version, 9)
   assert.equal(saved.glass, 'off')
   assert.equal(Object.hasOwn(saved, 'glassEnabled'), false)
 })
@@ -176,7 +189,7 @@ test('migrates retired algorithms into one orthogonal density pair', () => {
       orthogonal: { conversation: 'sparse', hero: 'light' },
     },
   })
-  assert.equal(migrated.version, 8)
+  assert.equal(migrated.version, 9)
   assert.equal(migrated.particlePattern, 'orthogonal')
   assert.equal(migrated.conversationParticleDensity, 'dense')
   assert.equal(migrated.heroParticleDensity, 'ultra')

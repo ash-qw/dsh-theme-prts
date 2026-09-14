@@ -273,37 +273,52 @@ test('takes over only an initial persisted-theme Harness boot surface', async ({
   await expect(page.locator('[data-prts-startup]')).toHaveCount(0)
 })
 
-test('keeps assistant output native while glass controls continue to theme user and composer surfaces', async ({ page }) => {
+test('renders user and assistant as directional chat bubbles with speaker avatars', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
-  await setPreferences(page, { ...enabled, enabled: false })
-  await populateGlassPreview(page)
-  const nativeAssistant = await captureAssistantPresentation(page)
-
   await setPreferences(page)
   await populateGlassPreview(page)
-  expect(await captureAssistantPresentation(page)).toEqual(nativeAssistant)
+  const hostConversationSurface = page.locator('[data-conversation-scroll]')
+  await hostConversationSurface.evaluate(node => {
+    node.setAttribute('data-phase', 'ready')
+    node.style.backgroundColor = 'rgb(238, 241, 243)'
+  })
+  await expect(hostConversationSurface).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
 
   const root = page.locator('html')
   const messageOuter = page.locator('[data-glass-complex]')
   const simpleMessageOuter = page.locator('[data-glass-simple]')
   const userTurn = page.locator('[data-chat-flow-kind="user"]')
   const userBubble = page.locator('[data-chat-flow-kind="user"] [class$="_bubble"]')
+  const assistantBody = page.locator('[data-glass-complex] .fixture_body')
+  const assistantStep = page.locator('[data-glass-complex]')
   const composer = page.locator('[data-composer-card]')
+
   await expect(root).toHaveAttribute('data-prts-glass', 'standard')
-  await expect(userBubble).not.toHaveCSS('background-color', 'rgb(255, 255, 255)')
-  expect(await userTurn.evaluate(node => getComputedStyle(node, '::before').content)).toBe('none')
-  await expect(userBubble).toHaveCSS('border-left-width', '4px')
-  await expect(userBubble).toHaveCSS('border-radius', '3px')
-  await expect(userBubble).toHaveCSS('padding', '10px 14px')
+  await expect(root).toHaveAttribute('data-prts-conversation-style', 'deck-chat')
+  await expect(assistantBody).toHaveAttribute('data-prts-ai-surface', 'body')
+  await assistantBody.evaluate(node => node.removeAttribute('data-prts-ai-surface'))
+  await expect(assistantBody).toHaveCSS('border-radius', '6px 18px 18px')
+  await assistantBody.evaluate(node => node.setAttribute('data-prts-ai-surface', 'body'))
+  expect(await root.evaluate(node => node.style.getPropertyValue('--prts-assistant-avatar-image'))).toContain('data:image/png;base64')
+  expect(await userTurn.evaluate(node => getComputedStyle(node, '::after').content)).toBe('"我"')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::before').backgroundImage)).toContain('data:image/png;base64')
+  await expect(userBubble).toHaveCSS('border-radius', '18px 6px 18px 18px')
+  await expect(userBubble).toHaveCSS('padding', '13px 18px')
+  await expect(assistantBody).toHaveCSS('border-radius', '6px 18px 18px')
+  await expect(assistantBody).toHaveCSS('padding', '16px 22px')
+  await expect(userBubble).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(assistantBody).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(messageOuter).toHaveCSS('max-width', '748px')
   await expect(simpleMessageOuter).toHaveCSS('max-width', '748px')
   await expect(page.locator('.fixture_userStack')).toHaveCSS('max-width', 'min(525px, 82%)')
-  const nativeAxes = await page.evaluate(() => ({
+
+  const axes = await page.evaluate(() => ({
     body: document.querySelector('[data-glass-complex]').getBoundingClientRect().width,
     composer: document.querySelector('[data-composer-seat]').getBoundingClientRect().width,
   }))
-  expect(nativeAxes.body).toBeCloseTo(748, 0)
-  expect(nativeAxes.composer).toBeCloseTo(780, 0)
+  expect(axes.body).toBeCloseTo(748, 0)
+  expect(axes.composer).toBeCloseTo(780, 0)
+
   await expect.poll(() => composer.evaluate(node => ({
     outerFilter: getComputedStyle(node).backdropFilter,
     outerClip: getComputedStyle(node).clipPath,
@@ -318,6 +333,7 @@ test('keeps assistant output native while glass controls continue to theme user 
     decorationClip: expect.stringContaining('polygon'),
   })
 
+  const themedAssistant = await captureAssistantPresentation(page)
   await page.getByRole('button', { name: 'P.R.T.S. 终端设置' }).click()
   const appearance = page.locator('[data-prts-theme-settings]')
   await expect(appearance).toBeVisible()
@@ -327,18 +343,64 @@ test('keeps assistant output native while glass controls continue to theme user 
   await expect(appearance.locator('[data-prts-scale-calibration]')).toHaveCount(0)
   await expect(appearance.locator('[data-prts-settings-advanced] summary')).toContainText('粒子效果')
 
+  const ambient = page.locator('[data-prts-ambient-layer]')
+  await expect(ambient).toHaveCSS('opacity', '1')
+  expect(await ambient.evaluate(node => getComputedStyle(node).backgroundImage)).toContain('linear-gradient')
+  expect(await ambient.evaluate(node => getComputedStyle(node).backgroundImage)).not.toContain('conic-gradient')
+  expect(await ambient.evaluate(node => getComputedStyle(node, '::before').display)).toBe('none')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::after').backgroundImage)).toContain('linear-gradient')
+  const textureControls = appearance.locator('[data-prts-setting-row="texture"]')
+  await textureControls.getByRole('button', { name: '关闭' }).click()
+  await expect(root).toHaveAttribute('data-prts-texture', 'off')
+  await expect(ambient).toBeVisible()
+  expect(await ambient.evaluate(node => getComputedStyle(node).backgroundImage)).toContain('linear-gradient')
+  await textureControls.getByRole('button', { name: '完整' }).click()
+  await expect(root).toHaveAttribute('data-prts-texture', 'full')
+
   const glassControls = appearance.locator('[data-prts-setting-row="glass"]')
   await glassControls.getByRole('button', { name: '柔和' }).click()
-  await expect(root).toHaveAttribute('data-prts-glass', 'soft')
   await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('blur(18px) saturate(1.45)')
-  expect(await captureAssistantPresentation(page)).toEqual(nativeAssistant)
+  expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
   await glassControls.getByRole('button', { name: '清晰' }).click()
-  await expect(root).toHaveAttribute('data-prts-glass', 'clear')
   await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('blur(28px) saturate(1.8)')
-  expect(await captureAssistantPresentation(page)).toEqual(nativeAssistant)
+  expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
   await glassControls.getByRole('button', { name: '关闭' }).click()
-  await expect(root).toHaveAttribute('data-prts-glass', 'off')
-  expect(await captureAssistantPresentation(page)).toEqual(nativeAssistant)
+  expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
+
+  const conversationThemeControls = appearance.locator('[data-prts-setting-row="conversationStyle"]')
+  await conversationThemeControls.getByRole('button', { name: '原有' }).click()
+  await expect(root).toHaveAttribute('data-prts-conversation-style', 'native')
+  await expect.poll(() => assistantBody.getAttribute('data-prts-ai-surface')).toBeNull()
+  expect(await root.evaluate(node => node.style.getPropertyValue('--prts-assistant-avatar-image'))).toBe('')
+  expect(await userTurn.evaluate(node => getComputedStyle(node, '::after').content)).toBe('none')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::before').content)).toBe('none')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::after').content)).toBe('none')
+  await expect(userBubble).toHaveCSS('border-radius', '3px')
+  await expect(assistantBody).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  expect(await page.locator('[data-prts-ambient-layer]').evaluate(node => getComputedStyle(node).backgroundImage)).toContain('repeating-linear-gradient')
+
+  await conversationThemeControls.getByRole('button', { name: '通讯链路' }).click()
+  await expect(root).toHaveAttribute('data-prts-conversation-style', 'deck-chat')
+  await expect(assistantBody).toHaveAttribute('data-prts-ai-surface', 'body')
+  expect(await root.evaluate(node => node.style.getPropertyValue('--prts-assistant-avatar-image'))).toContain('data:image/png;base64')
+  expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
+  expect(JSON.parse(await page.evaluate(() => localStorage.getItem('dsh.ui.prts.v1'))).conversationStyle).toBe('deck-chat')
+
+  await page.locator('[data-prts-theme-settings-close]').click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await setNativeSidebarCollapsed(page, true)
+  await expectNoHorizontalOverflow(page)
+  await expect(userBubble).toHaveCSS('border-radius', '16px 5px 16px 16px')
+  await expect(userBubble).toHaveCSS('padding', '11px 15px')
+  await expect(assistantBody).toHaveCSS('border-radius', '5px 16px 16px')
+  await expect(assistantBody).toHaveCSS('padding', '13px 16px')
+  await expect(userTurn).toHaveCSS('padding-left', '8px')
+  await expect(userTurn).toHaveCSS('padding-right', '50px')
+  await expect(assistantStep).toHaveCSS('padding-left', '50px')
+  await expect(assistantStep).toHaveCSS('padding-right', '8px')
+  expect(await userTurn.evaluate(node => getComputedStyle(node, '::after').right)).toBe('8px')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::before').left)).toBe('8px')
+  expect(await assistantStep.evaluate(node => getComputedStyle(node, '::after').display)).toBe('none')
 })
 
 test('keeps theme settings readable from phone width through 4K desktop', async ({ page }) => {
@@ -524,7 +586,7 @@ test("keeps the particle field mounted while long conversations cross viewport b
   await surface.evaluate(node => { node.scrollTop = 760 })
   await page.waitForTimeout(1100)
   await expect(page.getByText('粒子迁移检查：消息文字必须保持清晰。')).toBeVisible()
-  await expect(page.locator('[data-message-role="assistant"]').last()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(page.locator('[data-message-role="assistant"]').last()).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expectReadableNativeComponents(page)
 })
 
@@ -569,7 +631,10 @@ test('keeps daylight appearance controls distinct and readable', async ({ page }
   })
   expect(materials.selected).not.toEqual(materials.unselected)
   const visualOptions = settings.locator('[data-prts-settings-common] [data-prts-setting-key]')
-  await expect(visualOptions).toHaveCount(11)
+  await expect(visualOptions).toHaveCount(13)
+  const conversationThemeOptions = settings.locator('[data-prts-setting-row="conversationStyle"] [data-prts-setting-key]')
+  await expect(conversationThemeOptions).toHaveCount(2)
+  await expect(conversationThemeOptions.filter({ hasText: '通讯链路' })).toHaveClass(/is-selected/)
   const firstVisual = visualOptions.first()
   const visualContrast = await contrastRatio(firstVisual)
   const visualColors = await firstVisual.evaluate(node => ({

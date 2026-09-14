@@ -1,5 +1,6 @@
 export const ASSISTANT_SURFACE_ATTRIBUTE = 'data-prts-ai-surface'
 export const ASSISTANT_STATE_ATTRIBUTE = 'data-prts-ai-surface-state'
+export const ASSISTANT_AVATAR_PROPERTY = '--prts-assistant-avatar-image'
 
 const STEP_SELECTOR = '[data-chat-flow-kind="assistant-step"]'
 const CONTENT_HINT_SELECTOR = [
@@ -16,6 +17,7 @@ const EXCLUDED_SELECTOR = [
 ].join(', ')
 const SCAN_CHUNK_LIMIT = 64
 const SCAN_BUDGET_MS = 4
+const INITIAL_LATEST_LIMIT = 12
 
 function isElement(node) {
   return node?.nodeType === 1
@@ -90,13 +92,42 @@ export function resolveAssistantSurface(step) {
   return resolution(step).surface
 }
 
-export function createAssistantGlassAdapter({ document, window }) {
+function cssUrl(value) {
+  if (!value) return ''
+  const escaped = String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"')
+    .replaceAll('\n', '')
+  return `url("${escaped}")`
+}
+
+export function createAssistantGlassAdapter({ document, window, avatarImage = '' }) {
   let observer
   let scanFrame
   const ownedSurfaces = new Set()
   const ownedSteps = new Set()
   const stepSurfaces = new Map()
   const pendingSteps = new Set()
+  let previousAvatarImage
+  let ownsAvatarImage = false
+
+  function mountAvatarImage() {
+    const root = document?.documentElement
+    const value = cssUrl(avatarImage)
+    if (!root?.style || !value || ownsAvatarImage) return
+    previousAvatarImage = root.style.getPropertyValue(ASSISTANT_AVATAR_PROPERTY)
+    root.style.setProperty(ASSISTANT_AVATAR_PROPERTY, value)
+    ownsAvatarImage = true
+  }
+
+  function releaseAvatarImage() {
+    if (!ownsAvatarImage) return
+    const root = document?.documentElement
+    if (previousAvatarImage) root?.style?.setProperty(ASSISTANT_AVATAR_PROPERTY, previousAvatarImage)
+    else root?.style?.removeProperty(ASSISTANT_AVATAR_PROPERTY)
+    previousAvatarImage = undefined
+    ownsAvatarImage = false
+  }
 
   function collectSteps(node, includeParent = true) {
     if (!isElement(node)) return
@@ -105,6 +136,23 @@ export function createAssistantGlassAdapter({ document, window }) {
     if (includeParent) {
       const parentStep = node.closest?.(STEP_SELECTOR)
       if (parentStep) pendingSteps.add(parentStep)
+    }
+  }
+
+  function collectInitialSteps(node) {
+    if (!isElement(node)) return
+    const steps = [...(node.querySelectorAll?.(STEP_SELECTOR) ?? [])]
+    if (node.matches?.(STEP_SELECTOR)) steps.unshift(node)
+    const priorityStart = Math.max(0, steps.length - INITIAL_LATEST_LIMIT)
+
+    // The host restores conversations in chronological DOM order. Resolve the
+    // newest screenful synchronously so the startup cover never reveals plain
+    // assistant content while an older history backlog is still being scanned.
+    for (let index = steps.length - 1; index >= priorityStart; index -= 1) {
+      processStep(steps[index])
+    }
+    for (let index = priorityStart - 1; index >= 0; index -= 1) {
+      pendingSteps.add(steps[index])
     }
   }
 
@@ -201,12 +249,13 @@ export function createAssistantGlassAdapter({ document, window }) {
   return {
     start() {
       if (!document) return
+      mountAvatarImage()
       const observationRoot = document.querySelector('[data-prts-region="operation"]')
         ?? document.querySelector('[data-slot="conversation"]')
       if (!observationRoot) return
-      collectSteps(observationRoot)
-      scan()
       if (observer) return
+      collectInitialSteps(observationRoot)
+      scan()
       const Observer = window?.MutationObserver
       if (!Observer) return
       observer = new Observer(onMutations)
@@ -226,6 +275,7 @@ export function createAssistantGlassAdapter({ document, window }) {
       }
       scanFrame = undefined
       removeMarkers()
+      releaseAvatarImage()
     },
   }
 }

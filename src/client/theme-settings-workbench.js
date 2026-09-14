@@ -19,6 +19,7 @@ const COMMON_CONTROLS = [
   ['texture', '环境底纹', [['off', '关闭'], ['restrained', '克制'], ['full', '完整']]],
   ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],
   ['motion', '动态效果', [['system', '跟随系统'], ['reduced', '减少']]],
+  ['conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']]],
 ]
 
 const PARTICLE_OPTIONS = [
@@ -34,6 +35,8 @@ function settingButtons(key, label, options) {
       ? '<small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
       : key === 'railDefaultHidden'
         ? '<small data-prts-setting-note>在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开</small>'
+      : key === 'conversationStyle'
+        ? '<small data-prts-setting-note>立即切换会话背景、头像与消息气泡</small>'
       : ''
   const sample = value => key === 'texture' || key === 'glass'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`

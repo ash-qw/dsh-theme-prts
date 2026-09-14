@@ -46,7 +46,11 @@ export function applyPrtsPlugin(ctx, environment) {
   const themeService = contextService(ctx, 'theme')
   const startup = createPrtsStartupSequence({ document, window, prtsEmblem: assets.prtsEmblem, rhodesEmblem: assets.emblem, timings: startupTimings })
   const composerGlass = createComposerGlassAdapter({ document, window })
-  const assistantGlass = createAssistantGlassAdapter({ document, window })
+  const assistantGlass = createAssistantGlassAdapter({
+    document,
+    window,
+    avatarImage: assets.prtsEmblem,
+  })
   const particleField = createParticleFieldAdapter({
     document,
     window,
@@ -206,7 +210,8 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     particleField.update(preferences)
     composerGlass.start()
-    assistantGlass.start()
+    if (preferences.conversationStyle === 'deck-chat') assistantGlass.start()
+    else assistantGlass.dispose()
     toBottom.start()
     conversationControls.start()
     layoutDiagnostics.start()

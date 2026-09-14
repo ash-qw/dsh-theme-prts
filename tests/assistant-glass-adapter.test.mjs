@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom'
 
 import {
   ASSISTANT_STATE_ATTRIBUTE,
+  ASSISTANT_AVATAR_PROPERTY,
   ASSISTANT_SURFACE_ATTRIBUTE,
   createAssistantGlassAdapter,
   resolveAssistantSurface,
@@ -41,6 +42,38 @@ test('crosses the rc.7 display-contents slot and marks the real assistant body',
   assert.equal(step.getAttribute(ASSISTANT_STATE_ATTRIBUTE), 'body')
   assert.equal(slot.hasAttribute(ASSISTANT_SURFACE_ATTRIBUTE), false)
   assert.equal(step.hasAttribute(ASSISTANT_SURFACE_ATTRIBUTE), false)
+  adapter.dispose()
+})
+
+test('marks the newest screenful before yielding an older history backlog', () => {
+  const turns = Array.from({ length: 96 }, (_, index) =>
+    '\n    <div data-chat-flow-kind="assistant-step" data-index="' + index + '">' +
+    '\n      <div class="fixture_root"><div class="fixture_body"><div data-markdown>回复 ' + index + '</div></div></div>' +
+    '\n    </div>'
+  ).join('')
+  const dom = domWith(turns)
+  const { document } = dom.window
+  let clock = 0
+  Object.defineProperty(dom.window.performance, 'now', {
+    configurable: true,
+    value: () => (clock += 5),
+  })
+  const queuedFrames = []
+  dom.window.requestAnimationFrame = callback => {
+    queuedFrames.push(callback)
+    return queuedFrames.length
+  }
+  dom.window.cancelAnimationFrame = () => {}
+
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const steps = [...document.querySelectorAll('[data-chat-flow-kind="assistant-step"]')]
+
+  for (const step of steps.slice(-12)) {
+    assert.equal(step.querySelector('.fixture_body').getAttribute(ASSISTANT_SURFACE_ATTRIBUTE), 'body')
+  }
+  assert.equal(steps[0].querySelector('.fixture_body').hasAttribute(ASSISTANT_SURFACE_ATTRIBUTE), false)
+  assert.equal(queuedFrames.length, 1)
   adapter.dispose()
 })
 
@@ -157,6 +190,27 @@ test('reclassifies a stable surface when its own identity attributes change', as
   assert.equal(markdown.getAttribute(ASSISTANT_SURFACE_ATTRIBUTE), 'body')
   assert.equal(step.getAttribute(ASSISTANT_STATE_ATTRIBUTE), 'body')
   adapter.dispose()
+})
+
+test('mounts the assistant avatar image as a scoped CSS resource and restores the host value', () => {
+  const dom = domWith('<div data-chat-flow-kind="assistant-step"><div class="fixture_body">回复</div></div>')
+  const { document } = dom.window
+  const root = document.documentElement
+  root.style.setProperty(ASSISTANT_AVATAR_PROPERTY, 'url("host-avatar.png")')
+  const adapter = createAssistantGlassAdapter({
+    document,
+    window: dom.window,
+    avatarImage: 'data:image/png;base64,PRTS',
+  })
+
+  adapter.start()
+  assert.equal(
+    root.style.getPropertyValue(ASSISTANT_AVATAR_PROPERTY),
+    'url("data:image/png;base64,PRTS")',
+  )
+
+  adapter.dispose()
+  assert.equal(root.style.getPropertyValue(ASSISTANT_AVATAR_PROPERTY), 'url("host-avatar.png")')
 })
 
 test('dispose removes every owned assistant marker', () => {

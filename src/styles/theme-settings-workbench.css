@@ -262,6 +262,13 @@ html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row] {
 html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row]:nth-child(2n) { border-right: 0; }
 html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row]:nth-last-child(-n + 2) { border-bottom: 0; }
 
+html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row="conversationStyle"] {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--prts-line);
+  border-right: 0;
+  border-bottom: 0;
+}
+
 html[data-dsh-prts] [data-prts-setting-row] > div {
   min-width: 0;
   display: flex;

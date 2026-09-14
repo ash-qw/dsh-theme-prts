@@ -97,6 +97,24 @@ test('mounts one ambient field and particle canvas, then removes every owned lay
   assert.equal(dom.window.document.querySelector('[data-prts-particle-layer]'), null)
 })
 
+test('keeps the communication backdrop mounted when ambient texture is disabled', () => {
+  const { dom } = fixture()
+  const adapter = createParticleFieldAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    emblem: '<svg />',
+    emblemMasks: masksFor(),
+  })
+
+  adapter.update({ enabled: true, texture: 'off', conversationStyle: 'native', motion: 'reduced' })
+  const ambient = dom.window.document.querySelector('[data-prts-ambient-layer]')
+  assert.equal(ambient.hidden, true)
+
+  adapter.update({ enabled: true, texture: 'off', conversationStyle: 'deck-chat', motion: 'reduced' })
+  assert.equal(ambient.hidden, false)
+  adapter.dispose()
+})
+
 test('sleeps after the particle field visually settles and wakes for interaction', () => {
   const { dom, step, pendingFrames } = fixture()
   const operation = dom.window.document.querySelector('[data-prts-region="operation"]')

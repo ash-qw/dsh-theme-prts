@@ -6,7 +6,7 @@ export const PARTICLE_TRAVERSAL_SPEED_STEP = 0.25
 export const PARTICLE_TRAVERSAL_SPEED_DEFAULT = 1
 
 export const DEFAULT_PREFERENCES = Object.freeze({
-  version: 8,
+  version: 9,
   enabled: false,
   preset: 'standard-tactical',
   texture: 'full',
@@ -18,6 +18,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
+  conversationStyle: 'deck-chat',
 })
 
 export const VISUAL_PRESETS = Object.freeze({
@@ -59,6 +60,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation']),
   navigation: Object.freeze(['railDefaultHidden']),
+  conversation: Object.freeze(['conversationStyle']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -66,6 +68,7 @@ const GLASS_STRENGTHS = new Set(['off', 'soft', 'standard', 'clear'])
 const MOTIONS = new Set(['system', 'reduced'])
 const PARTICLE_DENSITIES = new Set(['sparse', 'light', 'standard', 'dense', 'ultra'])
 const PRESETS = new Set([...Object.keys(VISUAL_PRESETS), 'custom'])
+const CONVERSATION_STYLES = new Set(['native', 'deck-chat'])
 const PRESET_LINKED_KEYS = new Set(Object.keys(VISUAL_PRESETS['standard-tactical']))
 
 
@@ -129,7 +132,7 @@ export function normalizePreferences(value) {
   const particlePreset = VISUAL_PRESETS[input.preset] ?? DEFAULT_PREFERENCES
   const legacyDensities = legacyParticleDensities(input)
   const normalized = {
-    version: 8,
+    version: 9,
     enabled: booleanOr(input.enabled, DEFAULT_PREFERENCES.enabled),
     preset: enumOr(migratedPreset, PRESETS, DEFAULT_PREFERENCES.preset),
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
@@ -144,6 +147,7 @@ export function normalizePreferences(value) {
     ),
     particlePattern: 'orthogonal',
     railDefaultHidden: booleanOr(input.railDefaultHidden, DEFAULT_PREFERENCES.railDefaultHidden),
+    conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),
   }
   normalized.preset = matchedVisualPreset(normalized)
   return normalized
@@ -190,7 +194,7 @@ export function loadPreferences(storage) {
     const raw = storage?.getItem(PRTS_STORAGE_KEY)
     if (raw === null || raw === undefined) return { ...DEFAULT_PREFERENCES }
     const parsed = JSON.parse(raw)
-    if (![1, 2, 3, 4, 5, 6, 7, 8].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
     return normalizePreferences(parsed)
   } catch {
     return { ...DEFAULT_PREFERENCES }

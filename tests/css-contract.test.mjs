@@ -151,19 +151,28 @@ test('replaces session projections with a hover-only pickup waveform and keeps t
   assert.doesNotMatch(css, /html\[data-dsh-prts\] \[data-prts-row-projection/)
   assert.doesNotMatch(css, /prts-projection-(?:acquire|scan)/)
 })
-test('leaves the native dsh turn navigator untouched and emits no replacement gutter markers', () => {
+test('keeps the native turn navigator while adding chat avatars and asymmetric bubbles', () => {
   includesAll([
+    '--prts-chat-user-surface',
+    '--prts-chat-assistant-surface',
+    '--prts-assistant-avatar-image',
+    '[data-prts-conversation-style="native"]',
+    '[data-prts-conversation-style="deck-chat"]',
+    '[data-slot="conversation"] > [data-phase]',
+    '[data-chat-flow-kind="assistant-step"]::before',
+    '[data-chat-flow-kind="user"]::after',
     '[data-chat-flow-kind="user"] [class$="_bubble"]',
-    '[data-message-role="user"] :is([data-markdown], [class*="markdown" i])',
+    '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body))',
+    '[data-prts-ai-surface]',
+    'border-radius: 18px 6px 18px 18px',
+    'border-radius: 6px 18px 18px 18px',
+    ') :is(pre, code)',
   ])
-  assert.doesNotMatch(css, /\[data-conversation-scroll\]::before|\[data-(?:message-role|chat-flow-kind)[^\]]*\]::before/)
+  assert.doesNotMatch(css, /\[data-conversation-scroll\]::before/)
   assert.doesNotMatch(css, /--turn-natural-height|--prts-turn-mark/)
   assert.doesNotMatch(css, /data-prts-conversation-(?:scale|preview|history)/)
   assert.doesNotMatch(css, /data-prts-turn-summary|data-prts-timeline-active|data-prts-timeline-turn/)
   assert.equal(css.includes('PROCESS / 执行步骤'), false)
-  assert.equal(css.includes('[data-prts-ai-surface]'), false)
-  assert.equal(css.includes('[data-chat-flow-kind="assistant-step"] {'), false)
-  assert.equal(css.includes('[data-message-role="assistant"] {'), false)
   assert.equal(css.includes('[data-testid*="tool-call" i]'), false)
   assert.equal(css.includes('[data-testid*="subagent" i]'), false)
   assert.equal(css.includes('[data-testid*="deliverable" i]'), false)
@@ -179,7 +188,21 @@ test('keeps particle emblems and composer geometry without retired dossier style
     '[data-prts-resize-restoring]',
   ])
   assert.doesNotMatch(css, /dossier|data-prts-details-toggle|prts-host-details-inset/i)
-  assert.doesNotMatch(css, /data-prts-conversation-state/)
+  includesAll([
+    '[data-prts-conversation-style="deck-chat"][data-prts-conversation-state="active"] [data-prts-particle-layer]',
+    '[data-prts-ambient-layer]::before',
+    '[data-prts-ambient-layer]::after',
+    '--prts-chat-backdrop',
+    '--prts-chat-backdrop-edge',
+    '--prts-chat-link',
+    '--prts-chat-link-x: 22px',
+    'height: 30px',
+    'var(--prts-chat-link) 56%, transparent',
+    '[data-prts-conversation-style="deck-chat"][data-prts-texture="off"] [data-prts-ambient-layer]',
+    'opacity: .04',
+  ])
+  assert.doesNotMatch(css, /--prts-deck-/)
+  assert.doesNotMatch(css, /conic-gradient\(from 0deg at 50% 0,/)
   assert.match(css, /\[data-composer-card\]::before[^{]*\{[^}]*background:\s*var\(--prts-line-strong\)/s)
   assert.doesNotMatch(css, /\[data-composer-card\]::before[^{]*\{[^}]*linear-gradient\(var\(--prts-yellow\)/s)
   assert.match(css, /\[data-composer-card\]::after[^{]*\{[^}]*inset:\s*1px 1px 3px;[^}]*clip-path:\s*polygon/s)

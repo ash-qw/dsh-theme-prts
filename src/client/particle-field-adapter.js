@@ -1877,7 +1877,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
           mutationObserver.observe(observationRoot, { childList: true, subtree: true })
         }
       }
-      if (ambient) ambient.hidden = preferences.texture === 'off'
+      if (ambient) ambient.hidden = preferences.texture === 'off' && preferences.conversationStyle !== 'deck-chat'
       scheduleFrame()
     },
     inspect() {

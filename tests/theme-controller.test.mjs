@@ -11,6 +11,7 @@ const enabled = {
   glass: 'clear',
   particlePattern: 'orthogonal',
   motion: 'system',
+  conversationStyle: 'deck-chat',
 }
 
 function setup(initial = 'dark') {
@@ -58,6 +59,7 @@ test('applies appearance state and fully removes only owned state', () => {
   assert.equal(root.dataset.prtsTexture, 'full')
   assert.equal(root.dataset.prtsGlass, 'clear')
   assert.equal(root.dataset.prtsParticlePattern, 'orthogonal')
+  assert.equal(root.dataset.prtsConversationStyle, 'deck-chat')
   assert.equal(root.hasAttribute('data-prts-glass-highlight'), false)
   assert.equal(dom.window.document.querySelectorAll('style[data-plugin-css="dsh-theme-prts/prts.css"]').length, 1)
 
@@ -66,6 +68,7 @@ test('applies appearance state and fully removes only owned state', () => {
   assert.equal(root.hasAttribute('data-prts-scheme'), false)
   assert.equal(root.hasAttribute('data-prts-glass'), false)
   assert.equal(root.hasAttribute('data-prts-particle-pattern'), false)
+  assert.equal(root.hasAttribute('data-prts-conversation-style'), false)
   assert.equal(dom.window.document.querySelector('[data-plugin="dsh-theme-prts"]'), null)
 })
 

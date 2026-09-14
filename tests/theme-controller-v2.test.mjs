@@ -5,11 +5,12 @@ import test from 'node:test'
 import { createThemeController } from '../src/client/theme-controller-v2.js'
 
 const enabled = {
-  version: 8,
+  version: 9,
   enabled: true,
   texture: 'full',
   glass: 'standard',
   motion: 'system',
+  conversationStyle: 'deck-chat',
 }
 
 function deferred() {
@@ -86,6 +87,7 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   t.after(() => controller.dispose())
   controller.apply(enabled)
   const root = dom.window.document.documentElement
+  assert.equal(root.dataset.prtsConversationStyle, 'deck-chat')
 
   const request = controller.setTheme('light', { animate: true, origin: { x: 30, y: 40 } })
   controller.sync('light')

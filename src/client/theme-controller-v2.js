@@ -7,6 +7,7 @@ const ROOT_ATTRIBUTES = [
   'data-prts-glass',
   'data-prts-motion',
   'data-prts-particle-pattern',
+  'data-prts-conversation-style',
 ]
 
 const TRANSITION_ATTRIBUTE = 'data-prts-scheme-transition'
@@ -715,6 +716,7 @@ export function createThemeController({ document, window, cssText, service, onTr
       root.dataset.prtsGlass = preferences.glass
       root.dataset.prtsMotion = preferences.motion
       root.dataset.prtsParticlePattern = 'orthogonal'
+      root.dataset.prtsConversationStyle = preferences.conversationStyle
       refresh()
     },
     sync,

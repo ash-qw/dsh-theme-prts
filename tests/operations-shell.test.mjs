@@ -6,7 +6,7 @@ import { createRc7Adapter } from '../src/client/rc7-adapter.js'
 import { createOperationsShell } from '../src/client/operations-shell-v2.js'
 
 const fixture = await readFile(new URL('./fixtures/rc7-harness.html', import.meta.url), 'utf8')
-const enabled = { version: 8, enabled: true, preset: 'standard-tactical', texture: 'full', glass: 'standard', motion: 'reduced', bootAnimation: true, railDefaultHidden: false }
+const enabled = { version: 9, enabled: true, preset: 'standard-tactical', texture: 'full', glass: 'standard', motion: 'reduced', bootAnimation: true, railDefaultHidden: false, conversationStyle: 'deck-chat' }
 const status = { connection: 'connected', connectionLabel: '已连接' }
 
 test('updates responsive shell state only at the navigation breakpoint', async () => {
@@ -140,7 +140,8 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.equal(preferenceUpdates.length, 0)
   const settingsPanel = document.querySelector('[data-prts-theme-settings]')
   settingsPanel.querySelector('[data-prts-setting-key="texture"][data-prts-setting-value="off"]').click()
-  assert.deepEqual(preferenceUpdates, [['texture', 'off']])
+  settingsPanel.querySelector('[data-prts-setting-key="conversationStyle"][data-prts-setting-value="native"]').click()
+  assert.deepEqual(preferenceUpdates, [['texture', 'off'], ['conversationStyle', 'native']])
   assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'), true)
   document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   assert.equal(brand.getAttribute('aria-expanded'), 'false')
