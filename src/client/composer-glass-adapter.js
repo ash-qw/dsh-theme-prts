@@ -2,8 +2,13 @@ const CONTROL_ATTRIBUTE = 'data-prts-glass-control'
 const MENU_ATTRIBUTE = 'data-prts-glass-menu'
 const FALLBACK_COMPOSER_ATTRIBUTE = 'data-prts-composer-fallback'
 const COMPOSER_SIGNAL_ATTRIBUTE = 'data-prts-composer-signal'
+const FALLBACK_COMPOSER_ROOT_SELECTOR = [
+  '[data-slot="conversation.composer"]',
+  '[data-composer-seat]',
+].join(', ')
 const COMPOSER_RELEVANCE_SELECTOR = [
   '[data-composer-card]',
+  FALLBACK_COMPOSER_ROOT_SELECTOR,
   'form textarea',
   'button[aria-haspopup="menu"]',
   'button[aria-haspopup="listbox"]',
@@ -56,6 +61,18 @@ function markPopup(popup, kind) {
   }
 }
 
+function fallbackComposerForms(document) {
+  const forms = new Set()
+  for (const root of document?.querySelectorAll?.(FALLBACK_COMPOSER_ROOT_SELECTOR) ?? []) {
+    if (root.querySelector('[data-composer-card]')) continue
+    for (const textarea of root.querySelectorAll('form textarea')) {
+      const form = textarea.closest('form')
+      if (form && root.contains(form)) forms.add(form)
+    }
+  }
+  return forms
+}
+
 export function createComposerGlassAdapter({ document, window }) {
   let observer
   let scanFrame
@@ -104,17 +121,17 @@ export function createComposerGlassAdapter({ document, window }) {
       signal.remove?.()
       ownedSignals.delete(signal)
     }
+    const fallbackForms = fallbackComposerForms(document)
     for (const form of [...ownedFallbacks]) {
-      if (!form.isConnected || form.hasAttribute('data-composer-card')) {
-        form.removeAttribute?.(FALLBACK_COMPOSER_ATTRIBUTE)
-        ownedFallbacks.delete(form)
-      }
+      if (form.isConnected && fallbackForms.has(form) && !form.hasAttribute('data-composer-card')) continue
+      form.removeAttribute?.(FALLBACK_COMPOSER_ATTRIBUTE)
+      ownedFallbacks.delete(form)
+      if (form.hasAttribute('data-composer-card')) continue
+      const signal = form.querySelector?.(`:scope > [${COMPOSER_SIGNAL_ATTRIBUTE}]`)
+      if (!ownedSignals.has(signal)) continue
+      signal.remove?.()
+      ownedSignals.delete(signal)
     }
-    const fallbackForms = new Set(
-      [...(document?.querySelectorAll?.('form textarea') ?? [])]
-        .map(textarea => textarea.closest('form'))
-        .filter(form => form && !form.querySelector('[data-composer-card]')),
-    )
     for (const form of fallbackForms) {
       form.setAttribute(FALLBACK_COMPOSER_ATTRIBUTE, '')
       ownedFallbacks.add(form)

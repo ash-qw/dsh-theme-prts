@@ -27,15 +27,15 @@ test('uses one four-state glass preference while migrating version-one controls'
 })
 
 test('keeps the conversation theme switch independent from visual presets', () => {
-  assert.equal(api.DEFAULT_PREFERENCES.conversationStyle, 'deck-chat')
-  assert.equal(api.normalizePreferences({ version: 8 }).conversationStyle, 'deck-chat')
-  assert.equal(api.normalizePreferences({ version: 9, conversationStyle: 'unsupported' }).conversationStyle, 'deck-chat')
+  assert.equal(api.DEFAULT_PREFERENCES.conversationStyle, 'native')
+  assert.equal(api.normalizePreferences({ version: 8 }).conversationStyle, 'native')
+  assert.equal(api.normalizePreferences({ version: 9, conversationStyle: 'unsupported' }).conversationStyle, 'native')
 
-  const native = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationStyle', 'native')
-  assert.equal(native.conversationStyle, 'native')
-  assert.equal(native.preset, 'standard-tactical')
-  assert.equal(api.applyVisualPreset(native, 'quiet-reading').conversationStyle, 'native')
-  assert.equal(api.resetPreferenceGroup(native, 'conversation').conversationStyle, 'deck-chat')
+  const deckChat = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationStyle', 'deck-chat')
+  assert.equal(deckChat.conversationStyle, 'deck-chat')
+  assert.equal(deckChat.preset, 'standard-tactical')
+  assert.equal(api.applyVisualPreset(deckChat, 'quiet-reading').conversationStyle, 'deck-chat')
+  assert.equal(api.resetPreferenceGroup(deckChat, 'conversation').conversationStyle, 'native')
 })
 
 test('loads and migrates a complete version-one payload without losing independent choices', () => {
@@ -67,7 +67,7 @@ test('loads and migrates a complete version-one payload without losing independe
     particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
     railDefaultHidden: false,
-    conversationStyle: 'deck-chat',
+    conversationStyle: 'native',
   })
 })
 

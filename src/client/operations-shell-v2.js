@@ -27,7 +27,10 @@ function markup(emblem) {
           <svg data-prts-scheme-icon="dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.4 8.4 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"></path></svg>
           <small>明暗</small>
         </button>
-        <button type="button" data-prts-theme-disable aria-label="关闭 P.R.T.S. 主题"><b aria-hidden="true">×</b><small>关闭主题</small></button>
+        <button type="button" data-prts-theme-disable aria-label="退出 P.R.T.S.，返回 Harness 原生界面">
+          <svg data-prts-theme-disable-icon viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8"></path><path d="M7.1 6.8a7 7 0 1 0 9.8 0"></path></svg>
+          <small>退出 P.R.T.S.</small>
+        </button>
       </div>
     </nav>
     ${themeSettingsMarkup()}

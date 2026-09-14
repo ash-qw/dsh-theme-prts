@@ -384,6 +384,11 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelectorAll('[data-prts-setting-key="glass"]').length, 4)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="motion"]').length, 2)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="railDefaultHidden"]').length, 2)
+  assert.deepEqual(
+    [...document.querySelectorAll('[data-prts-setting-key="conversationStyle"]')]
+      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
+    [['native', '原有'], ['deck-chat', '通讯链路']],
+  )
   assert.equal(document.querySelector('[data-prts-setting-row="railDefaultHidden"] [data-prts-setting-note]').textContent,
     '在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开')
   assert.equal(document.querySelectorAll('[data-prts-setting-key="dossier"]').length, 0)

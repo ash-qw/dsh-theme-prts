@@ -18,7 +18,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
-  conversationStyle: 'deck-chat',
+  conversationStyle: 'native',
 })
 
 export const VISUAL_PRESETS = Object.freeze({

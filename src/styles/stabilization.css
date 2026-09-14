@@ -49,6 +49,40 @@ html[data-dsh-prts] [data-prts-nav-bottom] > button:is(:hover, :focus-visible) {
   color: #f3f6f7 !important;
 }
 
+html[data-dsh-prts] [data-prts-theme-disable]::after {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  background: var(--prts-yellow);
+  transform: scaleY(0);
+  transition: transform 160ms var(--prts-ease-snap);
+}
+
+html[data-dsh-prts] [data-prts-theme-disable]:is(:hover, :focus-visible) {
+  color: var(--prts-yellow) !important;
+}
+
+html[data-dsh-prts] [data-prts-theme-disable]:is(:hover, :focus-visible)::after {
+  transform: scaleY(1);
+}
+
+html[data-dsh-prts] [data-prts-theme-disable-icon] {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 120ms var(--prts-ease-snap), opacity 120ms ease;
+}
+
+html[data-dsh-prts] [data-prts-theme-disable]:active [data-prts-theme-disable-icon] {
+  opacity: .72;
+  transform: scale(.9);
+}
+
 html[data-dsh-prts] [data-prts-rail-brand][aria-expanded="true"]::after {
   content: "";
   position: absolute;

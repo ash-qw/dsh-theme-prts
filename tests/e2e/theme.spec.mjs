@@ -10,6 +10,7 @@ const enabled = {
   motion: 'reduced',
   density: 'tactical',
   panelOpen: true,
+  conversationStyle: 'deck-chat',
 }
 
 async function openRail(page) {
@@ -975,7 +976,7 @@ test('keeps the composer reachable on phone and at 200 percent zoom', async ({ p
 
 test('fully cleans up when disabled and safe mode blocks all visuals', async ({ page }) => {
   await setPreferences(page)
-  await page.getByRole('button', { name: '关闭 P.R.T.S. 主题' }).click()
+  await page.getByRole('button', { name: '退出 P.R.T.S.，返回 Harness 原生界面' }).click()
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).enabled)).toBe(false)
   await expect(page.locator('[data-prts-shell]')).toHaveCount(0)
   await page.reload()

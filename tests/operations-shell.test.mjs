@@ -119,7 +119,13 @@ test('mounts the shell without an operator dossier and restores the host', async
   assert.deepEqual(schemeDrags[0].commits, [true])
   assert.deepEqual(schemeToggles, ['light'])
 
-  document.querySelector('[data-prts-theme-disable]').click()
+  const themeDisable = document.querySelector('[data-prts-theme-disable]')
+  assert.equal(themeDisable.getAttribute('aria-label'), '退出 P.R.T.S.，返回 Harness 原生界面')
+  assert.equal(themeDisable.querySelector('small').textContent, '退出 P.R.T.S.')
+  assert.equal(themeDisable.querySelector('b'), null)
+  assert.equal(themeDisable.querySelector('[data-prts-theme-disable-icon]').tagName, 'svg')
+  assert.equal(themeDisable.querySelectorAll('[data-prts-theme-disable-icon] path').length, 2)
+  themeDisable.click()
   assert.equal(disabled, 1)
 
   const launcher = document.querySelector('[data-prts-rail-launcher]')

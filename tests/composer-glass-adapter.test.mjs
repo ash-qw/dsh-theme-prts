@@ -65,6 +65,48 @@ test('releases the signal owned by a composer after that composer is replaced', 
   adapter.dispose()
 })
 
+test('does not classify an unrelated textarea form as a fallback composer', async t => {
+  const dom = new JSDOM(`<!doctype html><body>
+    <main data-prts-region="operation">
+      <form id="dsh-partner-identity-editor" class="dsh-partner-form is-identity">
+        <textarea name="description"></textarea>
+        <textarea name="instructions"></textarea>
+        <button type="submit">保存身份</button>
+      </form>
+    </main>
+  </body>`, { pretendToBeVisual: true })
+  const adapter = createComposerGlassAdapter({ document: dom.window.document, window: dom.window })
+  t.after(() => adapter.dispose())
+  adapter.start()
+
+  const form = dom.window.document.querySelector('#dsh-partner-identity-editor')
+  assert.equal(form.hasAttribute('data-prts-composer-fallback'), false)
+  assert.equal(form.querySelector('[data-prts-composer-signal]'), null)
+})
+
+test('limits the legacy textarea fallback to a composer root and releases it when moved out', async t => {
+  const dom = new JSDOM(`<!doctype html><body>
+    <main data-prts-region="operation">
+      <div data-composer-seat><form id="legacy-composer"><textarea></textarea></form></div>
+      <section id="foreign-panel"></section>
+    </main>
+  </body>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  t.after(() => adapter.dispose())
+  adapter.start()
+
+  const form = document.querySelector('#legacy-composer')
+  assert.equal(form.hasAttribute('data-prts-composer-fallback'), true)
+  assert.ok(form.querySelector('[data-prts-composer-signal]'))
+
+  document.querySelector('#foreign-panel').append(form)
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+
+  assert.equal(form.hasAttribute('data-prts-composer-fallback'), false)
+  assert.equal(form.querySelector('[data-prts-composer-signal]'), null)
+})
+
 test('marks the 0.1.2-rc.1 trigger menu and nested parameter card as one glass stack', async t => {
   const dom = new JSDOM(`<!doctype html><body>
     <div data-composer-card>
