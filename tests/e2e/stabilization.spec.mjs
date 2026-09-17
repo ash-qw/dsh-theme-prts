@@ -660,3 +660,42 @@ test('@stabilization theme settings enter the top layer above foreign workspaces
   expect(layering).toEqual({ modal: true, dialogHit: true, foreignConnected: true })
   await page.keyboard.press('Escape')
 })
+
+test('@stabilization preserves native settings priority above expanded plugin surfaces', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await enable(page)
+  await page.evaluate(() => {
+    const sessions = document.querySelector('[data-prts-region="sessions"]')
+    const frame = document.querySelector('[data-prts-region="frame"]')
+    const settings = document.createElement('section')
+    settings.dataset.fixtureNativeSettings = ''
+    settings.setAttribute('role', 'dialog')
+    Object.assign(settings.style, {
+      position: 'fixed',
+      inset: '80px 120px',
+      zIndex: '1000',
+      background: 'rgb(245, 247, 248)',
+    })
+    sessions.append(settings)
+
+    const plugin = document.createElement('section')
+    plugin.dataset.fixtureExpandedPlugin = 'ssh'
+    Object.assign(plugin.style, {
+      position: 'fixed',
+      inset: '0 0 0 55%',
+      zIndex: '120',
+      background: 'rgb(20, 24, 28)',
+    })
+    frame.append(plugin)
+  })
+
+  const layering = await page.evaluate(() => {
+    const settings = document.querySelector('[data-fixture-native-settings]')
+    const hit = document.elementFromPoint(innerWidth * .7, innerHeight / 2)
+    return {
+      hitSettings: hit === settings || settings.contains(hit),
+      sessionsZIndex: getComputedStyle(document.querySelector('[data-prts-region="sessions"]')).zIndex,
+    }
+  })
+  expect(layering).toEqual({ hitSettings: true, sessionsZIndex: 'auto' })
+})

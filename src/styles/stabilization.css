@@ -137,7 +137,7 @@ html[data-dsh-prts] [data-prts-nav-bottom] b {
 /* Complete structural outlines; decorative accents are separate edges. */
 html[data-dsh-prts] [data-composer-card],
 html[data-dsh-prts] [data-prts-composer-fallback],
-html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
 html[data-dsh-prts] [data-prts-conversation-control],
 html[data-dsh-prts] [data-produced-files-row] > button[type="button"],
 html[data-dsh-prts] [data-prts-to-bottom] {

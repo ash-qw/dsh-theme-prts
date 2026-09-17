@@ -809,7 +809,6 @@ html[data-dsh-prts] [data-prts-region="operation"] {
 html[data-dsh-prts] [data-prts-region="sessions"] {
   box-sizing: border-box;
   position: relative;
-  z-index: 4;
   overflow: hidden;
   border-right: 1px solid var(--prts-line);
   background: var(--prts-panel);
@@ -818,7 +817,6 @@ html[data-dsh-prts] [data-prts-region="sessions"] {
 
 html[data-dsh-prts] [data-prts-region="operation"] {
   position: relative;
-  z-index: 1;
   overflow: hidden;
   background: var(--prts-canvas);
   color: var(--prts-ink);
@@ -1516,7 +1514,7 @@ html[data-dsh-prts] [data-prts-composer-fallback] :is(textarea, [data-composer-i
   caret-color: var(--prts-yellow);
 }
 
-html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
 html[data-dsh-prts] [data-prts-conversation-control] {
   border: 1px solid var(--prts-line) !important;
   border-radius: var(--prts-radius-control) !important;
@@ -1526,7 +1524,7 @@ html[data-dsh-prts] [data-prts-conversation-control] {
 }
 
 
-html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):is(:hover, :focus-visible),
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):is(:hover, :focus-visible),
 html[data-dsh-prts] [data-prts-conversation-control]:is(:hover, :focus-visible) {
   border-color: var(--prts-yellow) !important;
 }
@@ -1537,7 +1535,7 @@ html[data-dsh-prts] [data-composer-card] button[type="submit"] {
   color: var(--prts-yellow-ink) !important;
 }
 
-html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):active,
+html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):active,
 html[data-dsh-prts] [data-prts-conversation-control]:active {
   transform: translateY(1px) scale(.98);
 }

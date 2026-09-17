@@ -11,7 +11,6 @@ html[data-dsh-prts] [data-prts-region="frame"] {
 
 html[data-dsh-prts] [data-prts-region="frame"] > [data-shell-overlay] {
   position: absolute !important;
-  z-index: 120;
   inset: 0;
   min-width: 0;
   min-height: 0;
@@ -417,7 +416,7 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textar
   resize: vertical;
 }
 
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *),
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
 html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control] {
   min-height: 36px;
 }

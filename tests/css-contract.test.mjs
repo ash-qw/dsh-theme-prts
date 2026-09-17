@@ -215,9 +215,22 @@ test('keeps particle emblems and composer geometry without retired dossier style
 test("keeps display-contents attachment slots above composer glass without restyling native controls", () => {
   assert.match(css, /\[data-composer-card\] > \[data-slot="conversation\.input\.attachments"\] > \*[^{]*\{[^}]*position:\s*relative;[^}]*z-index:\s*2;/s)
   assert.ok((css.match(/:not\(\[data-slot="conversation\.input\.attachments"\] \*\)/g) || []).length >= 10)
+  const composerButtonSelectors = [...css.matchAll(/([^{}]*\[data-composer-card\] button:not\(\[data-slot="conversation\.input\.attachments"\] \*\)[^{}]*)\{/g)]
+    .map(match => match[1])
+  assert.ok(composerButtonSelectors.length >= 8)
+  for (const selector of composerButtonSelectors) {
+    assert.match(selector, /:not\(\[role="menu"\] \*\)/)
+    assert.match(selector, /:not\(\[role="listbox"\] \*\)/)
+  }
   assert.equal(css.includes("[data-composer-card] button,"), false)
   assert.equal(css.includes("[data-composer-card] button:is(:hover, :focus-visible)"), false)
   assert.equal(css.includes("[data-composer-card] button:active"), false)
+})
+
+test('does not override host stacking order for settings and plugin surfaces', () => {
+  assert.doesNotMatch(css, /\[data-prts-region="sessions"\]\s*\{[^}]*z-index:/s)
+  assert.doesNotMatch(css, /\[data-prts-region="operation"\]\s*\{[^}]*z-index:/s)
+  assert.doesNotMatch(css, /\[data-prts-region="frame"\]\s*>\s*\[data-shell-overlay\]\s*\{[^}]*z-index:/s)
 })
 
 test('supports fixed host-owned themes, tactical takeover, and accessibility fallbacks', () => {

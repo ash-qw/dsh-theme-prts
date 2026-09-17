@@ -537,6 +537,48 @@ test('glassifies only identified composer controls and their inline menus', asyn
   await expect(overflowPopup).toHaveAttribute('data-clicked', 'true')
 })
 
+test('preserves slash-command keyboard selection and its native highlight', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await setPreferences(page)
+  await page.locator('[data-composer-card]').evaluate(composer => {
+    const style = document.createElement('style')
+    style.textContent = `
+      .fixture-command-option { background: transparent; }
+      .fixture-command-option[aria-selected="true"] { background: rgb(47, 63, 72); }
+    `
+    document.head.append(style)
+
+    const overlay = document.createElement('div')
+    overlay.dataset.slot = 'conversation.input.overlay'
+    overlay.innerHTML = `
+      <div role="listbox" aria-label="Fixture commands" aria-activedescendant="fixture-command-0">
+        <button id="fixture-command-0" class="fixture-command-option" type="button" role="option" aria-selected="true">compact</button>
+        <button id="fixture-command-1" class="fixture-command-option" type="button" role="option" aria-selected="false">export</button>
+      </div>
+    `
+    composer.append(overlay)
+    const input = composer.querySelector('textarea, [contenteditable="true"]')
+    input.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowDown') return
+      const options = [...overlay.querySelectorAll('[role="option"]')]
+      options[0].setAttribute('aria-selected', 'false')
+      options[1].setAttribute('aria-selected', 'true')
+      overlay.querySelector('[role="listbox"]').setAttribute('aria-activedescendant', options[1].id)
+    })
+  })
+
+  const input = page.locator('[data-composer-card] textarea, [data-composer-card] [contenteditable="true"]').first()
+  const options = page.getByRole('listbox', { name: 'Fixture commands' }).getByRole('option')
+  await expect(options.nth(0)).toHaveCSS('background-color', 'rgb(47, 63, 72)')
+  await expect(options.nth(1)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await input.focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(options.nth(0)).toHaveAttribute('aria-selected', 'false')
+  await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(options.nth(0)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(options.nth(1)).toHaveCSS('background-color', 'rgb(47, 63, 72)')
+})
+
 test('captures dark light and ultrawide clear glass approval surfaces', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await setPreferences(page, { ...enabled, glass: 'clear' })
