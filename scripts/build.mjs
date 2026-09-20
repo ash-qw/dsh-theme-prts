@@ -113,6 +113,7 @@ const clientModulePaths = [
   'src/client/conversation-control-adapter.js',
   'src/client/layout-stability-diagnostics.js',
   'src/client/facility-geometry.js',
+  'src/client/session-lifeline.js',
   'src/client/facility-vector.js',
   'src/client/sidebar-control-adapter.js',
   'src/client/rc7-adapter.js',

@@ -1,4 +1,5 @@
 import { createFacilityPath } from './facility-geometry.js'
+import { configureSessionLifeline } from './session-lifeline.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const SILHOUETTE_TRACK_WIDTH = 512
@@ -117,6 +118,16 @@ function appendSessionPickup(document, graphic) {
   clip.append(svgNode(document, 'path', { 'data-prts-facility-clip': '' }))
   defs.append(clip)
 
+  const lifeline = svgNode(document, 'g', {
+    'data-prts-session-lifeline': '',
+    'clip-path': `url(#${clipId})`,
+  })
+  for (const strand of ['back', 'core', 'front']) {
+    lifeline.append(svgNode(document, 'path', {
+      'data-prts-session-lifeline-filament': strand,
+    }))
+  }
+
   const pickup = svgNode(document, 'g', {
     'data-prts-session-pickup': '',
     'clip-path': `url(#${clipId})`,
@@ -146,7 +157,20 @@ function appendSessionPickup(document, graphic) {
   })
 
   graphic.insertBefore(defs, graphic.firstChild)
+  graphic.insertBefore(lifeline, graphic.querySelector('[data-prts-facility-layer="outline"]'))
   graphic.insertBefore(pickup, graphic.querySelector('[data-prts-facility-layer="outline"]'))
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function sessionLifelineGeometry(width, height) {
+  const start = clamp(width * .04, 8, 12)
+  const end = Math.max(start + 1, width - 8)
+  const baseline = height * .56
+  const lift = clamp(height * .35, 10, 14)
+  return { start, end, baseline, lift }
 }
 
 export function ensureFacilityGraphic(document, owner, { kind, topNotch = false, texture = 'none' } = {}) {
@@ -200,6 +224,8 @@ export function renderFacilityGraphic(owner, { width, height } = {}) {
   }
 
   const size = `${Number(width.toFixed(3))}x${Number(height.toFixed(3))}`
+  const lifeline = graphic.querySelector('[data-prts-session-lifeline]')
+  const lifelineGeometry = lifeline ? sessionLifelineGeometry(width, height) : undefined
   if (owner.getAttribute('data-prts-facility-size') !== size) {
     graphic.setAttribute('viewBox', `0 0 ${Number(width.toFixed(3))} ${Number(height.toFixed(3))}`)
     for (const layer of graphic.querySelectorAll('[data-prts-facility-layer], [data-prts-facility-clip]')) layer.setAttribute('d', path)
@@ -222,6 +248,9 @@ export function renderFacilityGraphic(owner, { width, height } = {}) {
         const barHeight = Number(bar.getAttribute('height')) || 0
         bar.setAttribute('y', String(Number((center - barHeight / 2).toFixed(3))))
       }
+    }
+    if (lifeline) {
+      configureSessionLifeline(lifeline, lifelineGeometry)
     }
     owner.setAttribute('data-prts-facility-size', size)
   }

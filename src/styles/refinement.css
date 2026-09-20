@@ -154,6 +154,10 @@ html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-session-time] {
   opacity: 0;
 }
 
+html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-session-time] {
+  opacity: 0;
+}
+
 /* Restore the notched P.R.T.S. composer with one complete layered contour. */
 html[data-dsh-prts] [data-composer-card],
 html[data-dsh-prts] [data-prts-composer-fallback] {

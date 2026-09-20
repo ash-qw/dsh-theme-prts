@@ -18,6 +18,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
+  sessionFlow: true,
   conversationStyle: 'native',
 })
 
@@ -147,6 +148,7 @@ export function normalizePreferences(value) {
     ),
     particlePattern: 'orthogonal',
     railDefaultHidden: booleanOr(input.railDefaultHidden, DEFAULT_PREFERENCES.railDefaultHidden),
+    sessionFlow: booleanOr(input.sessionFlow, DEFAULT_PREFERENCES.sessionFlow),
     conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),
   }
   normalized.preset = matchedVisualPreset(normalized)

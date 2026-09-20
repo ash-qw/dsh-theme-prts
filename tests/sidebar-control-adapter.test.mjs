@@ -56,6 +56,8 @@ test('marks workspace and session hierarchy from stable role structure', async (
   for (const face of document.querySelectorAll('[data-prts-facility-face="session"]')) {
     assert.ok(face.querySelector('[data-prts-session-pickup]'))
     assert.equal(face.querySelectorAll('[data-prts-session-pickup-bar]').length, 11)
+    assert.ok(face.querySelector('[data-prts-session-lifeline]'))
+    assert.ok(face.querySelector('[data-prts-session-lifeline-filament]'))
   }
 
   assert.deepEqual(Array.from(document.querySelectorAll('[data-prts-session-row]')).map(node => node.dataset.prtsSessionIndex), ['01', '02'])

@@ -54,10 +54,12 @@ test('facility graphic accepts a non-destructive default texture', () => {
   assert.equal(owner.getAttribute('data-prts-facility-texture'), 'grid')
 })
 
-test('session pickup supplements an existing vector with a clipped recording waveform', () => {
-  const dom = new JSDOM('<!doctype html><html><body><span id="face"></span></body></html>')
+test('session pickup supplements an existing vector with a clipped active filament', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div data-prts-session-row><span id="face"></span><span id="title" data-prts-row-title>R.R.T.S. UI 重构</span></div></body></html>')
   const { document } = dom.window
   const owner = document.querySelector('#face')
+  owner.getBoundingClientRect = () => ({ left: 10, right: 250, top: 0, bottom: 38, width: 240, height: 38 })
+  document.querySelector('#title').getBoundingClientRect = () => ({ left: 60, right: 160, top: 0, bottom: 38, width: 100, height: 38 })
   const graphic = ensureFacilityGraphic(document, owner, { kind: 'face' })
 
   ensureFacilityGraphic(document, owner, { kind: 'face', topNotch: true, texture: 'pickup' })
@@ -67,11 +69,24 @@ test('session pickup supplements an existing vector with a clipped recording wav
   assert.equal(graphic.querySelectorAll('[data-prts-session-pickup-bar]').length, 11)
   assert.ok(graphic.querySelector('[data-prts-session-pickup-baseline]'))
   assert.ok(graphic.querySelector('[data-prts-session-pickup-indicator]'))
+  assert.equal(graphic.querySelectorAll('[data-prts-session-lifeline]').length, 1)
+  assert.equal(graphic.querySelectorAll('[data-prts-session-lifeline-filament]').length, 3)
   assert.equal(graphic.querySelector('[data-prts-session-pickup-baseline]').getAttribute('y1'), '19')
+  const lifeline = graphic.querySelector('[data-prts-session-lifeline]')
+  const lifelinePath = lifeline.querySelector('[data-prts-session-lifeline-filament="core"]').getAttribute('d')
+  assert.match(lifelinePath, /^M /)
+  assert.equal((lifelinePath.match(/ C /g) || []).length, 8)
+  assert.equal((lifelinePath.match(/ L /g) || []).length, 0)
+  assert.equal(lifeline.getAttribute('data-prts-lifeline-start'), '9.6')
+  assert.equal(lifeline.getAttribute('data-prts-lifeline-end'), '232')
+  assert.equal(lifeline.getAttribute('data-prts-lifeline-baseline'), '21.28')
+  assert.equal(lifeline.getAttribute('data-prts-lifeline-lift'), '13.3')
+  assert.equal(graphic.querySelector('[data-prts-session-lifeline-mask]'), null)
   assert.equal(renderFacilityGraphic(owner, { width: 240, height: 32 }), true)
   assert.equal(graphic.querySelector('[data-prts-session-pickup-baseline]').getAttribute('y2'), '16')
   assert.equal(graphic.querySelector('[data-prts-session-pickup-indicator]').getAttribute('cy'), '16')
   assert.equal(graphic.querySelector('[data-prts-session-pickup-bar]').getAttribute('y'), '13.5')
+  assert.notEqual(graphic.querySelector('[data-prts-session-lifeline-filament="core"]').getAttribute('d'), lifelinePath)
   assert.equal(graphic.querySelector('[data-prts-facility-layer="outline"]').getAttribute('stroke-width'), '1')
 
   assert.equal(
@@ -83,6 +98,10 @@ test('session pickup supplements an existing vector with a clipped recording wav
     graphic.querySelector('[data-prts-facility-layer="surface"]').getAttribute('d'),
   )
   assert.match(graphic.querySelector('[data-prts-session-pickup]').getAttribute('clip-path'), /^url\(#prts-facility-pickup-clip-\d+\)$/)
+  assert.equal(
+    graphic.querySelector('[data-prts-session-lifeline]').getAttribute('clip-path'),
+    graphic.querySelector('[data-prts-session-pickup]').getAttribute('clip-path'),
+  )
   assert.equal(graphic.getAttribute('aria-hidden'), 'true')
 })
 

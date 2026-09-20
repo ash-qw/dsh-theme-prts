@@ -7,6 +7,7 @@ const ROOT_ATTRIBUTES = [
   'data-prts-glass',
   'data-prts-motion',
   'data-prts-particle-pattern',
+  'data-prts-session-flow',
   'data-prts-conversation-style',
 ]
 
@@ -109,6 +110,7 @@ export function createThemeController({ document, window, cssText, service }) {
       root.dataset.prtsGlass = preferences.glass
       root.dataset.prtsMotion = preferences.motion
       root.dataset.prtsParticlePattern = 'orthogonal'
+      root.dataset.prtsSessionFlow = preferences.sessionFlow ? 'on' : 'off'
       root.dataset.prtsConversationStyle = preferences.conversationStyle
       refresh()
     },

@@ -985,6 +985,14 @@ html[data-dsh-prts] [data-prts-session-row] [data-prts-row-title]::before {
   letter-spacing: .08em;
 }
 
+html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-row-title] {
+  font-weight: 700;
+}
+
+html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-row-title]::before {
+  color: var(--prts-yellow);
+}
+
 html[data-dsh-prts] [data-prts-workspace-actions],
 html[data-dsh-prts] [data-prts-session-actions] {
   position: absolute;

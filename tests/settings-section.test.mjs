@@ -385,6 +385,13 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelectorAll('[data-prts-setting-key="motion"]').length, 2)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="railDefaultHidden"]').length, 2)
   assert.deepEqual(
+    [...document.querySelectorAll('[data-prts-setting-key="sessionFlow"]')]
+      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
+    [['false', '关闭'], ['true', '开启']],
+  )
+  assert.equal(document.querySelector('[data-prts-setting-row="sessionFlow"] [data-prts-setting-note]').textContent,
+    '仅控制当前会话卡片的三色流线')
+  assert.deepEqual(
     [...document.querySelectorAll('[data-prts-setting-key="conversationStyle"]')]
       .map(node => [node.dataset.prtsSettingValue, node.textContent]),
     [['native', '原有'], ['deck-chat', '通讯链路']],
@@ -502,6 +509,7 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
     motion: 'system',
     bootAnimation: false,
     railDefaultHidden: false,
+    sessionFlow: false,
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
   }, {}, { phase: 'error', revision: 1 })
@@ -525,6 +533,11 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
   assert.deepEqual(calls.updates, [['texture', 'off'], ['railDefaultHidden', true]])
   assert.equal(panel.hasAttribute('open'), true)
   assert.equal(railHiddenOn.hasAttribute('data-prts-setting-feedback'), true)
+  const sessionFlowOff = document.querySelector('[data-prts-setting-key="sessionFlow"][data-prts-setting-value="false"]')
+  const sessionFlowOn = document.querySelector('[data-prts-setting-key="sessionFlow"][data-prts-setting-value="true"]')
+  assert.equal(sessionFlowOff.classList.contains('is-selected'), true)
+  sessionFlowOn.click()
+  assert.deepEqual(calls.updates.at(-1), ['sessionFlow', true])
   document.querySelector('[data-prts-retry-save]').click()
   assert.equal(calls.retries, 1)
 

@@ -141,6 +141,71 @@ html[data-dsh-prts] [data-prts-session-pickup] {
   pointer-events: none;
 }
 
+html[data-dsh-prts] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: #f7ddeb;
+  --prts-lifeline-green: #65ddb0;
+  --prts-lifeline-blue: #6eb7f3;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+html[data-dsh-prts][data-prts-scheme="light"] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: #c36f99;
+  --prts-lifeline-green: #218d6b;
+  --prts-lifeline-blue: #357ebc;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-filament] {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: .8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-filament="back"] {
+  stroke: var(--prts-lifeline-pink);
+  opacity: .74;
+  stroke-width: .85;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-filament="core"] {
+  stroke: var(--prts-lifeline-green);
+  opacity: .68;
+  stroke-width: .9;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-filament="front"] {
+  stroke: var(--prts-lifeline-blue);
+  opacity: .74;
+  stroke-width: .85;
+}
+
+html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-session-lifeline] {
+  opacity: .62;
+}
+
+html[data-dsh-prts] [data-prts-session-row][aria-selected="true"]:hover [data-prts-session-lifeline] {
+  opacity: 0;
+}
+
+html[data-dsh-prts][data-prts-session-flow="off"] [data-prts-session-row] [data-prts-session-lifeline] {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-prts] [data-prts-session-lifeline] {
+    transition-duration: 0s;
+  }
+}
+
+html[data-dsh-prts][data-prts-motion="reduced"] [data-prts-session-lifeline] {
+  transition-duration: 0s;
+}
+
 html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-facility-texture="pickup"] [data-prts-session-pickup] {
   opacity: .58;
   transform: translate3d(0, 0, 0);

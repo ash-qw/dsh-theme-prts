@@ -132,13 +132,18 @@ test('limits custom composer geometry to the empty-session hero', () => {
   assert.doesNotMatch(css, /width:\s*min\((?:920|960)px,\s*100%\)/)
 })
 
-test('replaces session projections with a hover-only pickup waveform and keeps the narrowed action rail', () => {
+test('pairs the active-session filament with a hover-only pickup and keeps the narrowed action rail', () => {
   includesAll([
     '[data-prts-facility-texture="pickup"]',
     '[data-prts-session-pickup]',
     '[data-prts-session-pickup-baseline]',
     '[data-prts-session-pickup-indicator]',
     '[data-prts-session-pickup-bar]',
+    '[data-prts-session-lifeline]',
+    '[data-prts-session-lifeline-filament]',
+    '[aria-selected="true"] [data-prts-session-lifeline]',
+    '[data-prts-session-flow="off"]',
+    'stroke-linejoin: round',
     'prts-session-pickup-sample',
     '--prts-pickup-duration: 480ms',
     'opacity: .58',
@@ -151,6 +156,8 @@ test('replaces session projections with a hover-only pickup waveform and keeps t
   ])
   assert.doesNotMatch(css, /html\[data-dsh-prts\] \[data-prts-row-projection/)
   assert.doesNotMatch(css, /prts-projection-(?:acquire|scan)/)
+  assert.doesNotMatch(css, /prts-session-lifeline-(?:travel|sweep)/)
+  assert.doesNotMatch(css, /\[aria-selected="true"\]\s*>\s*\[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\)/s)
 })
 test('keeps the native turn navigator while adding chat avatars and asymmetric bubbles', () => {
   includesAll([

@@ -10,6 +10,7 @@ test('normalizes unsupported values into the disabled version-nine defaults', ()
   )
   assert.equal(api.DEFAULT_PREFERENCES.version, 9)
   assert.equal(api.DEFAULT_PREFERENCES.railDefaultHidden, false)
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlow, true)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassHighlight'), false)
 })
@@ -67,8 +68,17 @@ test('loads and migrates a complete version-one payload without losing independe
     particleTraversalSpeed: 1,
     particlePattern: 'orthogonal',
     railDefaultHidden: false,
+    sessionFlow: true,
     conversationStyle: 'native',
   })
+})
+
+test('keeps the current-session flow switch independent from visual presets', () => {
+  const disabled = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'sessionFlow', false)
+  assert.equal(disabled.sessionFlow, false)
+  assert.equal(disabled.preset, 'standard-tactical')
+  assert.equal(api.applyVisualPreset(disabled, 'quiet-reading').sessionFlow, false)
+  assert.equal(api.normalizePreferences({ version: 9, sessionFlow: 'off' }).sessionFlow, true)
 })
 
 test('falls back after malformed, unsupported, and unavailable storage', () => {

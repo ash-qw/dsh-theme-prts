@@ -1,4 +1,5 @@
 import { ensureFacilityGraphic, ensureFacilityTextureDefs, renderFacilityGraphic } from './facility-vector.js'
+import { createSessionLifelineAnimator } from './session-lifeline.js'
 
 const OWNED_ATTRIBUTES = [
   'data-prts-row-title',
@@ -128,6 +129,7 @@ export function createSidebarControlAdapter({ document, window }) {
   let vectorOwners = new Set()
   const dirtyVectors = new Map()
   const vectorSizes = new WeakMap()
+  const lifelineAnimator = createSessionLifelineAnimator({ document, window })
 
   function scheduleVectors() {
     if (resizeFrame !== undefined) return
@@ -191,6 +193,8 @@ export function createSidebarControlAdapter({ document, window }) {
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     const next = new Set()
     const nextVectorOwners = new Set()
+    let activeLifelineRow
+    let activeLifeline
     if (root) {
       for (const projection of root.querySelectorAll('[data-prts-owned-projection]')) projection.remove()
       for (const row of root.querySelectorAll('div[role="treeitem"][aria-expanded]')) {
@@ -222,6 +226,10 @@ export function createSidebarControlAdapter({ document, window }) {
         const spine = ensureFacilitySpine(document, row, 'session', next)
         registerVector(face, { kind: 'face', topNotch: true, texture: 'pickup' }, next, nextVectorOwners)
         registerVector(spine, { kind: 'spine' }, next, nextVectorOwners)
+        if (!activeLifelineRow && row.getAttribute('aria-selected') === 'true') {
+          activeLifelineRow = row
+          activeLifeline = face.querySelector('[data-prts-session-lifeline]')
+        }
         markSidebarNode(row, 'data-prts-session-row', next)
         row.dataset.prtsSessionIndex = sessionIndex
         const title = resolveRowTitle(row, 'session', controls.actions)
@@ -236,6 +244,7 @@ export function createSidebarControlAdapter({ document, window }) {
         registerVector(controls.menu, { kind: 'button' }, next, nextVectorOwners)
       }
     }
+    lifelineAnimator.setTarget(activeLifelineRow, activeLifeline)
     for (const node of owned) {
       if (next.has(node)) continue
       if (node.hasAttribute?.('data-prts-owned-projection')
@@ -252,6 +261,7 @@ export function createSidebarControlAdapter({ document, window }) {
   }
 
   function clear() {
+    lifelineAnimator.setTarget(undefined, undefined)
     for (const node of document?.querySelectorAll?.('[data-prts-owned-projection], [data-prts-owned-facility], [data-prts-owned-facility-spine], [data-prts-owned-facility-vector], [data-prts-owned-facility-defs]') ?? []) node.remove()
     for (const node of owned) {
       for (const attribute of OWNED_ATTRIBUTES) node.removeAttribute?.(attribute)
@@ -267,6 +277,7 @@ export function createSidebarControlAdapter({ document, window }) {
   return {
     start() {
       if (!document) return
+      lifelineAnimator.start()
       ensureFacilityTextureDefs(document)
       const ResizeObserver = window?.ResizeObserver
       if (!resizeObserver && typeof ResizeObserver === 'function') {
@@ -311,6 +322,7 @@ export function createSidebarControlAdapter({ document, window }) {
       resizeFrame = undefined
       if (resizeTimer !== undefined) window?.clearTimeout?.(resizeTimer)
       resizeTimer = undefined
+      lifelineAnimator.dispose()
       clear()
     },
   }
