@@ -1,6 +1,7 @@
 const HOVER_SETTLE = 180
 const STATIC_TIME = 2.4
 const POINT_COUNT = 9
+const DEFAULT_FLOW_SPEED = 1
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
@@ -23,6 +24,15 @@ function filamentNodes(lifeline) {
   if (!lifeline) return []
   if (lifeline.matches?.('[data-prts-session-lifeline-filament]')) return [lifeline]
   return Array.from(lifeline.querySelectorAll?.('[data-prts-session-lifeline-filament]') ?? [])
+}
+
+function setFilamentPath(filament, path) {
+  const layers = Array.from(filament?.querySelectorAll?.('[data-prts-session-lifeline-layer]') ?? [])
+  if (layers.length === 0) {
+    filament?.setAttribute?.('d', path)
+    return
+  }
+  layers.forEach(layer => layer.setAttribute('d', path))
 }
 
 function createSmoothPath(points) {
@@ -91,7 +101,7 @@ export function configureSessionLifeline(lifeline, { start, end, baseline, lift 
   lifeline.setAttribute('data-prts-lifeline-lift', String(number(lift)))
   filamentNodes(lifeline).forEach((filament, index, filaments) => {
     const strand = filaments.length === 1 ? 0 : index - (filaments.length - 1) / 2
-    filament.setAttribute('d', createSessionLifelinePath(geometry, STATIC_TIME, 1, strand))
+    setFilamentPath(filament, createSessionLifelinePath(geometry, STATIC_TIME, 1, strand))
   })
   return true
 }
@@ -119,7 +129,7 @@ export function createSessionLifelineAnimator({ document, window }) {
     if (!geometry || filaments.length === 0) return false
     filaments.forEach((filament, index) => {
       const strand = filaments.length === 1 ? 0 : index - (filaments.length - 1) / 2
-      filament.setAttribute('d', createSessionLifelinePath(geometry, flowTime, strength, strand))
+      setFilamentPath(filament, createSessionLifelinePath(geometry, flowTime, strength, strand))
     })
     return true
   }
@@ -134,6 +144,11 @@ export function createSessionLifelineAnimator({ document, window }) {
       && document?.documentElement?.dataset?.prtsMotion !== 'reduced'
       && !reducedMotion?.matches
     )
+  }
+
+  function currentFlowSpeed() {
+    const value = Number(document?.documentElement?.dataset?.prtsSessionFlowSpeed)
+    return Number.isFinite(value) ? clamp(value, .25, 2) : DEFAULT_FLOW_SPEED
   }
 
   function cancel() {
@@ -161,7 +176,7 @@ export function createSessionLifelineAnimator({ document, window }) {
     if (lastTime === undefined) lastTime = now
     const elapsed = Math.min(100, Math.max(0, now - lastTime))
     lastTime = now
-    flowTime += elapsed / 1000
+    flowTime += elapsed / 1000 * currentFlowSpeed()
     const target = hovered ? 0 : 1
     if (strength !== target) {
       const step = elapsed / HOVER_SETTLE
@@ -212,7 +227,7 @@ export function createSessionLifelineAnimator({ document, window }) {
       motionObserver = new MotionObserver(syncMotion)
       motionObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['data-prts-motion', 'data-prts-session-flow'],
+        attributeFilter: ['data-prts-motion', 'data-prts-session-flow', 'data-prts-session-flow-speed'],
       })
     }
   }

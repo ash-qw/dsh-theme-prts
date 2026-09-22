@@ -1,4 +1,4 @@
-import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, resolveParticleDetail } from './preferences.js'
+import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, SESSION_FLOW_SPEED_DEFAULT, SESSION_FLOW_SPEED_MAX, SESSION_FLOW_SPEED_MIN, SESSION_FLOW_SPEED_STEP, resolveParticleDetail } from './preferences.js'
 
 const SETTINGS_FOCUSABLE = [
   'button:not([disabled])',
@@ -20,7 +20,14 @@ const COMMON_CONTROLS = [
   ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],
   ['motion', '动态效果', [['system', '跟随系统'], ['reduced', '减少']]],
   ['sessionFlow', '当前会话流线', [['false', '关闭'], ['true', '开启']]],
-  ['conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']]],
+  ['sessionGlow', '流线光效', [['false', '关闭'], ['true', '开启']]],
+  ['sessionFlowPalette', '流线色调', [['triad', '三色'], ['rhodes', '青蓝'], ['amber', '金黄'], ['alert', '赤红'], ['custom', '自定义']]],
+]
+
+const SESSION_FLOW_COLOR_CONTROLS = [
+  ['sessionFlowColorBack', '后层'],
+  ['sessionFlowColorCore', '中层'],
+  ['sessionFlowColorFront', '前层'],
 ]
 
 const PARTICLE_OPTIONS = [
@@ -40,8 +47,12 @@ function settingButtons(key, label, options) {
         ? '<small data-prts-setting-note>立即切换会话背景、头像与消息气泡</small>'
       : key === 'sessionFlow'
         ? '<small data-prts-setting-note>仅控制当前会话卡片的三色流线</small>'
+      : key === 'sessionGlow'
+        ? '<small data-prts-setting-note>为流线添加柔和的同色辉光</small>'
+      : key === 'sessionFlowPalette'
+        ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  const sample = value => key === 'texture' || key === 'glass'
+  const sample = value => key === 'texture' || key === 'glass' || key === 'sessionFlowPalette'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`
     : ''
   return `<div data-prts-setting-row="${key}">
@@ -60,6 +71,33 @@ function particleMarkup() {
   return PARTICLE_OPTIONS.map(([value, label, count]) => `<button type="button" role="radio" data-prts-setting-key="particleDetail" data-prts-setting-value="${value}">
     <i data-prts-particle-detail-preview aria-hidden="true">${Array.from({ length: count }, () => '<b></b>').join('')}</i><span>${label}</span>
   </button>`).join('')
+}
+
+function sessionFlowPreviewMarkup() {
+  const filaments = [
+    ['back', 'M 3 29 C 34 8 66 36 101 17 C 126 5 151 27 177 13'],
+    ['core', 'M 3 24 C 30 35 61 7 94 23 C 124 37 148 7 177 20'],
+    ['front', 'M 3 18 C 34 4 66 30 96 12 C 125 -1 148 30 177 24'],
+  ]
+  return `<svg data-prts-session-flow-preview viewBox="0 0 180 42" aria-label="三色流线预览" role="img">
+    ${filaments.map(([strand, path]) => `<g data-prts-session-flow-preview-filament="${strand}">
+      <path data-prts-session-flow-preview-layer="halo" d="${path}"></path>
+      <path data-prts-session-flow-preview-layer="body" d="${path}"></path>
+      <path data-prts-session-flow-preview-layer="core" d="${path}"></path>
+    </g>`).join('')}
+  </svg>`
+}
+
+function sessionFlowColorMarkup() {
+  return `<div data-prts-setting-row="sessionFlowColors" data-prts-session-flow-colors>
+    <span><strong>三色调色盘</strong><small data-prts-setting-note>任意修改后切换为自定义，日夜模式均保持原色</small></span>
+    <div data-prts-session-flow-color-workbench>
+      ${sessionFlowPreviewMarkup()}
+      <div data-prts-session-flow-color-inputs role="group" aria-label="三色流线调色盘">
+        ${SESSION_FLOW_COLOR_CONTROLS.map(([key, label]) => `<label><span>${label}</span><input type="color" value="#ffffff" data-prts-setting-color data-prts-setting-key="${key}" aria-label="${label}流线颜色"><output data-prts-setting-color-output="${key}">#ffffff</output></label>`).join('')}
+      </div>
+    </div>
+  </div>`
 }
 
 export function themeSettingsMarkup() {
@@ -83,7 +121,14 @@ export function themeSettingsMarkup() {
 
           <section data-prts-settings-common>
             <header><span><small>常用设置</small><strong>主题表现</strong></span></header>
-            <div data-prts-settings-common-grid>${COMMON_CONTROLS.map(([key, label, options]) => settingButtons(key, label, options)).join('')}</div>
+            <div data-prts-settings-common-grid>${COMMON_CONTROLS.map(([key, label, options]) => settingButtons(key, label, options)).join('')}
+              ${sessionFlowColorMarkup()}
+              <label data-prts-setting-row="sessionFlowSpeed" data-prts-setting-range-row data-prts-session-flow-speed>
+                <span><strong>流线速度</strong><small data-prts-setting-note>控制当前会话流线的形变速度</small></span>
+                <div><input type="range" min="0.25" max="2" step="0.25" value="1" data-prts-setting-range data-prts-setting-key="sessionFlowSpeed" aria-label="当前会话流线速度"><output data-prts-session-flow-speed-output>1× · 标准</output></div>
+              </label>
+              ${settingButtons('conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']])}
+            </div>
           </section>
 
           <details data-prts-settings-advanced>
@@ -143,6 +188,10 @@ export function createThemeSettingsOverlay({
   let currentPersistence = { phase: 'idle', revision: 0 }
   let particleTraversalSpeedDraft
   let particleTraversalSpeedDirty = false
+  let sessionFlowSpeedDraft
+  let sessionFlowSpeedDirty = false
+  let sessionFlowColorDrafts = {}
+  const sessionFlowColorDirty = new Set()
   let savedTimer
   let feedbackTimer
   let feedbackTarget
@@ -192,6 +241,8 @@ export function createThemeSettingsOverlay({
     if (value === isOpen) return isOpen
     if (!value) {
       commitParticleTraversalSpeed()
+      commitSessionFlowSpeed()
+      commitSessionFlowColors()
     }
     isOpen = value
     trigger.setAttribute('aria-expanded', String(isOpen))
@@ -225,6 +276,34 @@ export function createThemeSettingsOverlay({
     )
   }
 
+  function normalizeSessionFlowSpeed(value) {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return SESSION_FLOW_SPEED_DEFAULT
+    const clamped = Math.min(SESSION_FLOW_SPEED_MAX, Math.max(SESSION_FLOW_SPEED_MIN, numeric))
+    return Math.round(clamped / SESSION_FLOW_SPEED_STEP) * SESSION_FLOW_SPEED_STEP
+  }
+
+  function currentSessionFlowSpeed() {
+    return normalizeSessionFlowSpeed(
+      sessionFlowSpeedDirty ? sessionFlowSpeedDraft : currentPreferences?.sessionFlowSpeed,
+    )
+  }
+
+  function normalizeSessionFlowColor(value, fallback = '#ffffff') {
+    return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback
+  }
+
+  function currentSessionFlowColor(key) {
+    return normalizeSessionFlowColor(
+      sessionFlowColorDirty.has(key) ? sessionFlowColorDrafts[key] : currentPreferences?.[key],
+      '#ffffff',
+    )
+  }
+
+  function activeSessionFlowPalette() {
+    return sessionFlowColorDirty.size > 0 ? 'custom' : currentPreferences?.sessionFlowPalette
+  }
+
   function conciseNumber(value) {
     return String(Number(Number(value).toFixed(2)))
   }
@@ -243,6 +322,42 @@ export function createThemeSettingsOverlay({
     setText(panel.querySelector('[data-prts-particle-traversal-output]'), particleTraversalLabel(value))
   }
 
+  function sessionFlowSpeedLabel(value) {
+    const speed = normalizeSessionFlowSpeed(value)
+    const description = speed < 1 ? '缓慢' : speed === 1 ? '标准' : speed <= 1.5 ? '快速' : '高速'
+    return `${conciseNumber(speed)}× · ${description}`
+  }
+
+  function renderSessionFlowSpeed() {
+    if (!panel || !currentPreferences) return
+    const value = currentSessionFlowSpeed()
+    const range = panel.querySelector('input[data-prts-setting-range][data-prts-setting-key="sessionFlowSpeed"]')
+    if (range && range.value !== String(value)) range.value = String(value)
+    setText(panel.querySelector('[data-prts-session-flow-speed-output]'), sessionFlowSpeedLabel(value))
+  }
+
+  function renderSessionFlowColors() {
+    if (!panel || !currentPreferences) return
+    for (const [key] of SESSION_FLOW_COLOR_CONTROLS) {
+      const value = currentSessionFlowColor(key)
+      const input = panel.querySelector(`input[data-prts-setting-color][data-prts-setting-key="${key}"]`)
+      if (input && input.value !== value) input.value = value
+      setText(panel.querySelector(`[data-prts-setting-color-output="${key}"]`), value)
+    }
+    const preview = panel.querySelector('[data-prts-session-flow-preview]')
+    if (preview) {
+      preview.dataset.prtsSessionFlowPreviewPalette = activeSessionFlowPalette() || 'triad'
+      preview.style.setProperty('--prts-session-flow-back', currentSessionFlowColor('sessionFlowColorBack'))
+      preview.style.setProperty('--prts-session-flow-core', currentSessionFlowColor('sessionFlowColorCore'))
+      preview.style.setProperty('--prts-session-flow-front', currentSessionFlowColor('sessionFlowColorFront'))
+    }
+    for (const button of panel.querySelectorAll('button[data-prts-setting-key="sessionFlowPalette"]')) {
+      const selected = button.dataset.prtsSettingValue === activeSessionFlowPalette()
+      button.classList.toggle('is-selected', selected)
+      button.setAttribute('aria-pressed', String(selected))
+    }
+  }
+
   function setText(node, value) {
     if (node && node.textContent !== value) node.textContent = value
   }
@@ -258,6 +373,38 @@ export function createThemeSettingsOverlay({
       renderParticleTraversal()
     }
     return true
+  }
+
+  function commitSessionFlowSpeed() {
+    if (!sessionFlowSpeedDirty || !currentPreferences) return false
+    const value = currentSessionFlowSpeed()
+    sessionFlowSpeedDirty = false
+    sessionFlowSpeedDraft = value
+    if (value !== normalizeSessionFlowSpeed(currentPreferences.sessionFlowSpeed)) {
+      onPreferenceChange('sessionFlowSpeed', value)
+    } else {
+      renderSessionFlowSpeed()
+    }
+    return true
+  }
+
+  function commitSessionFlowColor(key) {
+    if (!sessionFlowColorDirty.has(key) || !currentPreferences) return false
+    const value = currentSessionFlowColor(key)
+    sessionFlowColorDirty.delete(key)
+    sessionFlowColorDrafts[key] = value
+    if (value !== normalizeSessionFlowColor(currentPreferences[key]) || currentPreferences.sessionFlowPalette !== 'custom') {
+      onPreferenceChange(key, value)
+    } else {
+      renderSessionFlowColors()
+    }
+    return true
+  }
+
+  function commitSessionFlowColors() {
+    let committed = false
+    for (const key of [...sessionFlowColorDirty]) committed = commitSessionFlowColor(key) || committed
+    return committed
   }
 
   function renderPersistence() {
@@ -286,8 +433,10 @@ export function createThemeSettingsOverlay({
       const key = button.dataset.prtsSettingKey
       const actual = key === 'particleDetail'
         ? particleDetail
-        : key === 'sessionFlow'
-          ? currentPreferences.sessionFlow !== false
+        : key === 'sessionFlowPalette'
+          ? activeSessionFlowPalette()
+        : key === 'sessionFlow' || key === 'sessionGlow'
+          ? currentPreferences[key] !== false
           : currentPreferences[key]
       const selected = String(actual) === button.dataset.prtsSettingValue
       button.classList.toggle('is-selected', selected)
@@ -305,7 +454,13 @@ export function createThemeSettingsOverlay({
     const particleError = panel.querySelector('[data-prts-particle-error]')
     if (particleError) particleError.hidden = currentStatus?.particle?.phase !== 'error'
     if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(currentPreferences.particleTraversalSpeed)
+    if (!sessionFlowSpeedDirty) sessionFlowSpeedDraft = normalizeSessionFlowSpeed(currentPreferences.sessionFlowSpeed)
+    for (const [key] of SESSION_FLOW_COLOR_CONTROLS) {
+      if (!sessionFlowColorDirty.has(key)) sessionFlowColorDrafts[key] = normalizeSessionFlowColor(currentPreferences[key])
+    }
     renderParticleTraversal()
+    renderSessionFlowSpeed()
+    renderSessionFlowColors()
     renderPersistence()
   }
 
@@ -329,6 +484,10 @@ export function createThemeSettingsOverlay({
     if (target.hasAttribute('data-prts-theme-settings-close')) { setOpen(false); return }
     if (target.hasAttribute('data-prts-setting-key')) {
       const raw = target.dataset.prtsSettingValue
+      if (target.dataset.prtsSettingKey === 'sessionFlowPalette') {
+        sessionFlowColorDirty.clear()
+        sessionFlowColorDrafts = {}
+      }
       markFeedback(target)
       onPreferenceChange(target.dataset.prtsSettingKey, raw === 'true' ? true : raw === 'false' ? false : raw)
       return
@@ -339,6 +498,10 @@ export function createThemeSettingsOverlay({
     if (target.hasAttribute('data-prts-reset-confirm-action')) {
       particleTraversalSpeedDirty = false
       particleTraversalSpeedDraft = undefined
+      sessionFlowSpeedDirty = false
+      sessionFlowSpeedDraft = undefined
+      sessionFlowColorDirty.clear()
+      sessionFlowColorDrafts = {}
       setResetConfirmation(false)
       onResetVisual()
     }
@@ -346,6 +509,15 @@ export function createThemeSettingsOverlay({
 
   function onPanelInput(event) {
     const target = event.target
+    if (target?.matches?.('input[data-prts-setting-color]')) {
+      const key = target.dataset.prtsSettingKey
+      const value = normalizeSessionFlowColor(target.value, currentSessionFlowColor(key))
+      sessionFlowColorDrafts[key] = value
+      sessionFlowColorDirty.add(key)
+      renderSessionFlowColors()
+      onPreferencePreview(key, value)
+      return
+    }
     if (!target?.matches?.('input[data-prts-setting-range]')) return
     const value = Number(target.value)
     if (!Number.isFinite(value)) return
@@ -354,6 +526,12 @@ export function createThemeSettingsOverlay({
       particleTraversalSpeedDirty = true
       renderParticleTraversal()
       onPreferencePreview('particleTraversalSpeed', particleTraversalSpeedDraft)
+      return
+    } else if (target.dataset.prtsSettingKey === 'sessionFlowSpeed') {
+      sessionFlowSpeedDraft = normalizeSessionFlowSpeed(value)
+      sessionFlowSpeedDirty = true
+      renderSessionFlowSpeed()
+      onPreferencePreview('sessionFlowSpeed', sessionFlowSpeedDraft)
       return
     } else {
       return
@@ -378,8 +556,13 @@ export function createThemeSettingsOverlay({
   const renderMediaState = () => renderState()
   const commitFromControl = event => {
     const target = event.target
+    if (target?.matches?.('input[data-prts-setting-color]')) {
+      if (event.type === 'change' || event.type === 'focusout') commitSessionFlowColor(target.dataset.prtsSettingKey)
+      return
+    }
     if (!target?.matches?.('input[data-prts-setting-range]')) return
     if (target.dataset.prtsSettingKey === 'particleTraversalSpeed') commitParticleTraversalSpeed()
+    if (target.dataset.prtsSettingKey === 'sessionFlowSpeed') commitSessionFlowSpeed()
   }
 
   trigger?.addEventListener('click', toggle)
@@ -400,6 +583,10 @@ export function createThemeSettingsOverlay({
       currentStatus = status
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
       if (!particleTraversalSpeedDirty) particleTraversalSpeedDraft = normalizeParticleTraversalSpeed(preferences?.particleTraversalSpeed)
+      if (!sessionFlowSpeedDirty) sessionFlowSpeedDraft = normalizeSessionFlowSpeed(preferences?.sessionFlowSpeed)
+      for (const [key] of SESSION_FLOW_COLOR_CONTROLS) {
+        if (!sessionFlowColorDirty.has(key)) sessionFlowColorDrafts[key] = normalizeSessionFlowColor(preferences?.[key])
+      }
       renderState()
     },
     open: () => setOpen(true),

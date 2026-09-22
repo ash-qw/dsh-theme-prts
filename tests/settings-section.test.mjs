@@ -392,6 +392,22 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelector('[data-prts-setting-row="sessionFlow"] [data-prts-setting-note]').textContent,
     '仅控制当前会话卡片的三色流线')
   assert.deepEqual(
+    [...document.querySelectorAll('[data-prts-setting-key="sessionGlow"]')]
+      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
+    [['false', '关闭'], ['true', '开启']],
+  )
+  assert.equal(document.querySelector('[data-prts-setting-row="sessionGlow"] [data-prts-setting-note]').textContent,
+    '为流线添加柔和的同色辉光')
+  assert.deepEqual(
+    [...document.querySelectorAll('[data-prts-setting-key="sessionFlowPalette"]')]
+      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
+    [['triad', '三色'], ['rhodes', '青蓝'], ['amber', '金黄'], ['alert', '赤红'], ['custom', '自定义']],
+  )
+  assert.equal(document.querySelectorAll('[data-prts-option-sample="sessionFlowPalette"]').length, 5)
+  assert.equal(document.querySelectorAll('[data-prts-setting-color]').length, 3)
+  assert.equal(document.querySelectorAll('[data-prts-session-flow-preview-filament]').length, 3)
+  assert.equal(document.querySelectorAll('[data-prts-session-flow-preview-layer]').length, 9)
+  assert.deepEqual(
     [...document.querySelectorAll('[data-prts-setting-key="conversationStyle"]')]
       .map(node => [node.dataset.prtsSettingValue, node.textContent]),
     [['native', '原有'], ['deck-chat', '通讯链路']],
@@ -413,6 +429,12 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(traversalSpeed.step, '0.25')
   assert.equal(traversalSpeed.value, '1')
   assert.equal(document.querySelector('[data-prts-particle-traversal-output]').textContent, '1× · 每 1 个视口重组')
+  const sessionFlowSpeed = document.querySelector('[data-prts-setting-range][data-prts-setting-key="sessionFlowSpeed"]')
+  assert.equal(sessionFlowSpeed.min, '0.25')
+  assert.equal(sessionFlowSpeed.max, '2')
+  assert.equal(sessionFlowSpeed.step, '0.25')
+  assert.equal(sessionFlowSpeed.value, '1')
+  assert.equal(document.querySelector('[data-prts-session-flow-speed-output]').textContent, '1× · 标准')
   assert.equal(document.querySelector('[data-prts-setting-key="glassEnabled"]'), null)
   assert.equal(document.querySelector('[data-prts-setting-key="glassHighlight"]'), null)
   assert.equal(document.querySelector('[data-prts-particle-status]'), null)
@@ -477,6 +499,92 @@ test('particle traversal speed previews live and persists only when range intera
   overlay.dispose()
 })
 
+test('session flow speed previews live and persists only when range interaction completes', async () => {
+  const api = await load('../src/client/theme-settings-workbench.js')
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <button type="button" data-trigger></button>
+    ${api.themeSettingsMarkup()}
+  </body></html>`, { pretendToBeVisual: true })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  const { document } = dom.window
+  const previews = []
+  const updates = []
+  const overlay = api.createThemeSettingsOverlay({
+    document,
+    trigger: document.querySelector('[data-trigger]'),
+    panel: document.querySelector('[data-prts-theme-settings]'),
+    backdrop: document.querySelector('[data-prts-settings-backdrop]'),
+    onPreferencePreview(key, value) { previews.push([key, value]) },
+    onPreferenceChange(key, value) { updates.push([key, value]) },
+  })
+  overlay.update({
+    preset: 'standard-tactical',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+    particleTraversalSpeed: 1,
+    sessionFlowSpeed: 1,
+  }, {})
+  overlay.open()
+
+  const range = document.querySelector('[data-prts-setting-range][data-prts-setting-key="sessionFlowSpeed"]')
+  range.value = '1.75'
+  range.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
+  assert.deepEqual(previews, [['sessionFlowSpeed', 1.75]])
+  assert.deepEqual(updates, [])
+  assert.equal(document.querySelector('[data-prts-session-flow-speed-output]').textContent, '1.75× · 高速')
+
+  range.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+  assert.deepEqual(updates, [['sessionFlowSpeed', 1.75]])
+  overlay.dispose()
+})
+
+test('three session-flow color pickers update the optical preview and persist as a custom palette', async () => {
+  const api = await load('../src/client/theme-settings-workbench.js')
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <button type="button" data-trigger></button>
+    ${api.themeSettingsMarkup()}
+  </body></html>`, { pretendToBeVisual: true })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  const { document } = dom.window
+  const previews = []
+  const updates = []
+  const overlay = api.createThemeSettingsOverlay({
+    document,
+    trigger: document.querySelector('[data-trigger]'),
+    panel: document.querySelector('[data-prts-theme-settings]'),
+    backdrop: document.querySelector('[data-prts-settings-backdrop]'),
+    onPreferencePreview(key, value) { previews.push([key, value]) },
+    onPreferenceChange(key, value) { updates.push([key, value]) },
+  })
+  overlay.update({
+    preset: 'standard-tactical',
+    conversationParticleDensity: 'sparse',
+    heroParticleDensity: 'light',
+    particleTraversalSpeed: 1,
+    sessionFlowSpeed: 1,
+    sessionFlowPalette: 'amber',
+    sessionFlowColorBack: '#ffe6a3',
+    sessionFlowColorCore: '#f0c800',
+    sessionFlowColorFront: '#ee8f42',
+  }, {})
+
+  const preview = document.querySelector('[data-prts-session-flow-preview]')
+  assert.equal(preview.dataset.prtsSessionFlowPreviewPalette, 'amber')
+  assert.equal(document.querySelector('[data-prts-setting-color][data-prts-setting-key="sessionFlowColorCore"]').value, '#f0c800')
+  const core = document.querySelector('[data-prts-setting-color][data-prts-setting-key="sessionFlowColorCore"]')
+  core.value = '#123abc'
+  core.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
+  assert.deepEqual(previews, [['sessionFlowColorCore', '#123abc']])
+  assert.equal(preview.dataset.prtsSessionFlowPreviewPalette, 'custom')
+  assert.equal(preview.style.getPropertyValue('--prts-session-flow-core'), '#123abc')
+  assert.equal(document.querySelector('[data-prts-setting-color-output="sessionFlowColorCore"]').textContent, '#123abc')
+  assert.equal(document.querySelector('[data-prts-setting-key="sessionFlowPalette"][data-prts-setting-value="custom"]').classList.contains('is-selected'), true)
+  assert.deepEqual(updates, [])
+  core.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+  assert.deepEqual(updates, [['sessionFlowColorCore', '#123abc']])
+  overlay.dispose()
+})
+
 test('workbench uses inline reset confirmation and exposes persistence recovery', async () => {
   const api = await load('../src/client/theme-settings-workbench.js')
   const dom = new JSDOM(`<!doctype html><html><body>
@@ -510,6 +618,12 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
     bootAnimation: false,
     railDefaultHidden: false,
     sessionFlow: false,
+    sessionGlow: false,
+    sessionFlowPalette: 'triad',
+    sessionFlowColorBack: '#f7ddeb',
+    sessionFlowColorCore: '#65ddb0',
+    sessionFlowColorFront: '#6eb7f3',
+    sessionFlowSpeed: 1,
     conversationParticleDensity: 'sparse',
     heroParticleDensity: 'light',
   }, {}, { phase: 'error', revision: 1 })
@@ -538,6 +652,14 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
   assert.equal(sessionFlowOff.classList.contains('is-selected'), true)
   sessionFlowOn.click()
   assert.deepEqual(calls.updates.at(-1), ['sessionFlow', true])
+  const sessionGlowOff = document.querySelector('[data-prts-setting-key="sessionGlow"][data-prts-setting-value="false"]')
+  const sessionGlowOn = document.querySelector('[data-prts-setting-key="sessionGlow"][data-prts-setting-value="true"]')
+  assert.equal(sessionGlowOff.classList.contains('is-selected'), true)
+  sessionGlowOn.click()
+  assert.deepEqual(calls.updates.at(-1), ['sessionGlow', true])
+  const amberFlow = document.querySelector('[data-prts-setting-key="sessionFlowPalette"][data-prts-setting-value="amber"]')
+  amberFlow.click()
+  assert.deepEqual(calls.updates.at(-1), ['sessionFlowPalette', 'amber'])
   document.querySelector('[data-prts-retry-save]').click()
   assert.equal(calls.retries, 1)
 

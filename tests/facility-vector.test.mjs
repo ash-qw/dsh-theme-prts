@@ -71,9 +71,13 @@ test('session pickup supplements an existing vector with a clipped active filame
   assert.ok(graphic.querySelector('[data-prts-session-pickup-indicator]'))
   assert.equal(graphic.querySelectorAll('[data-prts-session-lifeline]').length, 1)
   assert.equal(graphic.querySelectorAll('[data-prts-session-lifeline-filament]').length, 3)
+  assert.equal(graphic.querySelectorAll('[data-prts-session-lifeline-layer]').length, 9)
   assert.equal(graphic.querySelector('[data-prts-session-pickup-baseline]').getAttribute('y1'), '19')
   const lifeline = graphic.querySelector('[data-prts-session-lifeline]')
-  const lifelinePath = lifeline.querySelector('[data-prts-session-lifeline-filament="core"]').getAttribute('d')
+  const coreFilament = lifeline.querySelector('[data-prts-session-lifeline-filament="core"]')
+  const coreLayers = Array.from(coreFilament.querySelectorAll('[data-prts-session-lifeline-layer]'))
+  const lifelinePath = coreLayers[1].getAttribute('d')
+  assert.equal(new Set(coreLayers.map(layer => layer.getAttribute('d'))).size, 1)
   assert.match(lifelinePath, /^M /)
   assert.equal((lifelinePath.match(/ C /g) || []).length, 8)
   assert.equal((lifelinePath.match(/ L /g) || []).length, 0)
@@ -86,7 +90,7 @@ test('session pickup supplements an existing vector with a clipped active filame
   assert.equal(graphic.querySelector('[data-prts-session-pickup-baseline]').getAttribute('y2'), '16')
   assert.equal(graphic.querySelector('[data-prts-session-pickup-indicator]').getAttribute('cy'), '16')
   assert.equal(graphic.querySelector('[data-prts-session-pickup-bar]').getAttribute('y'), '13.5')
-  assert.notEqual(graphic.querySelector('[data-prts-session-lifeline-filament="core"]').getAttribute('d'), lifelinePath)
+  assert.notEqual(coreLayers[1].getAttribute('d'), lifelinePath)
   assert.equal(graphic.querySelector('[data-prts-facility-layer="outline"]').getAttribute('stroke-width'), '1')
 
   assert.equal(

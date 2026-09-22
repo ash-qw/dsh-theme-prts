@@ -4,9 +4,20 @@ export const PARTICLE_TRAVERSAL_SPEED_MIN = 0
 export const PARTICLE_TRAVERSAL_SPEED_MAX = 2
 export const PARTICLE_TRAVERSAL_SPEED_STEP = 0.25
 export const PARTICLE_TRAVERSAL_SPEED_DEFAULT = 1
+export const SESSION_FLOW_SPEED_MIN = 0.25
+export const SESSION_FLOW_SPEED_MAX = 2
+export const SESSION_FLOW_SPEED_STEP = 0.25
+export const SESSION_FLOW_SPEED_DEFAULT = 1
+
+export const SESSION_FLOW_PALETTES = Object.freeze({
+  triad: Object.freeze({ back: '#f7ddeb', core: '#65ddb0', front: '#6eb7f3' }),
+  rhodes: Object.freeze({ back: '#b9edf4', core: '#5ccddb', front: '#5a9ee6' }),
+  amber: Object.freeze({ back: '#ffe6a3', core: '#f0c800', front: '#ee8f42' }),
+  alert: Object.freeze({ back: '#ffc0b8', core: '#ee625a', front: '#db5b8c' }),
+})
 
 export const DEFAULT_PREFERENCES = Object.freeze({
-  version: 9,
+  version: 12,
   enabled: false,
   preset: 'standard-tactical',
   texture: 'full',
@@ -19,6 +30,12 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
   sessionFlow: true,
+  sessionGlow: true,
+  sessionFlowPalette: 'triad',
+  sessionFlowColorBack: SESSION_FLOW_PALETTES.triad.back,
+  sessionFlowColorCore: SESSION_FLOW_PALETTES.triad.core,
+  sessionFlowColorFront: SESSION_FLOW_PALETTES.triad.front,
+  sessionFlowSpeed: SESSION_FLOW_SPEED_DEFAULT,
   conversationStyle: 'native',
 })
 
@@ -61,7 +78,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation']),
   navigation: Object.freeze(['railDefaultHidden']),
-  conversation: Object.freeze(['conversationStyle']),
+  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -70,6 +87,8 @@ const MOTIONS = new Set(['system', 'reduced'])
 const PARTICLE_DENSITIES = new Set(['sparse', 'light', 'standard', 'dense', 'ultra'])
 const PRESETS = new Set([...Object.keys(VISUAL_PRESETS), 'custom'])
 const CONVERSATION_STYLES = new Set(['native', 'deck-chat'])
+const SESSION_FLOW_PALETTE_IDS = new Set([...Object.keys(SESSION_FLOW_PALETTES), 'custom'])
+const SESSION_FLOW_COLOR_KEYS = new Set(['sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront'])
 const PRESET_LINKED_KEYS = new Set(Object.keys(VISUAL_PRESETS['standard-tactical']))
 
 
@@ -99,11 +118,22 @@ function enumOr(value, allowed, fallback) {
   return allowed.has(value) ? value : fallback
 }
 
+function colorOr(value, fallback) {
+  return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback
+}
+
 function particleTraversalSpeedOr(value, fallback) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return fallback
   const clamped = Math.min(PARTICLE_TRAVERSAL_SPEED_MAX, Math.max(PARTICLE_TRAVERSAL_SPEED_MIN, numeric))
   return Math.round(clamped / PARTICLE_TRAVERSAL_SPEED_STEP) * PARTICLE_TRAVERSAL_SPEED_STEP
+}
+
+function sessionFlowSpeedOr(value, fallback) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  const clamped = Math.min(SESSION_FLOW_SPEED_MAX, Math.max(SESSION_FLOW_SPEED_MIN, numeric))
+  return Math.round(clamped / SESSION_FLOW_SPEED_STEP) * SESSION_FLOW_SPEED_STEP
 }
 
 function normalizeGlass(input) {
@@ -132,8 +162,16 @@ export function normalizePreferences(value) {
     : input.preset
   const particlePreset = VISUAL_PRESETS[input.preset] ?? DEFAULT_PREFERENCES
   const legacyDensities = legacyParticleDensities(input)
+  const sessionFlowPalette = enumOr(input.sessionFlowPalette, SESSION_FLOW_PALETTE_IDS, DEFAULT_PREFERENCES.sessionFlowPalette)
+  const paletteColors = SESSION_FLOW_PALETTES[sessionFlowPalette]
+  const customColors = {
+    back: colorOr(input.sessionFlowColorBack, DEFAULT_PREFERENCES.sessionFlowColorBack),
+    core: colorOr(input.sessionFlowColorCore, DEFAULT_PREFERENCES.sessionFlowColorCore),
+    front: colorOr(input.sessionFlowColorFront, DEFAULT_PREFERENCES.sessionFlowColorFront),
+  }
+  const sessionFlowColors = paletteColors ?? customColors
   const normalized = {
-    version: 9,
+    version: 12,
     enabled: booleanOr(input.enabled, DEFAULT_PREFERENCES.enabled),
     preset: enumOr(migratedPreset, PRESETS, DEFAULT_PREFERENCES.preset),
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
@@ -149,6 +187,12 @@ export function normalizePreferences(value) {
     particlePattern: 'orthogonal',
     railDefaultHidden: booleanOr(input.railDefaultHidden, DEFAULT_PREFERENCES.railDefaultHidden),
     sessionFlow: booleanOr(input.sessionFlow, DEFAULT_PREFERENCES.sessionFlow),
+    sessionGlow: booleanOr(input.sessionGlow, DEFAULT_PREFERENCES.sessionGlow),
+    sessionFlowPalette,
+    sessionFlowColorBack: sessionFlowColors.back,
+    sessionFlowColorCore: sessionFlowColors.core,
+    sessionFlowColorFront: sessionFlowColors.front,
+    sessionFlowSpeed: sessionFlowSpeedOr(input.sessionFlowSpeed, DEFAULT_PREFERENCES.sessionFlowSpeed),
     conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),
   }
   normalized.preset = matchedVisualPreset(normalized)
@@ -175,6 +219,26 @@ export function updatePreferenceValue(value, key, nextValue) {
   if (key === 'preset') return applyVisualPreset(value, nextValue)
   if (key === 'particleDetail') return applyParticleDetail(value, nextValue)
   const current = normalizePreferences(value)
+  if (key === 'sessionFlowPalette') {
+    const palette = enumOr(nextValue, SESSION_FLOW_PALETTE_IDS, current.sessionFlowPalette)
+    const colors = SESSION_FLOW_PALETTES[palette]
+    return normalizePreferences({
+      ...current,
+      sessionFlowPalette: palette,
+      ...(colors ? {
+        sessionFlowColorBack: colors.back,
+        sessionFlowColorCore: colors.core,
+        sessionFlowColorFront: colors.front,
+      } : {}),
+    })
+  }
+  if (SESSION_FLOW_COLOR_KEYS.has(key)) {
+    return normalizePreferences({
+      ...current,
+      sessionFlowPalette: 'custom',
+      [key]: colorOr(nextValue, current[key]),
+    })
+  }
   if (key === 'conversationParticleDensity' || key === 'heroParticleDensity') {
     const density = enumOr(nextValue, PARTICLE_DENSITIES, current[key])
     return normalizePreferences({ ...current, [key]: density })
@@ -196,7 +260,7 @@ export function loadPreferences(storage) {
     const raw = storage?.getItem(PRTS_STORAGE_KEY)
     if (raw === null || raw === undefined) return { ...DEFAULT_PREFERENCES }
     const parsed = JSON.parse(raw)
-    if (![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
+    if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(parsed?.version)) return { ...DEFAULT_PREFERENCES }
     return normalizePreferences(parsed)
   } catch {
     return { ...DEFAULT_PREFERENCES }

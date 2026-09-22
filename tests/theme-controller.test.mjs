@@ -12,6 +12,9 @@ const enabled = {
   particlePattern: 'orthogonal',
   motion: 'system',
   sessionFlow: false,
+  sessionGlow: false,
+  sessionFlowPalette: 'amber',
+  sessionFlowSpeed: 1.5,
   conversationStyle: 'deck-chat',
 }
 
@@ -61,6 +64,12 @@ test('applies appearance state and fully removes only owned state', () => {
   assert.equal(root.dataset.prtsGlass, 'clear')
   assert.equal(root.dataset.prtsParticlePattern, 'orthogonal')
   assert.equal(root.dataset.prtsSessionFlow, 'off')
+  assert.equal(root.dataset.prtsSessionGlow, 'off')
+  assert.equal(root.dataset.prtsSessionFlowPalette, 'amber')
+  assert.equal(root.dataset.prtsSessionFlowSpeed, '1.5')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-back'), '#ffe6a3')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-core'), '#f0c800')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-front'), '#ee8f42')
   assert.equal(root.dataset.prtsConversationStyle, 'deck-chat')
   assert.equal(root.hasAttribute('data-prts-glass-highlight'), false)
   assert.equal(dom.window.document.querySelectorAll('style[data-plugin-css="dsh-theme-prts/prts.css"]').length, 1)
@@ -71,6 +80,12 @@ test('applies appearance state and fully removes only owned state', () => {
   assert.equal(root.hasAttribute('data-prts-glass'), false)
   assert.equal(root.hasAttribute('data-prts-particle-pattern'), false)
   assert.equal(root.hasAttribute('data-prts-session-flow'), false)
+  assert.equal(root.hasAttribute('data-prts-session-glow'), false)
+  assert.equal(root.hasAttribute('data-prts-session-flow-palette'), false)
+  assert.equal(root.hasAttribute('data-prts-session-flow-speed'), false)
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-back'), '')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-core'), '')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-front'), '')
   assert.equal(root.hasAttribute('data-prts-conversation-style'), false)
   assert.equal(dom.window.document.querySelector('[data-plugin="dsh-theme-prts"]'), null)
 })

@@ -123,9 +123,15 @@ function appendSessionPickup(document, graphic) {
     'clip-path': `url(#${clipId})`,
   })
   for (const strand of ['back', 'core', 'front']) {
-    lifeline.append(svgNode(document, 'path', {
+    const filament = svgNode(document, 'g', {
       'data-prts-session-lifeline-filament': strand,
-    }))
+    })
+    for (const layer of ['halo', 'body', 'core']) {
+      filament.append(svgNode(document, 'path', {
+        'data-prts-session-lifeline-layer': layer,
+      }))
+    }
+    lifeline.append(filament)
   }
 
   const pickup = svgNode(document, 'g', {

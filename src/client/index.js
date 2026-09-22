@@ -193,8 +193,24 @@ export function applyPrtsPlugin(ctx, environment) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
       onPreferencePreview(key, value) {
-        if (key !== 'particleTraversalSpeed') return
-        particleField.update(updatePreferenceValue(preferences, key, value))
+        if (key === 'particleTraversalSpeed') {
+          particleField.update(updatePreferenceValue(preferences, key, value))
+          return
+        }
+        if (key === 'sessionFlowSpeed') {
+          const preview = updatePreferenceValue(preferences, key, value)
+          document.documentElement.dataset.prtsSessionFlowSpeed = String(preview.sessionFlowSpeed)
+          return
+        }
+        const sessionFlowColorProperties = {
+          sessionFlowColorBack: '--prts-session-flow-back',
+          sessionFlowColorCore: '--prts-session-flow-core',
+          sessionFlowColorFront: '--prts-session-flow-front',
+        }
+        if (sessionFlowColorProperties[key]) {
+          document.documentElement.dataset.prtsSessionFlowPalette = 'custom'
+          document.documentElement.style.setProperty(sessionFlowColorProperties[key], String(value))
+        }
       },
       onVisualReset() {
         persistAndApply({

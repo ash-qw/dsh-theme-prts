@@ -150,42 +150,107 @@ html[data-dsh-prts] [data-prts-session-lifeline] {
   pointer-events: none;
 }
 
-html[data-dsh-prts][data-prts-scheme="light"] [data-prts-session-lifeline] {
-  --prts-lifeline-pink: #c36f99;
-  --prts-lifeline-green: #218d6b;
-  --prts-lifeline-blue: #357ebc;
+html[data-dsh-prts][data-prts-session-flow-palette="rhodes"] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: #b9edf4;
+  --prts-lifeline-green: #5ccddb;
+  --prts-lifeline-blue: #5a9ee6;
+}
+
+html[data-dsh-prts][data-prts-session-flow-palette="amber"] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: #ffe6a3;
+  --prts-lifeline-green: #f0c800;
+  --prts-lifeline-blue: #ee8f42;
+}
+
+html[data-dsh-prts][data-prts-session-flow-palette="alert"] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: #ffc0b8;
+  --prts-lifeline-green: #ee625a;
+  --prts-lifeline-blue: #db5b8c;
+}
+
+html[data-dsh-prts][data-prts-session-flow-palette="custom"] [data-prts-session-lifeline] {
+  --prts-lifeline-pink: var(--prts-session-flow-back);
+  --prts-lifeline-green: var(--prts-session-flow-core);
+  --prts-lifeline-blue: var(--prts-session-flow-front);
 }
 
 html[data-dsh-prts] [data-prts-session-lifeline-filament] {
+  --prts-lifeline-color: currentColor;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-layer] {
   fill: none;
-  stroke: currentColor;
-  stroke-width: .8;
+  stroke: var(--prts-lifeline-color);
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   shape-rendering: geometricPrecision;
+  transition: opacity 160ms ease, stroke-width 160ms ease;
 }
 
 html[data-dsh-prts] [data-prts-session-lifeline-filament="back"] {
-  stroke: var(--prts-lifeline-pink);
-  opacity: .74;
-  stroke-width: .85;
+  --prts-lifeline-color: var(--prts-lifeline-pink);
+  opacity: .92;
 }
 
 html[data-dsh-prts] [data-prts-session-lifeline-filament="core"] {
-  stroke: var(--prts-lifeline-green);
-  opacity: .68;
-  stroke-width: .9;
+  --prts-lifeline-color: var(--prts-lifeline-green);
+  opacity: .9;
 }
 
 html[data-dsh-prts] [data-prts-session-lifeline-filament="front"] {
-  stroke: var(--prts-lifeline-blue);
-  opacity: .74;
-  stroke-width: .85;
+  --prts-lifeline-color: var(--prts-lifeline-blue);
+  opacity: .98;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-layer="body"] {
+  stroke-width: .9;
+}
+
+html[data-dsh-prts] [data-prts-session-lifeline-layer="halo"],
+html[data-dsh-prts] [data-prts-session-lifeline-layer="core"] {
+  opacity: 0;
+}
+
+html[data-dsh-prts][data-prts-session-glow="off"] :is([data-prts-session-lifeline-layer="halo"], [data-prts-session-lifeline-layer="core"]) {
+  opacity: 0;
+}
+
+html[data-dsh-prts][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="halo"] {
+  stroke-width: 4.25;
+  opacity: .28;
+  filter: blur(1.15px);
+}
+
+html[data-dsh-prts][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="body"] {
+  stroke-width: 1.65;
+  opacity: .98;
+}
+
+html[data-dsh-prts][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="core"] {
+  stroke: color-mix(in srgb, var(--prts-lifeline-color) 18%, #fff);
+  stroke-width: .58;
+  opacity: .96;
+}
+
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="halo"] {
+  stroke: color-mix(in srgb, var(--prts-lifeline-color) 42%, #fff);
+  stroke-width: 4.4;
+  opacity: .45;
+  filter: blur(1.05px);
+}
+
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="body"] {
+  stroke-width: 1.5;
+}
+
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data-prts-session-lifeline-layer="core"] {
+  stroke: color-mix(in srgb, var(--prts-lifeline-color) 58%, #fff);
+  stroke-width: .52;
 }
 
 html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-session-lifeline] {
-  opacity: .62;
+  opacity: .98;
 }
 
 html[data-dsh-prts] [data-prts-session-row][aria-selected="true"]:hover [data-prts-session-lifeline] {
@@ -197,12 +262,14 @@ html[data-dsh-prts][data-prts-session-flow="off"] [data-prts-session-row] [data-
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-dsh-prts] [data-prts-session-lifeline] {
+  html[data-dsh-prts] [data-prts-session-lifeline],
+  html[data-dsh-prts] [data-prts-session-lifeline-layer] {
     transition-duration: 0s;
   }
 }
 
-html[data-dsh-prts][data-prts-motion="reduced"] [data-prts-session-lifeline] {
+html[data-dsh-prts][data-prts-motion="reduced"] [data-prts-session-lifeline],
+html[data-dsh-prts][data-prts-motion="reduced"] [data-prts-session-lifeline-layer] {
   transition-duration: 0s;
 }
 

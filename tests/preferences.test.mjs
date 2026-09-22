@@ -3,14 +3,20 @@ import test from 'node:test'
 
 import * as api from '../src/client/preferences.js'
 
-test('normalizes unsupported values into the disabled version-nine defaults', () => {
+test('normalizes unsupported values into the disabled version-twelve defaults', () => {
   assert.deepEqual(
     api.normalizePreferences({ enabled: 'yes', scheme: 'neon', dossier: 0 }),
     api.DEFAULT_PREFERENCES,
   )
-  assert.equal(api.DEFAULT_PREFERENCES.version, 9)
+  assert.equal(api.DEFAULT_PREFERENCES.version, 12)
   assert.equal(api.DEFAULT_PREFERENCES.railDefaultHidden, false)
   assert.equal(api.DEFAULT_PREFERENCES.sessionFlow, true)
+  assert.equal(api.DEFAULT_PREFERENCES.sessionGlow, true)
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlowPalette, 'triad')
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlowColorBack, '#f7ddeb')
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlowColorCore, '#65ddb0')
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlowColorFront, '#6eb7f3')
+  assert.equal(api.DEFAULT_PREFERENCES.sessionFlowSpeed, 1)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassEnabled'), false)
   assert.equal(Object.hasOwn(api.DEFAULT_PREFERENCES, 'glassHighlight'), false)
 })
@@ -30,7 +36,7 @@ test('uses one four-state glass preference while migrating version-one controls'
 test('keeps the conversation theme switch independent from visual presets', () => {
   assert.equal(api.DEFAULT_PREFERENCES.conversationStyle, 'native')
   assert.equal(api.normalizePreferences({ version: 8 }).conversationStyle, 'native')
-  assert.equal(api.normalizePreferences({ version: 9, conversationStyle: 'unsupported' }).conversationStyle, 'native')
+  assert.equal(api.normalizePreferences({ version: 12, conversationStyle: 'unsupported' }).conversationStyle, 'native')
 
   const deckChat = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationStyle', 'deck-chat')
   assert.equal(deckChat.conversationStyle, 'deck-chat')
@@ -56,7 +62,7 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
-    version: 9,
+    version: 12,
     enabled: true,
     preset: 'custom',
     texture: 'full',
@@ -69,6 +75,12 @@ test('loads and migrates a complete version-one payload without losing independe
     particlePattern: 'orthogonal',
     railDefaultHidden: false,
     sessionFlow: true,
+    sessionGlow: true,
+    sessionFlowPalette: 'triad',
+    sessionFlowColorBack: '#f7ddeb',
+    sessionFlowColorCore: '#65ddb0',
+    sessionFlowColorFront: '#6eb7f3',
+    sessionFlowSpeed: 1,
     conversationStyle: 'native',
   })
 })
@@ -78,7 +90,44 @@ test('keeps the current-session flow switch independent from visual presets', ()
   assert.equal(disabled.sessionFlow, false)
   assert.equal(disabled.preset, 'standard-tactical')
   assert.equal(api.applyVisualPreset(disabled, 'quiet-reading').sessionFlow, false)
-  assert.equal(api.normalizePreferences({ version: 9, sessionFlow: 'off' }).sessionFlow, true)
+  assert.equal(api.normalizePreferences({ version: 12, sessionFlow: 'off' }).sessionFlow, true)
+})
+
+test('keeps the current-session glow switch independent from flow and visual presets', () => {
+  const disabled = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'sessionGlow', false)
+  assert.equal(disabled.sessionGlow, false)
+  assert.equal(disabled.sessionFlow, true)
+  assert.equal(disabled.preset, 'standard-tactical')
+  assert.equal(api.applyVisualPreset(disabled, 'quiet-reading').sessionGlow, false)
+  assert.equal(api.normalizePreferences({ version: 12, sessionGlow: 'off' }).sessionGlow, true)
+})
+
+test('normalizes and resets the session-flow palette and speed independently', () => {
+  const customized = api.normalizePreferences({ version: 12, sessionFlowPalette: 'amber', sessionFlowSpeed: 1.63 })
+  assert.equal(customized.sessionFlowPalette, 'amber')
+  assert.equal(customized.sessionFlowSpeed, 1.75)
+  assert.equal(customized.sessionFlowColorCore, '#f0c800')
+  assert.equal(api.normalizePreferences({ version: 12, sessionFlowPalette: 'rainbow' }).sessionFlowPalette, 'triad')
+  assert.equal(api.normalizePreferences({ version: 12, sessionFlowSpeed: 0 }).sessionFlowSpeed, 0.25)
+  assert.equal(api.normalizePreferences({ version: 12, sessionFlowSpeed: 9 }).sessionFlowSpeed, 2)
+  const customColor = api.updatePreferenceValue(customized, 'sessionFlowColorCore', '#123AbC')
+  assert.equal(customColor.sessionFlowPalette, 'custom')
+  assert.equal(customColor.sessionFlowColorBack, '#ffe6a3')
+  assert.equal(customColor.sessionFlowColorCore, '#123abc')
+  assert.equal(customColor.sessionFlowColorFront, '#ee8f42')
+  assert.equal(api.updatePreferenceValue(customColor, 'sessionFlowColorCore', 'bad').sessionFlowColorCore, '#123abc')
+  const rhodes = api.updatePreferenceValue(customColor, 'sessionFlowPalette', 'rhodes')
+  assert.deepEqual(
+    [rhodes.sessionFlowColorBack, rhodes.sessionFlowColorCore, rhodes.sessionFlowColorFront],
+    ['#b9edf4', '#5ccddb', '#5a9ee6'],
+  )
+  const reset = api.resetPreferenceGroup(customized, 'conversation')
+  assert.equal(reset.sessionFlowPalette, 'triad')
+  assert.deepEqual(
+    [reset.sessionFlowColorBack, reset.sessionFlowColorCore, reset.sessionFlowColorFront],
+    ['#f7ddeb', '#65ddb0', '#6eb7f3'],
+  )
+  assert.equal(reset.sessionFlowSpeed, 1)
 })
 
 test('falls back after malformed, unsupported, and unavailable storage', () => {
@@ -87,13 +136,13 @@ test('falls back after malformed, unsupported, and unavailable storage', () => {
   assert.deepEqual(api.loadPreferences({ getItem: () => { throw new Error('blocked') } }), api.DEFAULT_PREFERENCES)
 })
 
-test('persists only the normalized version-nine payload', () => {
+test('persists only the normalized version-twelve payload', () => {
   let written
   const storage = { setItem: (key, value) => { written = [key, value] } }
   const saved = api.savePreferences(storage, { version: 1, enabled: true, texture: 'off', glassEnabled: false })
   assert.equal(written[0], 'dsh.ui.prts.v1')
   assert.deepEqual(JSON.parse(written[1]), saved)
-  assert.equal(saved.version, 9)
+  assert.equal(saved.version, 12)
   assert.equal(saved.glass, 'off')
   assert.equal(Object.hasOwn(saved, 'glassEnabled'), false)
 })
@@ -199,7 +248,7 @@ test('migrates retired algorithms into one orthogonal density pair', () => {
       orthogonal: { conversation: 'sparse', hero: 'light' },
     },
   })
-  assert.equal(migrated.version, 9)
+  assert.equal(migrated.version, 12)
   assert.equal(migrated.particlePattern, 'orthogonal')
   assert.equal(migrated.conversationParticleDensity, 'dense')
   assert.equal(migrated.heroParticleDensity, 'ultra')

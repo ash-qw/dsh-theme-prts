@@ -8,8 +8,16 @@ const ROOT_ATTRIBUTES = [
   'data-prts-motion',
   'data-prts-particle-pattern',
   'data-prts-session-flow',
+  'data-prts-session-glow',
+  'data-prts-session-flow-palette',
+  'data-prts-session-flow-speed',
   'data-prts-conversation-style',
 ]
+const SESSION_FLOW_COLOR_PROPERTIES = {
+  '--prts-session-flow-back': 'sessionFlowColorBack',
+  '--prts-session-flow-core': 'sessionFlowColorCore',
+  '--prts-session-flow-front': 'sessionFlowColorFront',
+}
 
 const TRANSITION_ATTRIBUTE = 'data-prts-scheme-transition'
 const TRANSITION_MODE_ATTRIBUTE = 'data-prts-scheme-transition-mode'
@@ -102,6 +110,7 @@ export function createThemeController({ document, window, cssText, service, onTr
 
   function clearThemeState() {
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
+    for (const property of Object.keys(SESSION_FLOW_COLOR_PROPERTIES)) root.style.removeProperty(property)
     clearTransitionState()
   }
 
@@ -718,6 +727,10 @@ export function createThemeController({ document, window, cssText, service, onTr
       root.dataset.prtsMotion = preferences.motion
       root.dataset.prtsParticlePattern = 'orthogonal'
       root.dataset.prtsSessionFlow = preferences.sessionFlow ? 'on' : 'off'
+      root.dataset.prtsSessionGlow = preferences.sessionGlow ? 'on' : 'off'
+      root.dataset.prtsSessionFlowPalette = preferences.sessionFlowPalette
+      root.dataset.prtsSessionFlowSpeed = String(preferences.sessionFlowSpeed)
+      for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences[key])
       root.dataset.prtsConversationStyle = preferences.conversationStyle
       refresh()
     },

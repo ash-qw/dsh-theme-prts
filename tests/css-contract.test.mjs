@@ -36,7 +36,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 137_728, 'the replacement stylesheets must stay compact')
+  assert.ok(Buffer.byteLength(css) < 151_552, 'the replacement stylesheets must stay compact')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -141,8 +141,21 @@ test('pairs the active-session filament with a hover-only pickup and keeps the n
     '[data-prts-session-pickup-bar]',
     '[data-prts-session-lifeline]',
     '[data-prts-session-lifeline-filament]',
+    '[data-prts-session-lifeline-layer="halo"]',
+    '[data-prts-session-lifeline-layer="body"]',
+    '[data-prts-session-lifeline-layer="core"]',
     '[aria-selected="true"] [data-prts-session-lifeline]',
     '[data-prts-session-flow="off"]',
+    '[data-prts-session-glow="on"]',
+    '[data-prts-session-glow="off"]',
+    '[data-prts-session-flow-palette="rhodes"]',
+    '[data-prts-session-flow-palette="amber"]',
+    '[data-prts-session-flow-palette="alert"]',
+    '[data-prts-session-flow-palette="custom"]',
+    '--prts-session-flow-back',
+    'stroke-width: 4.25',
+    'filter: blur(1.15px)',
+    'color-mix(in srgb, var(--prts-lifeline-color) 18%, #fff)',
     'stroke-linejoin: round',
     'prts-session-pickup-sample',
     '--prts-pickup-duration: 480ms',
@@ -157,6 +170,7 @@ test('pairs the active-session filament with a hover-only pickup and keeps the n
   assert.doesNotMatch(css, /html\[data-dsh-prts\] \[data-prts-row-projection/)
   assert.doesNotMatch(css, /prts-projection-(?:acquire|scan)/)
   assert.doesNotMatch(css, /prts-session-lifeline-(?:travel|sweep)/)
+  assert.doesNotMatch(css, /\[data-prts-session-lifeline-filament[^}]+drop-shadow/s)
   assert.doesNotMatch(css, /\[aria-selected="true"\]\s*>\s*\[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\)/s)
 })
 test('keeps the native turn navigator while adding chat avatars and asymmetric bubbles', () => {

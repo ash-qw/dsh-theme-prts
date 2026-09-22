@@ -28,7 +28,7 @@ test('models a continuous three-strand flow with fixed endpoints', () => {
 })
 
 test('deforms a fixed filament only while the selected session is active and visible', async () => {
-  const dom = new JSDOM(`<!doctype html><html data-prts-motion="full"><body>
+  const dom = new JSDOM(`<!doctype html><html data-prts-motion="full" data-prts-session-flow-speed="2"><body>
     <div id="row" aria-selected="true"><svg><g id="lifeline">
       <path data-prts-session-lifeline-filament="back"></path>
       <path data-prts-session-lifeline-filament="core"></path>
@@ -78,6 +78,7 @@ test('deforms a fixed filament only while the selected session is active and vis
   runFrame(0)
   runFrame(50)
   assert.notDeepEqual(filaments.map(filament => filament.getAttribute('d')), initialPaths)
+  assert.equal(filaments[1].getAttribute('d'), createSessionLifelinePath({ start: 20, end: 68, baseline: 31, lift: 5 }, 2.5, 1, 0))
   assert.equal(lifeline.getAttribute('data-prts-lifeline-baseline'), '31')
   assert.equal(lifeline.getAttribute('data-prts-lifeline-lift'), '5')
 
@@ -117,4 +118,20 @@ test('deforms a fixed filament only while the selected session is active and vis
   animator.dispose()
   assert.equal(frames.size, 0)
   assert.equal(mediaListeners.size, 0)
+})
+
+test('keeps every optical layer of a filament on the same flowing path', () => {
+  const dom = new JSDOM(`<!doctype html><svg><g id="lifeline">
+    <g data-prts-session-lifeline-filament="core">
+      <path data-prts-session-lifeline-layer="halo"></path>
+      <path data-prts-session-lifeline-layer="body"></path>
+      <path data-prts-session-lifeline-layer="core"></path>
+    </g>
+  </g></svg>`)
+  const lifeline = dom.window.document.querySelector('#lifeline')
+  assert.equal(configureSessionLifeline(lifeline, { start: 8, end: 88, baseline: 16, lift: 4 }), true)
+  const paths = Array.from(lifeline.querySelectorAll('[data-prts-session-lifeline-layer]'), layer => layer.getAttribute('d'))
+  assert.equal(paths.length, 3)
+  assert.equal(new Set(paths).size, 1)
+  assert.match(paths[0], /^M 8 16 C /)
 })

@@ -5,11 +5,14 @@ import test from 'node:test'
 import { createThemeController } from '../src/client/theme-controller-v2.js'
 
 const enabled = {
-  version: 9,
+  version: 12,
   enabled: true,
   texture: 'full',
   glass: 'standard',
   motion: 'system',
+  sessionGlow: false,
+  sessionFlowPalette: 'alert',
+  sessionFlowSpeed: 1.75,
   conversationStyle: 'deck-chat',
 }
 
@@ -88,6 +91,12 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   controller.apply(enabled)
   const root = dom.window.document.documentElement
   assert.equal(root.dataset.prtsConversationStyle, 'deck-chat')
+  assert.equal(root.dataset.prtsSessionGlow, 'off')
+  assert.equal(root.dataset.prtsSessionFlowPalette, 'alert')
+  assert.equal(root.dataset.prtsSessionFlowSpeed, '1.75')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-back'), '#ffc0b8')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-core'), '#ee625a')
+  assert.equal(root.style.getPropertyValue('--prts-session-flow-front'), '#db5b8c')
 
   const request = controller.setTheme('light', { animate: true, origin: { x: 30, y: 40 } })
   controller.sync('light')
