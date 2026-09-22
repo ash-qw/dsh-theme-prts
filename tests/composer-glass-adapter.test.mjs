@@ -9,7 +9,7 @@ test('marks only composer model permission and inline menu surfaces', async t =>
     <div data-composer-card>
       <button class="Sh0Q9G_trigger">权限</button><div role="menu"><button role="menuitem">允许</button></div>
       <div><button aria-haspopup="menu" aria-expanded="true" aria-controls="model-menu">模型</button><div id="model-menu" role="menu" aria-busy="false"></div></div>
-      <span><button type="button" aria-haspopup="menu" aria-expanded="true">命令</button><div role="menu"><button role="menuitem">命令</button></div></span>
+      <span><button type="button" aria-label="Commands" aria-haspopup="menu" aria-expanded="true">命令</button><div role="menu"><button role="menuitem">命令</button></div></span>
       <button type="submit">发送</button>
     </div>
     <div role="menu" id="outside"></div>
@@ -29,6 +29,25 @@ test('marks only composer model permission and inline menu surfaces', async t =>
   assert.equal(dom.window.document.querySelector('#outside').hasAttribute('data-prts-glass-menu'), false)
   assert.equal(dom.window.document.querySelectorAll('[data-prts-composer-signal]').length, 1)
   assert.equal(dom.window.document.querySelector('[data-prts-composer-signal]').getAttribute('aria-hidden'), 'true')
+})
+
+test('classifies a closed model trigger from semantics instead of a host class hash', async t => {
+  const dom = new JSDOM(`<!doctype html><body>
+    <div data-composer-card>
+      <button class="Ns6z9q_trigger" aria-haspopup="menu" aria-expanded="false">
+        <span>MiniMax-M3</span><svg aria-hidden="true"><path></path></svg>
+      </button>
+      <button id="icon-action" aria-label="Tools" aria-haspopup="menu" aria-expanded="false">
+        <svg aria-hidden="true"><path></path></svg>
+      </button>
+    </div>
+  </body>`, { pretendToBeVisual: true })
+  const adapter = createComposerGlassAdapter({ document: dom.window.document, window: dom.window })
+  t.after(() => adapter.dispose())
+  adapter.start()
+
+  assert.equal(dom.window.document.querySelector('.Ns6z9q_trigger').dataset.prtsGlassControl, 'model')
+  assert.equal(dom.window.document.querySelector('#icon-action').dataset.prtsGlassControl, 'action')
 })
 
 test('tracks menus added after startup and removes every owned marker', async () => {

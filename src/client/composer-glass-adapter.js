@@ -61,6 +61,14 @@ function markPopup(popup, kind) {
   }
 }
 
+function hasVisibleText(element) {
+  if (typeof element?.innerText === 'string') return element.innerText.trim().length > 0
+  const clone = element?.cloneNode?.(true)
+  if (!clone) return false
+  for (const hidden of clone.querySelectorAll?.('[hidden], [aria-hidden="true"]') ?? []) hidden.remove()
+  return clone.textContent?.trim().length > 0
+}
+
 function fallbackComposerForms(document) {
   const forms = new Set()
   for (const root of document?.querySelectorAll?.(FALLBACK_COMPOSER_ROOT_SELECTOR) ?? []) {
@@ -147,12 +155,14 @@ export function createComposerGlassAdapter({ document, window }) {
       for (const trigger of composer.querySelectorAll('button[aria-haspopup="menu"], button[aria-haspopup="listbox"]')) {
         const menu = linkedMenu(document, trigger)
           ?? trigger.parentElement?.querySelector('[role="menu"][aria-busy], [role="listbox"][aria-busy]')
-        const isModel = trigger.matches('[class*="_7KE1Ra_"]')
-          || menu?.hasAttribute('aria-busy')
         const isCommands = trigger.getAttribute('aria-haspopup') === 'listbox'
           || trigger.getAttribute('aria-label') === 'Commands'
           || trigger.matches('[class*="uV2eYG_add"]')
-        const kind = isModel ? 'model' : isCommands ? 'action' : 'action'
+        const isModel = !isCommands && (
+          menu?.hasAttribute('aria-busy')
+          || (trigger.getAttribute('aria-haspopup') === 'menu' && hasVisibleText(trigger))
+        )
+        const kind = isModel ? 'model' : 'action'
         mark(trigger, CONTROL_ATTRIBUTE, kind)
         markPopup(menu, kind)
       }
