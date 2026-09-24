@@ -9,6 +9,14 @@
       align-items: center;
       gap: 8px;
     }
+    .workspaceSectionHeader {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 2px;
+    }
+    .workspaceSectionHeader > button:first-of-type { margin-left: auto; }
     .projectRow {
       box-sizing: border-box;
       height: 34px;
@@ -92,6 +100,11 @@
           <div data-slot="sidebar" style="display:contents"><div data-rc7-sidebar-root style="width:100%;height:100%;background-color:#f9fafb">
             <button type="button" aria-label="New session">New Session</button>
             <div data-slot="sidebar.workspaces">
+              <div class="workspaceSectionHeader">
+                <span>工作区</span>
+                <button type="button" aria-label="Search sessions">⌕</button>
+                <button type="button" aria-label="Workspace options">⋯</button>
+              </div>
               <div role="tree" aria-label="Sessions">
                 <div role="treeitem" aria-expanded="true" class="projectRow">
                   <span aria-hidden="true">◇</span><span aria-hidden="true">⌄</span><span class="projectText"><span class="title">PRTS 工作区</span></span>
@@ -101,7 +114,7 @@
                   </span>
                 </div>
                 <div role="treeitem" aria-selected="true" data-session-id="op-06" class="sessionRow">
-                  <span aria-hidden="true">●</span><span class="title">P.R.T.S. UI 重构</span><span class="sessionTime">刚刚</span>
+                  <span aria-hidden="true" data-state="ongoing">●</span><span class="title">P.R.T.S. UI 重构</span><span class="sessionTime">刚刚</span>
                   <span class="rowActions"><span><button type="button" aria-label="Session row actions">…</button></span></span>
                 </div>
               </div>

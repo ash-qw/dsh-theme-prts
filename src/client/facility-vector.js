@@ -1,4 +1,4 @@
-import { createFacilityPath } from './facility-geometry.js'
+import { createFacilityPath, FACILITY_GEOMETRY } from './facility-geometry.js'
 import { configureSessionLifeline } from './session-lifeline.js'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -167,6 +167,28 @@ function appendSessionPickup(document, graphic) {
   graphic.insertBefore(pickup, graphic.querySelector('[data-prts-facility-layer="outline"]'))
 }
 
+function appendSessionStatusUnderlay(document, graphic) {
+  const surface = graphic.querySelector('[data-prts-facility-layer="surface"]')
+  if (!surface) return
+  if (!graphic.querySelector('[data-prts-session-status-underlay]')) {
+    graphic.insertBefore(svgNode(document, 'path', {
+      'data-prts-session-status-underlay': '',
+      'aria-hidden': 'true',
+      transform: 'translate(3 2)',
+      'shape-rendering': 'geometricPrecision',
+    }), surface)
+  }
+  if (!graphic.querySelector('[data-prts-session-idle-indicator]')) {
+    graphic.insertBefore(svgNode(document, 'rect', {
+      'data-prts-session-idle-indicator': '',
+      'aria-hidden': 'true',
+      y: '2.5',
+      width: '50',
+      height: '2.5',
+    }), surface)
+  }
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
@@ -179,7 +201,7 @@ function sessionLifelineGeometry(width, height) {
   return { start, end, baseline, lift }
 }
 
-export function ensureFacilityGraphic(document, owner, { kind, topNotch = false, texture = 'none' } = {}) {
+export function ensureFacilityGraphic(document, owner, { kind, topNotch = false, sessionNotch = false, texture = 'none' } = {}) {
   if (!owner) return null
   let graphic = owner.querySelector?.(':scope > svg[data-prts-facility-svg]')
   if (!graphic) {
@@ -205,9 +227,13 @@ export function ensureFacilityGraphic(document, owner, { kind, topNotch = false,
     owner.insertBefore(graphic, owner.firstChild)
   }
   if (texture === 'silhouette' && !graphic.querySelector('[data-prts-facility-silhouette]')) appendSilhouetteScene(document, graphic)
-  if (texture === 'pickup' && !graphic.querySelector('[data-prts-session-pickup]')) appendSessionPickup(document, graphic)
+  if (texture === 'pickup') {
+    appendSessionStatusUnderlay(document, graphic)
+    if (!graphic.querySelector('[data-prts-session-pickup]')) appendSessionPickup(document, graphic)
+  }
   graphic.setAttribute('data-prts-facility-svg', kind)
   graphic.toggleAttribute('data-prts-top-notch', Boolean(topNotch))
+  graphic.toggleAttribute('data-prts-session-notch', Boolean(sessionNotch))
   if (!owner.hasAttribute('data-prts-facility-texture')) owner.setAttribute('data-prts-facility-texture', texture)
   return graphic
 }
@@ -222,19 +248,24 @@ function setReady(owner, ready) {
 export function renderFacilityGraphic(owner, { width, height } = {}) {
   const graphic = owner?.querySelector?.(':scope > svg[data-prts-facility-svg]')
   const topNotch = graphic?.hasAttribute('data-prts-top-notch')
-  const path = createFacilityPath({ width, height, topNotch })
+  const sessionNotch = graphic?.hasAttribute('data-prts-session-notch')
+  const path = createFacilityPath({ width, height, topNotch, sessionNotch })
   if (!graphic || !path) {
     owner?.removeAttribute?.('data-prts-facility-size')
     setReady(owner, false)
     return false
   }
 
-  const size = `${Number(width.toFixed(3))}x${Number(height.toFixed(3))}`
+  const size = `${Number(width.toFixed(3))}x${Number(height.toFixed(3))}:${topNotch ? 't' : '-'}${sessionNotch ? 's' : '-'}`
   const lifeline = graphic.querySelector('[data-prts-session-lifeline]')
   const lifelineGeometry = lifeline ? sessionLifelineGeometry(width, height) : undefined
   if (owner.getAttribute('data-prts-facility-size') !== size) {
     graphic.setAttribute('viewBox', `0 0 ${Number(width.toFixed(3))} ${Number(height.toFixed(3))}`)
     for (const layer of graphic.querySelectorAll('[data-prts-facility-layer], [data-prts-facility-clip]')) layer.setAttribute('d', path)
+    const statusUnderlay = graphic.querySelector('[data-prts-session-status-underlay]')
+    statusUnderlay?.setAttribute('d', createFacilityPath({ width, height }))
+    const idleIndicator = graphic.querySelector('[data-prts-session-idle-indicator]')
+    idleIndicator?.setAttribute('x', String(Number((width / 2 - 25).toFixed(3))))
     const silhouette = graphic.querySelector('[data-prts-facility-silhouette]')
     if (silhouette) {
       const availableHeight = Math.max(1, height - 2)

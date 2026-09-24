@@ -237,8 +237,12 @@ const fixtureBootstrap = `
   const modelStore = observable({ current: { model: 'deepseek-chat' } })
   const hostDescription = observable('fixture-host')
   const connectionState = observable('connected')
+  const openedSessionIds = []
   const sessions = {
     list: sessionList,
+    open(sessionId) {
+      openedSessionIds.push(sessionId)
+    },
     binding(sessionId) {
       return sessionId === 'fixture-session' ? { session: sessionState } : undefined
     },
@@ -258,6 +262,7 @@ const fixtureBootstrap = `
     modelStore,
     hostDescription,
     connectionState,
+    openedSessionIds,
   }
 
   const contextEvents = new Map()

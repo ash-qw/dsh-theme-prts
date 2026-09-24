@@ -7,6 +7,9 @@ export const FACILITY_GEOMETRY = Object.freeze({
   topOpening: 50,
   topInner: 40,
   topDepth: 10 / 3,
+  sessionTopOpening: 50,
+  sessionTopInner: 36.5,
+  sessionTopDepth: 4.5,
 })
 
 function number(value) {
@@ -17,7 +20,7 @@ function point(x, y) {
   return `${number(x)} ${number(y)}`
 }
 
-export function createFacilityPath({ width, height, topNotch = false } = {}) {
+export function createFacilityPath({ width, height, topNotch = false, sessionNotch = false } = {}) {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= FACILITY_GEOMETRY.sideOpening + 2) return ''
 
   const halfStroke = FACILITY_GEOMETRY.stroke / 2
@@ -29,12 +32,15 @@ export function createFacilityPath({ width, height, topNotch = false } = {}) {
   const centerY = height / 2
   const points = [point(left + FACILITY_GEOMETRY.corner, top)]
 
-  if (topNotch && width >= FACILITY_GEOMETRY.topOpening + FACILITY_GEOMETRY.corner * 2 + FACILITY_GEOMETRY.stroke) {
+  const topOpening = sessionNotch ? FACILITY_GEOMETRY.sessionTopOpening : FACILITY_GEOMETRY.topOpening
+  const topInner = sessionNotch ? FACILITY_GEOMETRY.sessionTopInner : FACILITY_GEOMETRY.topInner
+  const topDepth = sessionNotch ? FACILITY_GEOMETRY.sessionTopDepth : FACILITY_GEOMETRY.topDepth
+  if (topNotch && width >= topOpening + FACILITY_GEOMETRY.corner * 2 + FACILITY_GEOMETRY.stroke) {
     points.push(
-      point(centerX - FACILITY_GEOMETRY.topOpening / 2, top),
-      point(centerX - FACILITY_GEOMETRY.topInner / 2, top + FACILITY_GEOMETRY.topDepth),
-      point(centerX + FACILITY_GEOMETRY.topInner / 2, top + FACILITY_GEOMETRY.topDepth),
-      point(centerX + FACILITY_GEOMETRY.topOpening / 2, top),
+      point(centerX - topOpening / 2, top),
+      point(centerX - topInner / 2, top + topDepth),
+      point(centerX + topInner / 2, top + topDepth),
+      point(centerX + topOpening / 2, top),
     )
   }
 

@@ -91,6 +91,8 @@ test('@facility-vector keeps one closed path through native sidebar width change
 
   const session = page.locator('[data-prts-session-row]')
   const sessionFace = session.locator('[data-prts-facility-face]')
+  const statusUnderlay = session.locator('[data-prts-session-status-underlay]')
+  const idleIndicator = session.locator('[data-prts-session-idle-indicator]')
   const pickup = session.locator('[data-prts-session-pickup]')
   const pickupBars = session.locator('[data-prts-session-pickup-bar]')
   const pickupBar = pickupBars.nth(5)
@@ -98,6 +100,18 @@ test('@facility-vector keeps one closed path through native sidebar width change
   const lifelineFilaments = session.locator('[data-prts-session-lifeline-filament]')
   const lifelineFilament = session.locator('[data-prts-session-lifeline-filament="core"] [data-prts-session-lifeline-layer="body"]')
   await expect(sessionFace).toHaveAttribute('data-prts-facility-texture', 'pickup')
+  await expect(session).toHaveAttribute('data-prts-session-state', 'ongoing')
+  await expect(statusUnderlay).toHaveAttribute('transform', 'translate(3 2)')
+  await expect(statusUnderlay).toHaveAttribute('d', /^M 1\.5 0\.5 L /)
+  await expect(statusUnderlay).toHaveCSS('fill', 'rgb(92, 205, 219)')
+  await expect(statusUnderlay).toHaveCSS('opacity', '1')
+  await expect(idleIndicator).toHaveCSS('opacity', '0')
+  await expect(statusUnderlay).toHaveCSS('animation-name', 'none')
+  await expect(page.locator('[data-prts-session-summary-trigger="ongoing"] [data-prts-session-summary-count]')).toHaveText('1')
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await expect(page.locator('[data-prts-session-summary-popover="ongoing"]')).toBeVisible()
+  await expect(page.locator('[data-prts-session-summary-item="fixture-session"]')).toContainText('P.R.T.S. 皮肤验收')
+  await expect(page.locator('[data-prts-session-summary-item="fixture-session"] [data-prts-session-summary-signal]')).toHaveCSS('color', 'rgb(92, 205, 219)')
   await expect(session.locator('[data-prts-row-projection]')).toHaveCount(0)
   await expect(pickupBars).toHaveCount(11)
   await expect(pickup).toHaveCSS('opacity', '0')
@@ -143,6 +157,7 @@ test('@facility-vector keeps one closed path through native sidebar width change
   await expect(lifeline).toHaveCSS('opacity', '0.98')
 
   await page.locator('html').evaluate(node => { node.dataset.prtsMotion = 'reduced' })
+  await expect(statusUnderlay).toHaveCSS('animation-name', 'none')
   await session.hover()
   await expect(pickup).toHaveCSS('opacity', '0.58')
   await expect(pickupBar).toHaveCSS('animation-name', 'none')
@@ -151,6 +166,91 @@ test('@facility-vector keeps one closed path through native sidebar width change
   await page.waitForTimeout(140)
   expect(await lifelineFilament.getAttribute('d')).toBe(reducedPath)
 
+  const surface = sessionFace.locator('[data-prts-facility-layer="surface"]')
+  const sign = session.locator('[data-state="ongoing"]')
+  const signaledPath = await surface.getAttribute('d')
+  await sign.evaluate(node => node.removeAttribute('data-state'))
+  await expect(session).not.toHaveAttribute('data-prts-session-state')
+  await expect(sessionFace.locator('[data-prts-facility-svg]')).toHaveAttribute('data-prts-session-notch', '')
+  await expect(statusUnderlay).toHaveCSS('opacity', '0')
+  await expect(idleIndicator).toHaveCSS('opacity', '1')
+  await expect(idleIndicator).toHaveCSS('fill', 'rgb(104, 116, 122)')
+  await expect.poll(() => surface.getAttribute('d')).toBe(signaledPath)
+  await expect(surface).toHaveAttribute('d', /81 0\.5 L 87\.75 5 L 124\.25 5 L 131 0\.5/)
+  await expect(session).toHaveScreenshot('session-idle-indicator-dark.png')
+
+})
+
+test('@facility-vector keeps the status overview and hover list inside the workspace rail', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await enable(page)
+  await page.evaluate(() => {
+    window.__PRTS_FIXTURE_RUNTIME__.sessionList.set({
+      current: 'fixture-session',
+      ids: ['fixture-session', 'fixture-done'],
+      byId: {
+        'fixture-session': {
+          id: 'fixture-session',
+          displayTitle: 'P.R.T.S. 皮肤验收',
+          running: true,
+        },
+        'fixture-done': {
+          id: 'fixture-done',
+          displayTitle: '凹槽状态信号验收',
+          completed: true,
+        },
+      },
+      jobsBySession: {
+        'fixture-session': [{ id: 'fixture-job', status: 'running' }],
+      },
+    })
+  })
+
+  const section = page.locator('[data-slot="sidebar.workspaces"]')
+  const done = page.locator('[data-prts-session-summary-trigger="done"]')
+  await expect(done.locator('[data-prts-session-summary-count]')).toHaveText('1')
+  await done.hover()
+  const popover = page.locator('[data-prts-session-summary-popover="done"]')
+  await expect(popover).toBeVisible()
+  const doneSignal = page.locator('[data-prts-session-summary-item="fixture-done"] [data-prts-session-summary-signal]')
+  await expect(doneSignal).toHaveCSS('color', await done.evaluate(node => getComputedStyle(node).color))
+  await done.click()
+  await page.mouse.move(900, 500)
+  await expect(popover).toBeHidden()
+  await page.keyboard.press('Shift+Tab')
+  const ongoingPopover = page.locator('[data-prts-session-summary-popover="ongoing"]')
+  await expect(ongoingPopover).toBeVisible()
+  await page.keyboard.press('Tab')
+  await expect(ongoingPopover).toBeVisible()
+  await page.evaluate(() => document.activeElement?.blur())
+  await expect(ongoingPopover).toBeHidden()
+  await done.hover()
+  await expect(popover).toBeVisible()
+  const bounds = await Promise.all([
+    page.locator('[data-prts-region="sessions"]').boundingBox(),
+    popover.boundingBox(),
+  ])
+  expect(bounds[1].x).toBeGreaterThanOrEqual(bounds[0].x)
+  expect(bounds[1].x + bounds[1].width).toBeLessThanOrEqual(bounds[0].x + bounds[0].width)
+  const triggerBox = await done.boundingBox()
+  const item = page.locator('[data-prts-session-summary-item="fixture-done"]')
+  const itemBox = await item.boundingBox()
+  const hoverX = triggerBox.x + triggerBox.width / 2
+  await page.mouse.move(hoverX, triggerBox.y + triggerBox.height + 2)
+  await page.waitForTimeout(200)
+  await expect(popover).toBeVisible()
+  await page.mouse.move(hoverX, bounds[1].y + 3)
+  await page.waitForTimeout(200)
+  await expect(popover).toBeVisible()
+  await page.mouse.move(itemBox.x + itemBox.width / 2, itemBox.y + itemBox.height / 2)
+  await page.waitForTimeout(200)
+  await expect(item).toBeVisible()
+  await page.mouse.click(itemBox.x + itemBox.width / 2, itemBox.y + itemBox.height / 2)
+  await expect.poll(() => page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-done'])
+  await page.mouse.move(900, 500)
+  await expect(popover).toBeHidden()
+  await done.hover()
+  await expect(section).toHaveScreenshot('session-status-overview-dark.png')
 })
 
 for (const scheme of ['dark', 'light']) {

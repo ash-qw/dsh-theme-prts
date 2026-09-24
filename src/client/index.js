@@ -86,7 +86,12 @@ export function applyPrtsPlugin(ctx, environment) {
   const toBottom = createToBottomAdapter({ document, window })
   const conversationControls = createConversationControlAdapter({ document, window })
   const layoutDiagnostics = createLayoutStabilityDiagnostics({ document, window })
-  const sidebarControls = createSidebarControlAdapter({ document, window })
+  const sidebarControls = createSidebarControlAdapter({
+    document,
+    window,
+    sessions: contextService(ctx, 'sessions'),
+    workspaces: contextService(ctx, 'workspaces'),
+  })
   const floatingGlass = createFloatingGlassAdapter({ document, window })
   const adapter = createRc7Adapter({ document })
   const hostGeometry = createHostGeometryAdapter({ document, window })

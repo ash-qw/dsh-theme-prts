@@ -17,6 +17,241 @@ html[data-dsh-prts] [data-prts-facility-svg] {
   pointer-events: none;
 }
 
+/* A pure status-colored card underlay sits behind the stable face. Its small
+   right-down offset is visible through the top notch and along two outer edges. */
+html[data-dsh-prts] [data-prts-session-status-underlay] {
+  fill: var(--prts-session-status-color, transparent);
+  opacity: 0;
+}
+
+html[data-dsh-prts] [data-prts-session-state="ongoing"] {
+  --prts-session-status-color: var(--dsw-static-deepseek-450, var(--prts-cyan));
+}
+
+html[data-dsh-prts] [data-prts-session-state="done"] {
+  --prts-session-status-color: var(--dsw-alias-state-success-primary, var(--prts-green));
+}
+
+html[data-dsh-prts] [data-prts-session-state="warning"] {
+  --prts-session-status-color: var(--dsw-alias-state-warn-primary, var(--prts-yellow));
+}
+
+html[data-dsh-prts] [data-prts-session-state="error"] {
+  --prts-session-status-color: var(--dsw-alias-state-error-primary, var(--prts-red));
+}
+
+html[data-dsh-prts] [data-prts-session-state] [data-prts-session-status-underlay] {
+  opacity: 1;
+}
+
+html[data-dsh-prts] [data-prts-session-idle-indicator] {
+  fill: var(--prts-dim);
+}
+
+html[data-dsh-prts] [data-prts-session-state] [data-prts-session-idle-indicator] {
+  opacity: 0;
+}
+
+/* Workspace status summary. */
+html[data-dsh-prts] [data-prts-session-summary-header] {
+  position: relative;
+  z-index: 18;
+  overflow: visible !important;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-label] {
+  margin-right: 2px;
+}
+
+html[data-dsh-prts] [data-prts-session-summary] {
+  position: static;
+  z-index: 19;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  color: var(--prts-muted);
+  font-family: var(--prts-mono);
+}
+
+html[data-dsh-prts] [data-prts-session-summary][data-prts-summary-search-hidden] {
+  display: none;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-group] {
+  position: static;
+  display: inline-flex;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-trigger] {
+  min-width: 30px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+  font: 700 9px/1 var(--prts-mono);
+  cursor: pointer;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-group="ongoing"] {
+  --prts-summary-state-color: var(--dsw-static-deepseek-450, var(--prts-cyan));
+  color: var(--prts-summary-state-color);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-group="done"] {
+  --prts-summary-state-color: var(--dsw-alias-state-success-primary, var(--prts-green));
+  color: var(--prts-summary-state-color);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-trigger]:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, currentColor 14%, var(--prts-panel));
+}
+
+html[data-dsh-prts] [data-prts-session-summary-signal] {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  flex: 0 0 9px;
+  color: inherit;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-signal="ongoing"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  background: currentColor;
+  box-shadow:
+    3.5px 0 currentColor,
+    7px 0 currentColor,
+    7px 3.5px currentColor,
+    7px 7px currentColor,
+    3.5px 7px currentColor,
+    0 7px currentColor,
+    0 3.5px currentColor;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-signal="done"]::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-popover] {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  width: auto;
+  display: block;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 44%, var(--prts-line));
+  background: var(--prts-glass-dense, var(--prts-panel));
+  box-shadow: var(--prts-shadow-glass-overlay);
+  color: var(--prts-ink);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(0, -4px, 0);
+  transition: opacity 120ms ease, transform 160ms var(--prts-ease-snap), visibility 0s linear 160ms;
+  pointer-events: none;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-popover]::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  /* Cover the space from the vertically centered trigger to the popover. */
+  height: 16px;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-group]:is(:hover, :has(:focus-visible)) [data-prts-session-summary-popover] {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, 0, 0);
+  transition-delay: 0s;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  html[data-dsh-prts] [data-prts-session-summary-group]:focus-within [data-prts-session-summary-popover] {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    transition-delay: 0s;
+    pointer-events: auto;
+  }
+}
+
+html[data-dsh-prts] [data-prts-session-summary-heading] {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 6px 6px;
+  color: currentColor;
+  font: 700 10px/1 var(--prts-mono);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-heading] small {
+  color: var(--prts-dim);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-item] {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 7px;
+  border: 0;
+  border-top: 1px solid var(--prts-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--prts-ink);
+  cursor: pointer;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-item] [data-prts-session-summary-signal] {
+  color: var(--prts-summary-state-color);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-item] > span:not([data-prts-session-summary-signal]) {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-item]:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-prts] [data-prts-session-summary-popover] {
+    animation: none;
+    transition-duration: 0s;
+  }
+}
+
 html[data-dsh-prts] [data-prts-facility-layer="surface"] {
   fill: var(--prts-facility-surface, var(--prts-panel-raised));
 }

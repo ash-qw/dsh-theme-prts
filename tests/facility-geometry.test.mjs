@@ -13,6 +13,9 @@ test('facility geometry keeps the confirmed fixed-pixel specification', () => {
     topOpening: 50,
     topInner: 40,
     topDepth: 10 / 3,
+    sessionTopOpening: 50,
+    sessionTopInner: 36.5,
+    sessionTopDepth: 4.5,
   })
 })
 
@@ -23,6 +26,11 @@ test('facility face is one closed path with a centered top notch and symmetric s
   assert.match(path, /75 0\.5 L 80 3\.833 L 120 3\.833 L 125 0\.5/)
   assert.match(path, /199\.5 14 L 197\.5 16 L 197\.5 22 L 199\.5 24/)
   assert.match(path, /0\.5 24 L 2\.5 22 L 2\.5 16 L 0\.5 14/)
+})
+
+test('session cards use a slightly deeper centered notch with the same opening width', () => {
+  const path = createFacilityPath({ width: 240, height: 38, topNotch: true, sessionNotch: true })
+  assert.match(path, /95 0\.5 L 101\.75 5 L 138\.25 5 L 145 0\.5/)
 })
 
 test('button and spine geometry omit the top notch without changing the shared side cuts', () => {

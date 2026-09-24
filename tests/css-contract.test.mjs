@@ -36,7 +36,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 151_552, 'the replacement stylesheets must stay compact')
+  assert.ok(Buffer.byteLength(css) < 156_160, 'the replacement stylesheets must stay compact')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
