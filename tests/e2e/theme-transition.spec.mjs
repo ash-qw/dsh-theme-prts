@@ -183,6 +183,47 @@ test('commits a held drag above halfway without firing a second click toggle', a
   await expect(toggle).toHaveAttribute('data-prts-scheme-current', target)
 })
 
+test('starts click and held-drag feedback before a delayed host theme response', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await enableTheme(page)
+
+  await page.evaluate(() => {
+    const host = window.__PRTS_FIXTURE_RUNTIME__.theme
+    const original = host.setTheme.bind(host)
+    host.setTheme = id => new Promise(resolve => {
+      window.__pendingPrtsTheme = id
+      window.__resolvePrtsTheme = () => { original(id); resolve() }
+    })
+  })
+
+  const root = page.locator('html')
+  const toggle = page.locator('[data-prts-scheme-toggle]')
+  const source = await root.getAttribute('data-prts-scheme')
+  const target = source === 'dark' ? 'light' : 'dark'
+
+  await toggle.click()
+  await expect(root).toHaveAttribute('data-prts-scheme', target)
+  await expect(page.locator('[data-prts-scheme-reveal]')).toHaveCount(1)
+  expect(await page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.theme.current)).toBe(source)
+  await page.evaluate(() => window.__resolvePrtsTheme())
+  await expect(root).not.toHaveAttribute('data-prts-scheme-transition')
+
+  const box = await toggle.boundingBox()
+  expect(box).not.toBeNull()
+  const y = box.y + box.height / 2
+  await page.mouse.move(box.x + box.width / 2, y)
+  await page.mouse.down()
+  await page.mouse.move(1440 * .65, y)
+  await expect(root).toHaveAttribute('data-prts-scheme-transition-interactive', '')
+  await expect(root).toHaveAttribute('data-prts-scheme-transition-armed', '')
+  expect(await page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.theme.current)).toBe(target)
+  await expect.poll(() => page.evaluate(() => window.__pendingPrtsTheme)).toBe(source)
+  await page.mouse.up()
+  await page.evaluate(() => window.__resolvePrtsTheme())
+  await expect(root).toHaveAttribute('data-prts-scheme', source)
+  await expect(root).not.toHaveAttribute('data-prts-scheme-transition')
+})
+
 test('changes instantly without press or reveal motion when reduced motion is requested', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await enableTheme(page)

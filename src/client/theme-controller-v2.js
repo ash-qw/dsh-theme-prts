@@ -475,7 +475,6 @@ export function createThemeController({ document, window, cssText, service, onTr
     session.restorePromise = Promise.resolve(session.hostRequest).then(async accepted => {
       if (accepted && !(await requestHostScheme(session.source))) return false
       applyScheme(session.source)
-      session.hostAccepted = false
       return true
     })
     return session.restorePromise
@@ -503,7 +502,7 @@ export function createThemeController({ document, window, cssText, service, onTr
     const initialProgress = interactive ? revealProgress(options.progress) : 0
     const duration = revealDuration(geometry.width)
     const token = ++transitionRevision
-    let resolveHostReady
+    let resolveUpdateReady
     const session = {
       token,
       target,
@@ -515,8 +514,7 @@ export function createThemeController({ document, window, cssText, service, onTr
       duration,
       settled: false,
       committed: false,
-      hostAccepted: false,
-      hostReady: new Promise(resolve => { resolveHostReady = resolve }),
+      updateReady: new Promise(resolve => { resolveUpdateReady = resolve }),
     }
     root.style.setProperty('--prts-scheme-origin-x', `${geometry.x}px`)
     root.style.setProperty('--prts-scheme-origin-y', `${geometry.y}px`)
@@ -540,26 +538,19 @@ export function createThemeController({ document, window, cssText, service, onTr
 
     let viewTransition
     try {
-      viewTransition = document.startViewTransition(async () => {
-        session.hostRequest = requestHostScheme(target)
-        const accepted = await session.hostRequest
-        session.hostAccepted = accepted
-        if (!accepted) {
-          applyScheme(source)
-          resolveHostReady(false)
-          return
-        }
-        if (session.settled || session.restoreRequested) {
-          await restoreRevealSource(session)
-          resolveHostReady(false)
-          return
-        }
+      viewTransition = document.startViewTransition(() => {
+        session.hostRequest = requestHostScheme(target).then(accepted => {
+          if (!accepted && activeTransition?.token === token && !session.settled) {
+            finishRevealSession(session, { commit: false })
+          }
+          return accepted
+        })
         applyScheme(target)
         mountRevealHud(session)
-        resolveHostReady(true)
+        resolveUpdateReady(true)
       })
     } catch {
-      resolveHostReady(false)
+      resolveUpdateReady(false)
       if (activeTransition?.token === token) activeTransition = undefined
       removeRevealHud(session)
       clearTransitionState()
@@ -570,9 +561,9 @@ export function createThemeController({ document, window, cssText, service, onTr
     session.viewTransition = viewTransition
     session.ready = Promise.all([
       Promise.resolve(viewTransition?.ready).then(() => true, () => false),
-      session.hostReady,
-    ]).then(([viewReady, hostReady]) => {
-      const ready = viewReady && hostReady
+      session.updateReady,
+    ]).then(([viewReady, updateReady]) => {
+      const ready = viewReady && updateReady
       if (ready && activeTransition?.token === token && !session.settled) {
         createInteractiveScrub(session)
       }
@@ -591,6 +582,11 @@ export function createThemeController({ document, window, cssText, service, onTr
     }
     if (activeTransition?.token !== session.token || session.settled) return root.dataset.prtsScheme
     await animateRevealTo(session, 1, session.duration, 'cubic-bezier(.4, 0, .2, 1)')
+    if (!(await session.hostRequest)) {
+      if (!session.settled) finishRevealSession(session, { commit: false })
+      return session.source
+    }
+    if (activeTransition?.token !== session.token || session.settled) return root.dataset.prtsScheme
     await releaseRevealHud(session)
     if (activeTransition?.token === session.token && !session.settled) finishRevealSession(session, { commit: true })
     return target
@@ -652,7 +648,7 @@ export function createThemeController({ document, window, cssText, service, onTr
       }
 
       finishPromise = visual.then(async () => {
-        if (!session.hostAccepted) {
+        if (!(await session.hostRequest)) {
           if (!session.settled) finishRevealSession(session, { commit: false })
           refresh()
           return root.dataset.prtsScheme

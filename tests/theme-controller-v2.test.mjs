@@ -69,7 +69,7 @@ function settle() {
   return new Promise(resolve => setTimeout(resolve, 0))
 }
 
-test('reveals the host-confirmed theme from left to right with one soft View Transition boundary', async t => {
+test('reveals the requested theme before host confirmation with one soft View Transition boundary', async t => {
   const dom = createDom()
   const host = deferred()
   const transitionStates = []
@@ -102,11 +102,10 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   controller.sync('light')
   assert.equal(root.dataset.prtsScheme, 'dark')
   assert.equal(records.transitions.length, 1)
-  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]'), null)
-
-  host.resolve()
   await settle()
   assert.equal(root.dataset.prtsScheme, 'light')
+  assert.equal(current, 'dark')
+  assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]')?.getAttribute('data-prts-scheme-reveal'), 'light')
   assert.equal(root.getAttribute('data-prts-scheme-transition'), 'light')
   assert.equal(root.getAttribute('data-prts-scheme-transition-mode'), 'view')
   assert.equal(root.style.getPropertyValue('--prts-scheme-origin-x'), '30px')
@@ -128,12 +127,48 @@ test('reveals the host-confirmed theme from left to right with one soft View Tra
   assert.equal(grid.keyframes.at(-1).backgroundPosition, '-1012px 0px')
   assert.deepEqual(transitionStates, [true])
 
+  host.resolve()
   for (const record of records.animations) record.finished.resolve()
   assert.equal(await request, 'light')
   assert.equal(records.transitions[0].skipped, 1)
   assert.equal(root.hasAttribute('data-prts-scheme-transition'), false)
   assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '')
   assert.deepEqual(transitionStates, [true, false])
+})
+
+test('scrubs an interactive reveal while the host theme request is still pending', async t => {
+  const dom = createDom()
+  const host = deferred()
+  let current = 'dark'
+  const records = installViewTransitions(dom)
+  const controller = createThemeController({
+    document: dom.window.document,
+    window: dom.window,
+    cssText: '',
+    service: {
+      getTheme: () => current,
+      setTheme(id) { return host.promise.then(() => { current = id }) },
+    },
+  })
+  t.after(() => controller.dispose())
+  controller.apply(enabled)
+  const root = dom.window.document.documentElement
+
+  const gesture = controller.beginThemeTransition('light', { progress: .1 })
+  await settle()
+  gesture.update(.63)
+  assert.equal(root.dataset.prtsScheme, 'light')
+  assert.equal(current, 'dark')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '756px')
+  assert.equal(root.getAttribute('data-prts-scheme-transition-armed'), '')
+  assert.equal(records.animations.length, 6)
+
+  const result = gesture.finish(true)
+  await settle()
+  for (const record of records.animations) record.finished.resolve()
+  host.resolve()
+  assert.equal(await result, 'light')
+  assert.equal(current, 'light')
 })
 
 test('uses the compact reveal duration on phone viewports', async t => {

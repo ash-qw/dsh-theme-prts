@@ -227,10 +227,12 @@ export function createOperationsShell({
   }
 
   function toggleScheme(event) {
-    if (suppressSchemeClick) {
+    if (suppressSchemeClick && Number(event?.detail) > 0) {
       event?.preventDefault?.()
+      clearSchemeClickSuppression()
       return
     }
+    clearSchemeClickSuppression()
     const next = schemeTarget()
     schemeIntent = next
     playSchemePress()
@@ -258,7 +260,7 @@ export function createOperationsShell({
     suppressSchemeClickTimer = window.setTimeout(() => {
       suppressSchemeClickTimer = undefined
       suppressSchemeClick = false
-    }, 0)
+    }, 1000)
   }
 
   function settleSchemePointer({ commit = false } = {}) {
@@ -277,6 +279,7 @@ export function createOperationsShell({
 
   function onSchemePointerDown(event) {
     if ((event.button ?? 0) !== 0 || schemePointer) return
+    clearSchemeClickSuppression()
     const pointerId = event.pointerId ?? 1
     schemePointer = {
       pointerId,
