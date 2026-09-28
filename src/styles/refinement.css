@@ -98,7 +98,7 @@ html[data-dsh-prts] [data-prts-workspace-actions] {
 }
 
 html[data-dsh-prts] [data-prts-session-actions] {
-  width: 28px !important;
+  width: auto !important;
 }
 
 html[data-dsh-prts] [data-prts-workspace-actions] button,

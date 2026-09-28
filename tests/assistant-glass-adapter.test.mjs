@@ -45,6 +45,33 @@ test('crosses the rc.7 display-contents slot and marks the real assistant body',
   adapter.dispose()
 })
 
+test('leaves 0.1.7 reasoning fragments native and marks only the answer', async () => {
+  const dom = domWith(`
+    <div data-chat-flow-kind="assistant-step" data-chat-group-part="reasoning">
+      <div class="fixture_body"><div data-markdown>推理过程</div></div>
+    </div>
+    <div data-chat-flow-kind="assistant-step" data-chat-group-part="response">
+      <div class="fixture_body"><div data-markdown>最终回答</div></div>
+    </div>
+  `)
+  const { document } = dom.window
+  const [reasoning, response] = document.querySelectorAll('[data-chat-flow-kind="assistant-step"]')
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+
+  assert.equal(reasoning.querySelector('.fixture_body').hasAttribute(ASSISTANT_SURFACE_ATTRIBUTE), false)
+  assert.equal(response.querySelector('.fixture_body').getAttribute(ASSISTANT_SURFACE_ATTRIBUTE), 'body')
+
+  response.setAttribute('data-chat-group-part', 'reasoning')
+  await flush(dom.window)
+  assert.equal(response.querySelector('.fixture_body').hasAttribute(ASSISTANT_SURFACE_ATTRIBUTE), false)
+
+  reasoning.setAttribute('data-chat-group-part', 'response')
+  await flush(dom.window)
+  assert.equal(reasoning.querySelector('.fixture_body').getAttribute(ASSISTANT_SURFACE_ATTRIBUTE), 'body')
+  adapter.dispose()
+})
+
 test('marks the newest screenful before yielding an older history backlog', () => {
   const turns = Array.from({ length: 96 }, (_, index) =>
     '\n    <div data-chat-flow-kind="assistant-step" data-index="' + index + '">' +

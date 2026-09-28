@@ -1010,7 +1010,15 @@ html[data-dsh-prts] [data-prts-workspace-actions] {
 }
 
 html[data-dsh-prts] [data-prts-session-actions] {
-  width: 28px;
+  position: relative;
+  inset: auto;
+  width: auto;
+  flex: 0 0 auto;
+  margin-left: auto !important;
+}
+
+html[data-dsh-prts] [data-prts-session-quick-actions] {
+  display: none !important;
 }
 
 html[data-dsh-prts] [data-prts-workspace-actions] > *,
@@ -1145,7 +1153,7 @@ html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind=
 
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   [data-chat-flow-kind="user"],
-  [data-chat-flow-kind="assistant-step"]
+  [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])
 ) {
   position: relative;
   box-sizing: border-box;
@@ -1157,13 +1165,13 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-ki
   color: var(--prts-ink);
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"] {
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) {
   --prts-chat-link-x: 22px;
   padding-inline-start: 56px;
   color: var(--prts-ink);
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]::after,
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::after,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::after {
   content: "";
   position: absolute;
@@ -1180,7 +1188,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   pointer-events: none;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]::before,
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"]::after,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::before,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"]::after {
@@ -1201,7 +1209,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   pointer-events: none;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]::before,
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::before {
   content: "";
   left: 0;
@@ -1280,7 +1288,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   left: -56px;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"] [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-ai-surface] {
   box-sizing: border-box;
   width: fit-content;
@@ -1770,12 +1778,12 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     padding-inline: 8px 50px;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"] {
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) {
     padding-inline: 0 8px;
     padding-inline-start: 50px;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]::before,
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before,
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::before {
     left: 8px;
     width: 34px;
@@ -1798,7 +1806,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     border-radius: 16px 5px 16px 16px !important;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"] [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-ai-surface],
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"] {
     padding: 13px 16px !important;
@@ -1823,7 +1831,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     left: -42px;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]::after,
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::after,
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::after {
     display: none;
   }

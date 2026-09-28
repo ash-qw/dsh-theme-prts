@@ -70,3 +70,60 @@ test('deployed 0.1.5 layout and contenteditable composer receive the complete th
   expect(geometry.surfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
   expect(geometry.surfaceBottom).toBe('3px')
 })
+
+test('0.1.7 reasoning and response fragments keep distinct presentation', async ({ page }) => {
+  await page.goto(fixturePath)
+  await page.evaluate(value => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify(value)), enabled)
+  await page.reload()
+  const presentation = await page.locator('[data-conversation-scroll]').evaluate(scroller => {
+    const reasoning = document.createElement('div')
+    reasoning.setAttribute('data-chat-flow-kind', 'assistant-step')
+    reasoning.setAttribute('data-chat-group-part', 'reasoning')
+    reasoning.innerHTML = '<div class="fixture_body"><div data-markdown>Reasoning</div></div>'
+    const response = reasoning.cloneNode(true)
+    response.setAttribute('data-chat-group-part', 'response')
+    response.querySelector('[data-markdown]').textContent = 'Answer'
+    scroller.prepend(reasoning, response)
+    return {
+      reasoningAvatar: getComputedStyle(reasoning, '::before').content,
+      responseAvatar: getComputedStyle(response, '::before').content,
+      reasoningPadding: getComputedStyle(reasoning).paddingLeft,
+      responsePadding: getComputedStyle(response).paddingLeft,
+    }
+  })
+  expect(presentation.reasoningAvatar).toBe('none')
+  expect(presentation.responseAvatar).toBe('""')
+  expect(presentation.reasoningPadding).toBe('0px')
+  expect(presentation.responsePadding).toBe('56px')
+})
+
+test('0.1.7 session menu leaves the pickup visible while the title remains scrollable', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto(fixturePath)
+  await page.evaluate(value => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify(value)), enabled)
+  await page.reload()
+
+  const row = page.locator('[data-prts-session-row]')
+  await row.hover()
+  const layout = await row.evaluate(element => {
+    const face = element.querySelector('[data-prts-facility-face]')
+    const title = element.querySelector('[data-prts-row-title]')
+    const menu = element.querySelector('[data-prts-session-menu]')
+    const quickActions = element.querySelector('[data-prts-session-quick-actions]')
+    const pickupBars = Array.from(element.querySelectorAll('[data-prts-session-pickup-bar]'))
+    title.scrollLeft = title.scrollWidth
+    return {
+      faceRight: face.getBoundingClientRect().right,
+      menuLeft: menu.getBoundingClientRect().left,
+      menuRight: menu.getBoundingClientRect().right,
+      quickActionsDisplay: getComputedStyle(quickActions).display,
+      pickupRight: Math.max(...pickupBars.map(bar => bar.getBoundingClientRect().right)),
+      titleScrollLeft: title.scrollLeft,
+    }
+  })
+  expect(layout.quickActionsDisplay).toBe('none')
+  expect(layout.pickupRight).toBeLessThanOrEqual(layout.menuLeft + 1)
+  expect(layout.faceRight).toBeLessThanOrEqual(layout.menuLeft + 1)
+  expect(layout.menuRight).toBeGreaterThan(layout.menuLeft)
+  expect(layout.titleScrollLeft).toBeGreaterThan(0)
+})

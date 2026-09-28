@@ -12,6 +12,8 @@
     [data-slot],
     [data-slot="root"] { display: contents; }
     [role="treeitem"] { display: flex; align-items: center; }
+    .session-row .row-actions { display: flex; }
+    .session-row .row-actions > div { display: contents; }
     [data-chat-flow-kind],
     [data-composer-seat] { width: 100%; max-width: 780px; margin-inline: auto; }
   </style>
@@ -37,9 +39,12 @@
                   </div>
                   <div role="treeitem" aria-selected="true" class="session-row">
                     <span aria-hidden="true">●</span>
-                    <span class="title">Harness 0.1.5 adaptation</span>
+                    <span class="title">Harness 0.1.7 session action adaptation</span>
                     <span class="time">Now</span>
-                    <span class="row-actions"><span><button type="button" aria-label="Session actions">…</button></span></span>
+                    <span class="row-actions">
+                      <span><button type="button" aria-label="Session actions">…</button></span>
+                      <div><button type="button" aria-label="Archive session">⌑</button><button type="button" aria-label="Pin session">⌖</button></div>
+                    </span>
                   </div>
                 </div>
               </div>

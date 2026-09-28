@@ -13,6 +13,7 @@ const OWNED_ATTRIBUTES = [
   'data-prts-workspace-create',
   'data-prts-session-row',
   'data-prts-session-actions',
+  'data-prts-session-quick-actions',
   'data-prts-session-menu-anchor',
   'data-prts-session-menu',
   'data-prts-session-time',
@@ -90,7 +91,10 @@ function resolveRowControls(row, kind) {
   const create = kind === 'workspace'
     ? actions.querySelector(':scope > button[type="button"]')
     : undefined
-  return { actions, anchor, create, menu }
+  const quickActions = kind === 'session'
+    ? Array.from(actions.children).filter(child => child !== anchor && child.querySelector('button'))
+    : []
+  return { actions, anchor, create, menu, quickActions }
 }
 
 function resolveRowTitle(row, kind, actions) {
@@ -418,6 +422,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         row.toggleAttribute('data-prts-row-menu-open', controls.menu?.getAttribute('aria-expanded') === 'true'
           || row.classList.contains('menuOpen'))
         markSidebarNode(controls.actions, 'data-prts-session-actions', next)
+        for (const action of controls.quickActions ?? []) markSidebarNode(action, 'data-prts-session-quick-actions', next)
         markSidebarNode(controls.anchor, 'data-prts-session-menu-anchor', next)
         markSidebarNode(controls.menu, 'data-prts-session-menu', next)
         registerVector(controls.menu, { kind: 'button' }, next, nextVectorOwners)

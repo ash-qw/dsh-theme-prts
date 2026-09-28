@@ -182,7 +182,7 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     '[data-prts-conversation-style="deck-chat"]',
     '[data-slot="main.conversation"]',
     '[data-slot="conversation"]) > [data-phase]',
-    '[data-chat-flow-kind="assistant-step"]::before',
+    '[data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before',
     '[data-chat-flow-kind="user"]::after',
     '[data-chat-flow-kind="user"] [class$="_bubble"]',
     '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body))',
@@ -192,6 +192,7 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     ') :is(pre, code)',
   ])
   assert.doesNotMatch(css, /\[data-conversation-scroll\]::before/)
+  assert.doesNotMatch(css, /\[data-chat-flow-kind="assistant-step"\](?!:not\(\[data-chat-group-part="reasoning"\]\))/)
   assert.doesNotMatch(css, /--turn-natural-height|--prts-turn-mark/)
   assert.doesNotMatch(css, /data-prts-conversation-(?:scale|preview|history)/)
   assert.doesNotMatch(css, /data-prts-turn-summary|data-prts-timeline-active|data-prts-timeline-turn/)

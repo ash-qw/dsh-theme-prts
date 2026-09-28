@@ -34,7 +34,7 @@ test('marks workspace and session hierarchy from stable role structure', async (
         </div>
         <div role="treeitem" aria-selected="true">
           <span data-state="ongoing">status</span><span>Session</span><span>time</span>
-          <span><span><button type="button" aria-label="操作">…</button></span></span>
+          <span><span><button type="button" aria-label="操作">…</button></span><div><button type="button">归档</button><button type="button">置顶</button></div></span>
         </div>
         <div role="treeitem" aria-selected="true" data-blank-session>
           <span>status</span><span>新会话</span>
@@ -55,6 +55,7 @@ test('marks workspace and session hierarchy from stable role structure', async (
   assert.ok(document.querySelector('[data-prts-session-menu]'))
   assert.ok(document.querySelector('[data-prts-workspace-menu-anchor]'))
   assert.ok(document.querySelector('[data-prts-session-menu-anchor]'))
+  assert.equal(document.querySelectorAll('[data-prts-session-quick-actions] button').length, 2)
   assert.equal(document.querySelector('[data-prts-session-row]').dataset.prtsSessionState, 'ongoing')
   assert.equal(document.querySelector('[data-prts-session-summary-trigger="ongoing"] [data-prts-session-summary-count]').textContent, '1')
   const projections = Array.from(document.querySelectorAll('[data-prts-row-projection]'))
@@ -122,6 +123,7 @@ test('marks workspace and session hierarchy from stable role structure', async (
     'data-prts-workspace-create',
     'data-prts-session-row',
     'data-prts-session-actions',
+    'data-prts-session-quick-actions',
     'data-prts-session-menu',
     'data-prts-session-time',
   ]) assert.equal(document.querySelectorAll(`[${attribute}]`).length, 0)

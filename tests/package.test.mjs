@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares the verified dsh 0.1.2 and 0.1.5 client bundle contracts', async () => {
+test('declares the checked dsh 0.1.2, 0.1.5, and 0.1.7 client bundle contracts', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -41,7 +41,7 @@ test('declares the verified dsh 0.1.2 and 0.1.5 client bundle contracts', async 
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
     node: '>=18',
-    dsh: '>=0.1.2-rc.1 <0.1.3-0 || >=0.1.5-rc.1 <0.1.6-0',
+    dsh: '>=0.1.2-rc.1 <0.1.3-0 || >=0.1.5-rc.1 <0.1.6-0 || >=0.1.7-rc.2 <0.1.8-0',
   })
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
@@ -68,6 +68,8 @@ test('declares the verified dsh 0.1.2 and 0.1.5 client bundle contracts', async 
   assert.match(readmeEn, />=0\.1\.2-rc\.1 <0\.1\.3-0/)
   assert.match(readmeZh, />=0\.1\.5-rc\.1 <0\.1\.6-0/)
   assert.match(readmeEn, />=0\.1\.5-rc\.1 <0\.1\.6-0/)
+  assert.match(readmeZh, />=0\.1\.7-rc\.2 <0\.1\.8-0/)
+  assert.match(readmeEn, />=0\.1\.7-rc\.2 <0\.1\.8-0/)
 })
 
 test('build writes Host and browser module-loader entries', async () => {

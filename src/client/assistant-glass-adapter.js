@@ -175,7 +175,8 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   function processStep(step) {
-    if (!step?.isConnected || !step.matches?.(STEP_SELECTOR)) {
+    if (!step?.isConnected || !step.matches?.(STEP_SELECTOR)
+      || step.getAttribute('data-chat-group-part') === 'reasoning') {
       releaseStep(step)
       return
     }
@@ -263,7 +264,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ['class', 'data-chat-flow-kind', 'data-markdown', 'data-slot'],
+        attributeFilter: ['class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot'],
       })
     },
     dispose() {
