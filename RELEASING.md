@@ -30,11 +30,11 @@
 
 ## 正式发布
 
-在准确的公开发布提交上创建版本标签，然后只将该标签推送到公开远端：
+在准确的公开发布提交上创建带注释的版本标签。标签说明应写明当前支持的 DSH 版本、相对上一公开版本的变化，以及旧版 DSH 用户应选用的主题版本。然后只将该标签推送到公开远端：
 
 ```bash
-git tag vX.Y.Z <public-release-commit>
-git push public vX.Y.Z
+git tag -a -F /tmp/release-tag-message.txt vX.Y.Z <public-release-commit>
+git push origin vX.Y.Z
 ```
 
 不要给只存在于私有仓库的提交打标签，也不要使用持久保存的 npm Token 手工发布。持续查看 `Publish public npm package` GitHub Actions 工作流，直至运行完成。

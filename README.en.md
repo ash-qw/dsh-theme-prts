@@ -18,6 +18,7 @@ The theme is disabled by default.
 - Declared support is limited to DeepSeek Harness Web `0.1.7-rc.2`, the version verified locally. The earlier `0.1.2` and `0.1.5` releases are no longer in the compatibility declaration.
 - The `0.1.7-rc.2` client contract has been checked. The new reasoning/response grouping and session card actions have browser regression coverage.
 - `engines.dsh` in `package.json` uses the same exact version for plugin market compatibility checks. Other DSH versions require separate verification.
+- For the DSH `0.1.2` or `0.1.5` release lines, pin the previous public npm release, `@ash-qw/dsh-theme-prts@0.1.102`. Its `engines.dsh` declares support for those lines.
 
 ## Install and update
 
