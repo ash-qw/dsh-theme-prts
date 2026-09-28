@@ -91,6 +91,8 @@ export function applyPrtsPlugin(ctx, environment) {
     window,
     sessions: contextService(ctx, 'sessions'),
     workspaces: contextService(ctx, 'workspaces'),
+    getSessionStatus: () => contextService(ctx, 'uiSession')?.sessionStatus,
+    getUiWorkspace: () => contextService(ctx, 'uiWorkspace'),
   })
   const floatingGlass = createFloatingGlassAdapter({ document, window })
   const adapter = createRc7Adapter({ document })

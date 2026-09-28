@@ -131,6 +131,30 @@ test('marks workspace and session hierarchy from stable role structure', async (
   assert.equal(document.querySelectorAll('[data-prts-owned-facility]').length, 0)
 })
 
+test('keeps the pending status slot separate from the trailing time label', () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree">
+        <div role="treeitem" aria-selected="false" data-row-key="session:question">
+          <span class="slot"><span data-state="warning"></span><span>Waiting for answer</span></span>
+          <span class="title">请选择下一步</span>
+          <span class="time" aria-hidden="true">Answer</span>
+          <span><span><button type="button" aria-label="操作">…</button></span></span>
+        </div>
+      </div>
+    </div></aside>
+  </body></html>`, { pretendToBeVisual: true })
+  const adapter = createSidebarControlAdapter({ document: dom.window.document, window: dom.window })
+  adapter.start()
+
+  const row = dom.window.document.querySelector('[data-prts-session-row]')
+  assert.equal(row.dataset.prtsSessionState, 'warning')
+  assert.ok(row.querySelector(':scope > .time[data-prts-session-time]'))
+  assert.equal(row.querySelector(':scope > .slot[data-prts-session-time]'), null)
+  adapter.dispose()
+})
+
 test('summarizes service-backed session states and opens the selected session', async () => {
   const dom = new JSDOM(`<!doctype html><html><body>
     <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
@@ -176,6 +200,7 @@ test('summarizes service-backed session states and opens the selected session', 
   document.querySelector('[data-prts-session-summary-item="done-1"]').click()
   assert.deepEqual(opened, ['done-1'])
 
+  document.querySelector('[data-session-id="run-1"] [data-state]').setAttribute('data-state', 'done')
   sessionList.update({
     ids: ['run-1', 'done-1'],
     byId: {
@@ -204,4 +229,166 @@ test('summarizes service-backed session states and opens the selected session', 
 
   adapter.dispose()
   assert.equal(document.querySelector('[data-prts-session-summary]'), null)
+})
+
+test('shows pending questions before running and completion states', async () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree"></div>
+    </div></aside>
+  </body></html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const sessionList = createStore({
+    ids: ['question', 'approval', 'plan', 'running', 'done', 'archived'],
+    byId: {
+      question: { displayTitle: '选择方案', running: true },
+      approval: { displayTitle: '工具授权', running: true },
+      plan: { displayTitle: '审阅计划', running: false },
+      running: { displayTitle: '后台运行', running: true },
+      done: { displayTitle: '执行完成' },
+      archived: { displayTitle: '已归档', running: true },
+    },
+  })
+  const sessionStatus = createStore(new Map([
+    ['question', { running: true, pendingInteraction: { kind: 'question' } }],
+    ['approval', { running: true, pendingInteraction: { kind: 'approval' } }],
+    ['plan', { running: false, pendingInteraction: { kind: 'plan-review' } }],
+    ['running', { running: true }],
+    ['done', { running: false, completionUnread: true }],
+  ]))
+  const opened = []
+  const adapter = createSidebarControlAdapter({
+    document,
+    window: dom.window,
+    sessions: { list: sessionList, open: id => opened.push(id) },
+    workspaces: { list: createStore({ archivedSessionIds: ['archived'] }) },
+    getSessionStatus: () => sessionStatus,
+  })
+  adapter.start()
+
+  const count = state => document.querySelector(`[data-prts-session-summary-trigger="${state}"] [data-prts-session-summary-count]`)?.textContent
+  assert.equal(count('warning'), '3')
+  assert.equal(count('ongoing'), '1')
+  assert.equal(count('done'), '1')
+  assert.equal(document.querySelector('[data-prts-session-summary-item="question"]').getAttribute('aria-label'), '选择方案，待回答')
+  assert.equal(document.querySelector('[data-prts-session-summary-item="approval"] [data-prts-session-summary-item-status]').textContent, '待授权')
+  assert.equal(document.querySelector('[data-prts-session-summary-item="plan"] [data-prts-session-summary-item-status]').textContent, '待审阅')
+  assert.equal(document.querySelector('[data-prts-session-summary-item="archived"]'), null)
+  document.querySelector('[data-prts-session-summary-item="question"]').click()
+  assert.deepEqual(opened, ['question'])
+
+  sessionStatus.update(new Map([
+    ['question', { running: true }],
+    ['approval', { running: true, pendingInteraction: { kind: 'approval' } }],
+    ['plan', { running: false, pendingInteraction: { kind: 'plan-review' } }],
+    ['running', { running: true }],
+    ['done', { running: false, completionUnread: true }],
+  ]))
+  await flush(dom.window)
+  assert.equal(count('warning'), '2')
+  assert.equal(count('ongoing'), '2')
+  assert.equal(document.querySelector('[data-prts-session-summary-item="question"] [data-prts-session-summary-item-status]'), null)
+
+  adapter.dispose()
+})
+
+test('keeps native running status for a session with active subagents', () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree">
+        <div role="treeitem" aria-selected="false" data-row-key="session:parent">
+          <span data-state="ongoing">status</span><span class="title">主会话</span>
+          <span><button type="button">…</button></span>
+        </div>
+      </div>
+    </div></aside>
+  </body></html>`, { pretendToBeVisual: true })
+  const sessionStatus = createStore(new Map([['parent', { running: false, completionUnread: false }]]))
+  const adapter = createSidebarControlAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    sessions: {
+      list: createStore({ ids: ['parent'], byId: { parent: { displayTitle: '主会话', running: false } } }),
+    },
+    getSessionStatus: () => sessionStatus,
+  })
+  adapter.start()
+
+  assert.equal(dom.window.document.querySelector('[data-prts-session-summary-trigger="ongoing"] [data-prts-session-summary-count]').textContent, '1')
+  assert.ok(dom.window.document.querySelector('[data-prts-session-summary-item="parent"]'))
+  adapter.dispose()
+})
+
+test('counts a running subagent when its parent session row is not visible', async () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree"></div>
+    </div></aside>
+  </body></html>`, { pretendToBeVisual: true })
+  const sessionList = createStore({
+    ids: ['parent', 'child'],
+    byId: {
+      parent: { displayTitle: '主会话', running: false },
+      child: { displayTitle: '子代理', running: true, origin: 'subagent' },
+    },
+    projectionsBySession: {
+      parent: { values: { subagentCatalog: [{ id: 'child' }] } },
+    },
+  })
+  const sessionStatus = createStore(new Map([
+    ['parent', { running: false }],
+    ['child', { running: true }],
+  ]))
+  const adapter = createSidebarControlAdapter({
+    document: dom.window.document,
+    window: dom.window,
+    sessions: { list: sessionList },
+    getSessionStatus: () => sessionStatus,
+  })
+  adapter.start()
+
+  assert.equal(dom.window.document.querySelector('[data-prts-session-summary-trigger="ongoing"] [data-prts-session-summary-count]').textContent, '1')
+  sessionStatus.update(new Map([
+    ['parent', { running: false }],
+    ['child', { running: false }],
+  ]))
+  await flush(dom.window)
+  assert.equal(dom.window.document.querySelector('[data-prts-session-summary-trigger="ongoing"]'), null)
+  adapter.dispose()
+})
+
+test('keeps the workspace warning shortcut when the service list omits a visible session', async () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree">
+        <div role="treeitem" aria-selected="false" data-row-key="session:question">
+          <span data-state="warning">!</span><span class="title">选择方案</span><span class="time">回答</span>
+          <span><span><button type="button">…</button></span></span>
+        </div>
+      </div>
+    </div></aside>
+  </body></html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const opened = []
+  const sessionStatus = createStore(new Map())
+  const adapter = createSidebarControlAdapter({
+    document,
+    window: dom.window,
+    sessions: {
+      list: createStore({ ids: [], byId: {} }),
+      open: () => assert.fail('use the DSH workspace navigation service'),
+    },
+    getSessionStatus: () => sessionStatus,
+    getUiWorkspace: () => ({ openSession: id => opened.push(id) }),
+  })
+  adapter.start()
+  assert.equal(document.querySelector('[data-prts-session-summary-trigger="warning"] [data-prts-session-summary-count]').textContent, '1')
+  assert.equal(document.querySelector('[data-prts-session-summary-trigger="ongoing"]'), null)
+  document.querySelector('[data-prts-session-summary-item="question"]').click()
+  assert.deepEqual(opened, ['question'])
+  adapter.dispose()
 })

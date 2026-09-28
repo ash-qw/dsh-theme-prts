@@ -253,6 +253,68 @@ test('@facility-vector keeps the status overview and hover list inside the works
   await expect(section).toHaveScreenshot('session-status-overview-dark.png')
 })
 
+test('@facility-vector includes sessions waiting for an answer in the status overview', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await enable(page)
+  await page.evaluate(() => {
+    const runtime = window.__PRTS_FIXTURE_RUNTIME__
+    runtime.sessionList.set({
+      ids: ['fixture-session', 'fixture-question'],
+      byId: {
+        'fixture-session': { id: 'fixture-session', displayTitle: '后台执行', running: true },
+        'fixture-question': { id: 'fixture-question', displayTitle: '请选择下一步', running: true },
+      },
+    })
+    runtime.sessionStatus.set(new Map([
+      ['fixture-session', { running: true }],
+      ['fixture-question', { running: true, pendingInteraction: { kind: 'question' } }],
+    ]))
+  })
+
+  const warning = page.locator('[data-prts-session-summary-trigger="warning"]')
+  await expect(warning.locator('[data-prts-session-summary-count]')).toHaveText('1')
+  await expect(page.locator('[data-prts-session-summary-trigger="ongoing"] [data-prts-session-summary-count]')).toHaveText('1')
+  await warning.hover()
+  const popover = page.locator('[data-prts-session-summary-popover="warning"]')
+  await expect(popover).toBeVisible()
+  const item = popover.locator('[data-prts-session-summary-item="fixture-question"]')
+  await expect(item).toHaveAttribute('aria-label', '请选择下一步，待回答')
+  const [railBox, popoverBox] = await Promise.all([
+    page.locator('[data-prts-region="sessions"]').boundingBox(),
+    popover.boundingBox(),
+  ])
+  expect(popoverBox.x).toBeGreaterThanOrEqual(railBox.x)
+  expect(popoverBox.x + popoverBox.width).toBeLessThanOrEqual(railBox.x + railBox.width)
+  await item.click()
+  await expect.poll(() => page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-question'])
+})
+
+test('@facility-vector keeps a pending session title aligned with idle rows', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await enable(page)
+  const row = page.locator('[data-prts-session-row]')
+  await row.evaluate(node => {
+    const oldStatus = node.querySelector(':scope > [data-state]')
+    const slot = document.createElement('span')
+    slot.setAttribute('data-test-pending-slot', '')
+    slot.style.width = '16px'
+    slot.style.display = 'flex'
+    oldStatus.replaceWith(slot)
+    node.querySelector('.sessionTime').setAttribute('aria-hidden', 'true')
+  })
+  const idleTitleX = (await row.locator('[data-prts-row-title]').boundingBox()).x
+  await row.evaluate(node => {
+    const slot = node.querySelector('[data-test-pending-slot]')
+    slot.style.paddingLeft = '8px'
+    slot.innerHTML = '<span data-state="warning" aria-hidden="true">!</span><span>Waiting for answer</span>'
+  })
+
+  await expect(row).toHaveAttribute('data-prts-session-state', 'warning')
+  await expect(row.locator('.sessionTime')).toHaveAttribute('data-prts-session-time', '')
+  await expect(row.locator('[data-test-pending-slot]')).not.toHaveAttribute('data-prts-session-time', '')
+  await expect.poll(async () => (await row.locator('[data-prts-row-title]').boundingBox()).x).toBe(idleTitleX)
+})
+
 for (const scheme of ['dark', 'light']) {
   for (const dpr of [1, 2]) {
     test(`@facility-vector has continuous facility strokes at DPR ${dpr} in ${scheme} mode`, async ({ browser }) => {

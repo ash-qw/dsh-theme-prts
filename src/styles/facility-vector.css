@@ -104,6 +104,11 @@ html[data-dsh-prts] [data-prts-session-summary-group="ongoing"] {
   color: var(--prts-summary-state-color);
 }
 
+html[data-dsh-prts] [data-prts-session-summary-group="warning"] {
+  --prts-summary-state-color: var(--dsw-alias-state-warn-primary, var(--prts-yellow));
+  color: var(--prts-summary-state-color);
+}
+
 html[data-dsh-prts] [data-prts-session-summary-group="done"] {
   --prts-summary-state-color: var(--dsw-alias-state-success-primary, var(--prts-green));
   color: var(--prts-summary-state-color);
@@ -146,6 +151,24 @@ html[data-dsh-prts] [data-prts-session-summary-signal="done"]::before {
   inset: 1px;
   background: currentColor;
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+html[data-dsh-prts] [data-prts-session-summary-signal="warning"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid currentColor;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-signal="warning"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 1px;
+  height: 3px;
+  background: currentColor;
+  box-shadow: 0 3px currentColor;
 }
 
 html[data-dsh-prts] [data-prts-session-summary-popover] {
@@ -239,6 +262,13 @@ html[data-dsh-prts] [data-prts-session-summary-item] > span:not([data-prts-sessi
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+html[data-dsh-prts] [data-prts-session-summary-item-status] {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--prts-summary-state-color);
+  font: 700 9px/1 var(--prts-mono);
 }
 
 html[data-dsh-prts] [data-prts-session-summary-item]:is(:hover, :focus-visible) {

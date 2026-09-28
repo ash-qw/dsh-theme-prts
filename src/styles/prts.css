@@ -976,6 +976,10 @@ html[data-dsh-prts] [data-prts-row-title] {
   white-space: nowrap;
 }
 
+html[data-dsh-prts] [data-prts-session-row] > span:has(> [data-state]) {
+  padding-left: 0 !important;
+}
+
 html[data-dsh-prts] [data-prts-session-row] [data-prts-row-title]::before {
   content: attr(data-prts-session-index);
   margin-right: 8px;

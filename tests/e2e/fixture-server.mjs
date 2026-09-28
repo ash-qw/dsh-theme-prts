@@ -222,6 +222,7 @@ const fixtureBootstrap = `
     runningCalls: [{ id: 'fixture-call' }],
     nodes: [{ kind: 'tool-result' }],
   })
+  const sessionStatus = observable(new Map([['fixture-session', { running: true }]]))
   const sessionFaces = {
     goal: observable({ goal: { objective: '完成保真重构' } }),
     plan: observable({ active: true, pending: false }),
@@ -257,6 +258,7 @@ const fixtureBootstrap = `
   }
   window.__PRTS_FIXTURE_RUNTIME__ = {
     sessionList,
+    sessionStatus,
     sessionState,
     sessionFaces,
     modelStore,
@@ -285,6 +287,7 @@ const fixtureBootstrap = `
       return () => listeners.delete(listener)
     },
     sessions,
+    uiSession: { sessionStatus },
     connection,
     modelDirectories,
     get(name) { return this[name] },

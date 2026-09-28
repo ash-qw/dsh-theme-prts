@@ -30,6 +30,11 @@ const OWNED_ATTRIBUTES = [
 ]
 
 const SESSION_STATES = Object.freeze(['warning', 'ongoing', 'error', 'done'])
+const PENDING_LABELS = Object.freeze({
+  approval: '待授权',
+  'plan-review': '待审阅',
+  question: '待回答',
+})
 
 function snapshotOf(source) {
   try {
@@ -62,17 +67,27 @@ function resolveSectionHeader(root) {
   return {}
 }
 
-function visibleSessionSummaries(sessions, workspaces) {
+function visibleSessionSummaries(sessions, workspaces, sessionStatus) {
   const list = snapshotOf(sessions?.list)
   if (!list?.byId) return []
+  const statuses = snapshotOf(sessionStatus)
   const workspaceList = snapshotOf(workspaces?.list)
   const archived = new Set(workspaceList?.archivedSessionIds ?? [])
   const ids = Array.isArray(list.ids) ? list.ids : Object.keys(list.byId)
   return ids.flatMap(id => {
     const summary = list.byId[id]
     if (!summary || summary.blank || summary.origin === 'subagent' || archived.has(id)) return []
-    if (summary.running) return [{ id, title: summary.displayTitle || id, state: 'ongoing' }]
-    if (summary.completed === true) return [{ id, title: summary.displayTitle || id, state: 'done' }]
+    const status = statuses?.get?.(id)
+    const pendingLabel = PENDING_LABELS[status?.pendingInteraction?.kind]
+    if (pendingLabel) return [{ id, title: summary.displayTitle || id, state: 'warning', statusLabel: pendingLabel }]
+    const runningSubagent = list.projectionsBySession?.[id]?.values?.subagentCatalog?.some(child =>
+      (statuses?.get?.(child.id)?.running ?? list.byId[child.id]?.running) === true)
+    if ((status?.running ?? summary.running) || runningSubagent) {
+      return [{ id, title: summary.displayTitle || id, state: 'ongoing' }]
+    }
+    if (status ? status.completionUnread === true : summary.completed === true) {
+      return [{ id, title: summary.displayTitle || id, state: 'done' }]
+    }
     return []
   })
 }
@@ -139,11 +154,11 @@ function resolveSessionTime(row, title, actions) {
     && node !== actions
     && !node.hasAttribute('data-prts-facility-face')
     && !node.hasAttribute('data-prts-row-projection')
-    && node.getAttribute('aria-hidden') !== 'true'
     && !node.querySelector('button')
     && node.textContent.trim()
   ))
-  return candidates.find(node => node.matches('[class*="time" i], time, [data-session-time]')) ?? candidates.at(-1)
+  return candidates.find(node => node.matches('[class*="time" i], time, [data-session-time]'))
+    ?? candidates.filter(node => node.getAttribute('aria-hidden') !== 'true' && !node.querySelector('[data-state]')).at(-1)
 }
 
 function ensureFacilityFace(document, row, kind, next) {
@@ -174,7 +189,7 @@ function ensureFacilitySpine(document, row, kind, next) {
 }
 
 
-export function createSidebarControlAdapter({ document, window, sessions, workspaces }) {
+export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace }) {
   let observer
   let resizeObserver
   let resizeFrame
@@ -182,6 +197,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let scanFrame
   let stopSessionList = () => {}
   let stopWorkspaceList = () => {}
+  let stopSessionStatus = () => {}
+  let sessionStatus
   let statusSourcesStarted = false
   let summaryRoot
   let summarySignature = ''
@@ -191,15 +208,30 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   const vectorSizes = new WeakMap()
   const lifelineAnimator = createSessionLifelineAnimator({ document, window })
 
+  function connectSessionStatus() {
+    const source = getSessionStatus?.()
+    if (source === sessionStatus) return
+    stopSessionStatus()
+    sessionStatus = source
+    stopSessionStatus = source?.subscribe?.(queueScan) ?? (() => {})
+  }
+
   function openSession(sessionId) {
     try {
+      const uiWorkspace = getUiWorkspace?.()
+      if (typeof uiWorkspace?.openSession === 'function') {
+        uiWorkspace.openSession(sessionId)
+        return
+      }
       if (typeof sessions?.open === 'function') {
         sessions.open(sessionId)
         return
       }
     } catch {}
     const row = Array.from(document.querySelectorAll('[data-prts-session-row]')).find(candidate => (
-      candidate.querySelector('[data-prts-row-title]')?.textContent.trim() === sessionId
+      candidate.getAttribute('data-row-key') === `session:${sessionId}`
+      || candidate.getAttribute('data-session-id') === sessionId
+      || candidate.querySelector('[data-prts-row-title]')?.textContent.trim() === sessionId
     ))
     row?.click?.()
   }
@@ -247,6 +279,13 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       const title = document.createElement('span')
       title.textContent = item.title
       button.append(title)
+      if (item.statusLabel) {
+        const detail = document.createElement('small')
+        detail.setAttribute('data-prts-session-summary-item-status', '')
+        detail.textContent = item.statusLabel
+        button.append(detail)
+        button.setAttribute('aria-label', `${item.title}，${item.statusLabel}`)
+      }
       button.addEventListener('click', event => {
         event.stopPropagation()
         openSession(item.id)
@@ -269,16 +308,30 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     label.setAttribute('data-prts-session-summary-label', '')
     next.add(header)
     next.add(label)
-    const fromService = visibleSessionSummaries(sessions, workspaces)
-    const rows = fromService.length ? fromService : Array.from(root.querySelectorAll('[data-prts-session-row]')).flatMap(row => {
+    const fromService = visibleSessionSummaries(sessions, workspaces, sessionStatus)
+    const nativeRows = Array.from(root.querySelectorAll('[data-prts-session-row]')).flatMap(row => {
       const state = row.getAttribute('data-prts-session-state')
-      if (state !== 'ongoing' && state !== 'done') return []
+      if (state !== 'warning' && state !== 'ongoing' && state !== 'done') return []
       const title = row.querySelector('[data-prts-row-title]')?.textContent.trim()
-      return title ? [{ id: title, title, state }] : []
+      const rowKey = row.getAttribute('data-row-key')
+      const id = row.getAttribute('data-session-id') || (rowKey?.startsWith('session:') ? rowKey.slice(8) : title)
+      return title ? [{ id, title, state }] : []
     })
+    const rows = [...fromService]
+    const statePriority = { done: 1, ongoing: 2, warning: 3 }
+    for (const nativeRow of nativeRows) {
+      const index = rows.findIndex(item => item.id === nativeRow.id || item.title === nativeRow.title)
+      if (index === -1) {
+        rows.push(nativeRow)
+      } else if (statePriority[nativeRow.state] > statePriority[rows[index].state]) {
+        rows[index] = { ...rows[index], state: nativeRow.state }
+      }
+    }
+    const warning = rows.filter(item => item.state === 'warning')
     const ongoing = rows.filter(item => item.state === 'ongoing')
     const done = rows.filter(item => item.state === 'done')
     const signature = JSON.stringify({
+      warning: warning.map(item => [item.id, item.title, item.statusLabel]),
       ongoing: ongoing.map(item => [item.id, item.title]),
       done: done.map(item => [item.id, item.title]),
     })
@@ -294,10 +347,11 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     }
     const labelHidden = Array.from(label.classList).some(name => /hidden/i.test(name))
     summaryRoot.toggleAttribute('data-prts-summary-search-hidden', labelHidden)
-    summaryRoot.hidden = ongoing.length === 0 && done.length === 0
+    summaryRoot.hidden = warning.length === 0 && ongoing.length === 0 && done.length === 0
     if (signature === summarySignature) return
     summarySignature = signature
     summaryRoot.replaceChildren()
+    if (warning.length) summaryRoot.append(buildSummaryGroup('warning', '等待处理的会话', warning))
     if (ongoing.length) summaryRoot.append(buildSummaryGroup('ongoing', '运行中的会话', ongoing))
     if (done.length) summaryRoot.append(buildSummaryGroup('done', '完成未查看', done))
   }
@@ -366,6 +420,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function scan() {
+    connectSessionStatus()
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     const next = new Set()
     const nextVectorOwners = new Set()
@@ -509,6 +564,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       stopSessionList = () => {}
       stopWorkspaceList()
       stopWorkspaceList = () => {}
+      stopSessionStatus()
+      stopSessionStatus = () => {}
+      sessionStatus = undefined
       statusSourcesStarted = false
       if (scanFrame !== undefined) {
         if (window?.cancelAnimationFrame) window.cancelAnimationFrame(scanFrame)
