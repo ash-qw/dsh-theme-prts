@@ -125,7 +125,7 @@ test('limits custom composer geometry to the empty-session hero', () => {
     '[data-prts-hero-active] [data-prts-composer-fallback] :is(textarea, [data-composer-input])',
     '[data-prts-hero-active] [data-prts-glass-control]',
     'min-height: 64px',
-    'width: min(calc(780px + 32px), 100%)',
+    'width: min(calc(var(--dsh-chat-content-width, 748px) + 64px), 100%)',
   ])
   assert.doesNotMatch(css, /\[data-conversation-scroll\]\s*\{[^}]*scroll-padding-bottom:\s*170px/s)
   assert.doesNotMatch(css, /html\[data-dsh-prts\] textarea\s*\{[^}]*min-height:\s*64px/s)

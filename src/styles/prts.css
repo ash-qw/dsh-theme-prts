@@ -1113,6 +1113,13 @@ html[data-dsh-prts] [data-conversation-scroll] {
   z-index: 2;
 }
 
+/* DSH renders transcript width handles beside the scroll surface. Its scroll
+   surface needs this layer for our ambient backdrop, but must not cover the
+   native handles' hit areas. Keep DSH's higher dragging layer intact. */
+html[data-dsh-prts] [data-width-handle]:not([data-dragging]) {
+  z-index: 3;
+}
+
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"],
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] {
   position: relative;
@@ -1274,7 +1281,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   --prts-chat-link-x: -34px;
   position: relative;
   width: calc(100% - 56px);
-  margin-inline-start: calc((100% - min(748px, 100%)) / 2 + 56px);
+  margin-inline-start: calc((100% - min(var(--dsh-chat-content-width, 748px), 100%)) / 2 + 56px);
   padding: 16px 22px !important;
   border: 1px solid var(--prts-chat-assistant-edge) !important;
   border-radius: 6px 18px 18px 18px !important;
