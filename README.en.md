@@ -15,10 +15,10 @@ The theme is disabled by default.
 
 ## Compatibility
 
-- Declared support is limited to DeepSeek Harness Web `0.1.7-rc.2`, the version verified locally. The earlier `0.1.2` and `0.1.5` releases are no longer in the compatibility declaration.
-- The `0.1.7-rc.2` client contract has been checked. The new reasoning/response grouping and session card actions have browser regression coverage.
+- Declared support is limited to DeepSeek Harness Web `0.2.0-rc.2`, the version verified locally. The earlier `0.1.7`, `0.1.5`, and `0.1.2` release lines are no longer in the compatibility declaration.
+- The theme has been checked on a live `0.2.0-rc.2` page for mounting, workspaces, session cards, and the composer. Browser regression tests cover the native conversation width control, session status, and pending interaction indicators.
 - `engines.dsh` in `package.json` uses the same exact version for plugin market compatibility checks. Other DSH versions require separate verification.
-- For the DSH `0.1.2` or `0.1.5` release lines, pin the previous public npm release, `@ash-qw/dsh-theme-prts@0.1.102`. Its `engines.dsh` declares support for those lines.
+- For DSH `0.1.7-rc.2`, pin theme `@ash-qw/dsh-theme-prts@1.0.2`. For DSH `0.1.2` or `0.1.5`, pin theme `@ash-qw/dsh-theme-prts@0.1.102`.
 
 ## Install and update
 
