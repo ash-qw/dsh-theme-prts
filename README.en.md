@@ -37,7 +37,6 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - Facility-style P.R.T.S. / Rhodes Island / RIIC workspaces, sessions, and conversations;
 - day/night modes synchronized with Harness, three appearance presets, and four material levels;
 - city silhouettes, faction particle marks, session waveforms, and a P.R.T.S. startup sequence;
-- the Harness-native conversation navigator, without overriding its structure, behavior, or appearance;
 - desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations;
 - no runtime network requests, analytics, or telemetry.
 

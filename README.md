@@ -37,7 +37,6 @@ npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 - P.R.T.S. / Rhodes Island / RIIC 设施化工作区、会话与对话界面；
 - 与 Harness 同步的日间 / 夜间模式、三套外观预设和四档界面材质；
 - 城市剪影、阵营粒子徽记、会话声纹和 P.R.T.S. 启动序列；
-- 使用 Harness 原生对话刻度导航，不覆盖其结构、行为或外观；
 - 桌面、平板、手机、减少动效和降低透明度适配；
 - 无运行时网络请求、分析统计或额外遥测。
 
