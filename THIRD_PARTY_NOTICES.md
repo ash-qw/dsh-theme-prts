@@ -1,5 +1,7 @@
 # Third-Party and Franchise Material Notices
 
+English | [简体中文](THIRD_PARTY_NOTICES.zh-CN.md)
+
 This file records provenance and licensing boundaries only. It does not establish or imply permission to include, publish, or redistribute any third-party material listed below.
 
 ## Code

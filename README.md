@@ -7,7 +7,7 @@
 >
 > MIT 许可证仅覆盖本项目原创代码。安装包中若干可识别的《明日方舟》名称、角色图像、徽记及其衍生素材不属于 MIT 授权范围，本项目不向使用者授予复制、修改、再分发、再许可或商业使用这些第三方素材的权利。
 >
-> 素材可从公开网页访问不代表获得再利用或再分发授权；免费、非商业使用也不当然构成授权。素材来源与许可边界详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+> 素材可从公开网页访问不代表获得再利用或再分发授权；免费、非商业使用也不当然构成授权。素材来源与许可边界详见 [第三方素材说明](THIRD_PARTY_NOTICES.zh-CN.md)。
 >
 > 本项目及其发行包可能因权利人请求、平台政策或维护者决定，随时暂停发布、限制下载或移除相关素材，不保证持续提供。
 
@@ -41,7 +41,7 @@ npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 - PRTS 手形光标，支持按下、按住和松开效果；文本框使用静态 I 形及单次点击反馈，可在主题设置的“鼠标样式”切回系统光标；
 - 无运行时网络请求、分析统计或额外遥测。
 
-鼠标素材来自 [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4)，提取后适配为网页光标；来源、处理方式和许可边界见 [第三方素材说明](THIRD_PARTY_NOTICES.md#prts-hand-and-text-cursors)。
+鼠标素材来自 [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4)，提取后适配为网页光标；来源、处理方式和许可边界见 [第三方素材说明](THIRD_PARTY_NOTICES.zh-CN.md#prts-手形与文本光标)。
 
 ## 使用与设置
 

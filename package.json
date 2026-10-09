@@ -55,7 +55,8 @@
     "README.en.md",
     "CHANGELOG.md",
     "LICENSE",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "THIRD_PARTY_NOTICES.zh-CN.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

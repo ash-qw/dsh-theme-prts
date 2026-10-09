@@ -203,6 +203,7 @@ test('package manifest exposes only the installable plugin and user-facing docum
     'CHANGELOG.md',
     'LICENSE',
     'THIRD_PARTY_NOTICES.md',
+    'THIRD_PARTY_NOTICES.zh-CN.md',
   ])
   for (const required of [
     '../lib/client.js',
