@@ -15,6 +15,7 @@ const PRESET_OPTIONS = [
 ]
 
 const COMMON_CONTROLS = [
+  ['cursor', '鼠标样式', [['system', '系统'], ['prts', 'PRTS 手形']]],
   ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
   ['texture', '环境底纹', [['off', '关闭'], ['restrained', '克制'], ['full', '完整']]],
   ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],

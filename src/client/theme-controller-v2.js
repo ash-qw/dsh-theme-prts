@@ -1,3 +1,4 @@
+import { createCursorAdapter } from './cursor-adapter.js'
 import { normalizePreferences } from './preferences.js'
 
 const ROOT_ATTRIBUTES = [
@@ -6,6 +7,7 @@ const ROOT_ATTRIBUTES = [
   'data-prts-texture',
   'data-prts-glass',
   'data-prts-motion',
+  'data-prts-cursor',
   'data-prts-particle-pattern',
   'data-prts-session-flow',
   'data-prts-session-glow',
@@ -67,12 +69,13 @@ function resolveScheme(value) {
   return identity.includes('dark') || identity.includes('night') ? 'dark' : 'light'
 }
 
-export function createThemeController({ document, window, cssText, service, onTransitionStateChange = () => {} }) {
+export function createThemeController({ document, window, cssText, service, cursorAssets, onTransitionStateChange = () => {} }) {
   if (!document || !window) {
     const gesture = { update() {}, finish() {}, cancel() {} }
     return { apply() {}, sync() {}, refresh() {}, setTheme() {}, beginThemeTransition() { return gesture }, toggle() {}, dispose() {} }
   }
 
+  const cursor = createCursorAdapter({ document, window, assets: cursorAssets })
   const root = document.documentElement
   let style
   let disposed = false
@@ -115,6 +118,7 @@ export function createThemeController({ document, window, cssText, service, onTr
   }
 
   function removeOwnedState() {
+    cursor.dispose()
     disposed = true
     refreshRevision += 1
     setRevision += 1
@@ -712,6 +716,7 @@ export function createThemeController({ document, window, cssText, service, onTr
       disposed = false
       const preferences = normalizePreferences(value)
       ensureStyle()
+      cursor.update(preferences)
       if (!preferences.enabled) {
         cancelActiveTransition()
         clearThemeState()
@@ -721,6 +726,7 @@ export function createThemeController({ document, window, cssText, service, onTr
       root.dataset.prtsTexture = preferences.texture
       root.dataset.prtsGlass = preferences.glass
       root.dataset.prtsMotion = preferences.motion
+      root.dataset.prtsCursor = preferences.cursor
       root.dataset.prtsParticlePattern = 'orthogonal'
       root.dataset.prtsSessionFlow = preferences.sessionFlow ? 'on' : 'off'
       root.dataset.prtsSessionGlow = preferences.sessionGlow ? 'on' : 'off'

@@ -79,6 +79,7 @@ export function applyPrtsPlugin(ctx, environment) {
     window,
     cssText,
     service: themeService,
+    cursorAssets: assets.cursor,
     onTransitionStateChange(active) {
       particleField.setSchemeTransitionActive(active)
     },

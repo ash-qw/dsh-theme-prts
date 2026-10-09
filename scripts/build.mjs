@@ -69,7 +69,20 @@ function compactCss(source) {
     .replace(/\s*,\s*/g, ',')
 }
 
-const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}`)
+const cursorAnimation = JSON.parse(await readFile(resolve(root, 'src/assets/cursors/animation.json'), 'utf8'))
+const cursorImage = async file => `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors', file))).toString('base64')}`
+const cursorAssets = {
+  hotspot: cursorAnimation.hotspot,
+  textHotspot: cursorAnimation.textHotspot,
+  textClick: await Promise.all(cursorAnimation.textClick.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+  hold: await cursorImage('prts-hand-hold.png'),
+  press: await Promise.all(cursorAnimation.press.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+  release: await Promise.all(cursorAnimation.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+}
+const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'))
+  .replaceAll('__PRTS_HAND__', `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors/prts-hand.png'))).toString('base64')}`)
+  .replaceAll('__PRTS_TEXT__', await cursorImage('prts-text.png'))
+const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,
@@ -117,6 +130,7 @@ const clientModulePaths = [
   'src/client/facility-vector.js',
   'src/client/sidebar-control-adapter.js',
   'src/client/rc7-adapter.js',
+  'src/client/cursor-adapter.js',
   'src/client/theme-controller-v2.js',
   'src/client/status-projection.js',
   'src/client/ui-store.js',
@@ -151,6 +165,7 @@ const client = `window.__ModuleLoader__.load({
     const PRTS_VERSION = ${JSON.stringify(version)};
     const PRTS_CSS = ${JSON.stringify(cssText)};
     const PRTS_ASSETS = Object.freeze({
+      cursor: ${JSON.stringify(cursorAssets)},
       emblem: ${JSON.stringify(emblem)},
       prtsEmblem: ${JSON.stringify(prtsEmblem)},
       emblems: ${JSON.stringify(factionEmblems)},

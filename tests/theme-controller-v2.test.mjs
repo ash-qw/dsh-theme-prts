@@ -356,3 +356,19 @@ test('keeps the current theme when the host rejects a manual switch', async () =
   assert.equal(records.animations.length, 0)
   controller.dispose()
 })
+
+test('cursor preference follows theme enable, system selection and disposal', () => {
+  const dom = createDom()
+  const controller = createThemeController({ document: dom.window.document, window: dom.window, cssText: '' })
+  const root = dom.window.document.documentElement
+  controller.apply({ enabled: true })
+  assert.equal(root.dataset.prtsCursor, 'prts')
+  controller.apply({ enabled: true, cursor: 'system' })
+  assert.equal(root.dataset.prtsCursor, 'system')
+  controller.apply({ enabled: false })
+  assert.equal(root.hasAttribute('data-prts-cursor'), false)
+  controller.apply({ enabled: true })
+  controller.dispose()
+  assert.equal(root.hasAttribute('data-prts-cursor'), false)
+  dom.window.close()
+})

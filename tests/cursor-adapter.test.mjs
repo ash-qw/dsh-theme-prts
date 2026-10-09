@@ -1,0 +1,102 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { JSDOM } from 'jsdom'
+import { createCursorAdapter } from '../src/client/cursor-adapter.js'
+
+function setup() {
+  const dom = new JSDOM('<html><body><button style="cursor:url(data:image/png;base64,AA),pointer">Press</button><input style="cursor:text"></body></html>')
+  const { window } = dom
+  const { document } = window
+  const timers = new Map()
+  let id = 0
+  window.setTimeout = fn => { timers.set(++id, fn); return id }
+  window.clearTimeout = key => timers.delete(key)
+  window.matchMedia = () => ({ matches: false })
+  const assets = { hotspot: [7, 6], textHotspot: [24, 24], textClick: [{ url: 'text-click', duration: 16 }, { url: 'end', duration: 60000 }], hold: 'hold', press: [{ url: 'press', duration: 16 }, { url: 'end', duration: 60000 }], release: [{ url: 'release', duration: 16 }, { url: 'end', duration: 60000 }] }
+  const adapter = createCursorAdapter({ document, window, assets })
+  const active = { enabled: true, cursor: 'prts' }
+  adapter.update(active)
+  const frame = () => document.documentElement.style.getPropertyValue('--prts-hand-frame')
+  const fire = (name, overrides = {}, target = document.querySelector('button')) => {
+    const event = new window.Event(name, { bubbles: true })
+    Object.assign(event, { pointerType: 'mouse', button: 0, pointerId: 1, isPrimary: true, buttons: 1 }, overrides)
+    target.dispatchEvent(event)
+  }
+  const tick = () => { const next = timers.entries().next().value; if (next) { timers.delete(next[0]); next[1]() } }
+  return { dom, window, document, adapter, active, frame, fire, tick, timers }
+}
+
+test('normal press, hold and release preserve native text cursors and ignore secondary/touch input', () => {
+  const s = setup()
+  for (const event of [{ button: 2 }, { pointerType: 'touch' }]) s.fire('pointerdown', event)
+  s.fire('pointerdown', {}, s.document.querySelector('input'))
+  assert.equal(s.frame(), '')
+  s.fire('pointerdown'); assert.match(s.frame(), /press/)
+  s.tick(); assert.match(s.frame(), /hold/); assert.equal(s.timers.size, 0)
+  s.fire('pointerup'); assert.match(s.frame(), /release/)
+  s.tick(); assert.equal(s.frame(), ''); assert.equal(s.timers.size, 0)
+  s.adapter.dispose(); s.dom.window.close()
+})
+
+test('fast repeat gestures, blur, cancellation, system selection and disposal never leave held frames', () => {
+  const s = setup()
+  s.fire('pointerdown'); s.fire('pointerup'); s.fire('pointerdown')
+  assert.equal(s.timers.size, 1); s.tick(); assert.match(s.frame(), /hold/)
+  for (const name of ['blur', 'pointercancel', 'dragstart']) {
+    s.fire('pointerdown'); s.fire(name, {}, name === 'blur' ? s.window : undefined); assert.equal(s.frame(), ''); assert.equal(s.timers.size, 0)
+  }
+  s.fire('pointerdown'); s.fire('pointermove', { buttons: 0 }); assert.equal(s.frame(), '')
+  s.fire('pointerdown'); s.adapter.update({ ...s.active, cursor: 'system' })
+  s.fire('pointerdown'); assert.equal(s.frame(), ''); assert.equal(s.timers.size, 0)
+  s.adapter.update(s.active); s.adapter.update(s.active)
+  s.document.documentElement.dataset.prtsMotion = 'reduced'
+  s.fire('pointerdown'); assert.match(s.frame(), /hold/); assert.equal(s.timers.size, 0)
+  s.fire('pointerup'); assert.equal(s.frame(), '')
+  s.fire('pointerdown'); s.adapter.dispose(); s.fire('pointerdown'); assert.equal(s.frame(), '')
+  s.dom.window.close()
+})
+
+test('text click plays once after release and cancels for selection, exit, reduced motion and disposal', () => {
+  const s = setup()
+  const input = s.document.querySelector('input')
+  input.style.cursor = 'url(data:image/png;base64,AA), text'
+  const textFrame = () => s.document.documentElement.style.getPropertyValue('--prts-text-frame')
+  const down = () => s.fire('pointerdown', { clientX: 10, clientY: 10 }, input)
+  down(); assert.match(textFrame(), /text-click/); assert.equal(s.frame(), '')
+  s.fire('pointerup', {}, input); assert.match(textFrame(), /text-click/)
+  s.tick(); assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
+  down(); down(); assert.equal(s.timers.size, 1)
+  s.fire('pointermove', { clientX: 25, clientY: 10 }, input)
+  assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
+  down(); s.fire('pointermove'); assert.equal(textFrame(), '')
+  down(); s.fire('pointerout'); assert.equal(textFrame(), '')
+  s.document.documentElement.dataset.prtsMotion = 'reduced'
+  down(); assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
+  s.document.documentElement.dataset.prtsMotion = 'system'
+  down(); s.adapter.dispose(); assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
+  s.dom.window.close()
+})
+
+test('focus changes inside the page do not cancel a new gesture, but window blur does', () => {
+  const s = setup()
+  s.fire('pointerdown')
+  s.document.querySelector('input').dispatchEvent(new s.window.Event('blur'))
+  assert.match(s.frame(), /press/)
+  s.tick(); assert.match(s.frame(), /hold/)
+  s.window.dispatchEvent(new s.window.Event('blur'))
+  assert.equal(s.frame(), ''); assert.equal(s.timers.size, 0)
+  s.adapter.dispose(); s.dom.window.close()
+})
+
+test('quick taps complete press and briefly hold before release, without queueing repeated clicks', () => {
+  const s = setup()
+  s.fire('pointerdown'); s.fire('pointerup')
+  assert.match(s.frame(), /press/)
+  s.tick(); assert.match(s.frame(), /hold/)
+  s.tick(); assert.match(s.frame(), /release/)
+  s.tick(); assert.equal(s.frame(), '')
+  s.fire('pointerdown'); s.fire('pointerup'); s.tick()
+  s.fire('pointerdown'); assert.match(s.frame(), /press/); assert.equal(s.timers.size, 1)
+  s.tick(); assert.match(s.frame(), /hold/); assert.equal(s.timers.size, 0)
+  s.adapter.dispose(); s.dom.window.close()
+})

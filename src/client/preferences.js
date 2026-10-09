@@ -24,6 +24,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   glass: 'standard',
   motion: 'system',
   bootAnimation: true,
+  cursor: 'prts',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
@@ -76,7 +77,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   background: Object.freeze(['texture']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
-  accessibility: Object.freeze(['motion', 'bootAnimation']),
+  accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
   navigation: Object.freeze(['railDefaultHidden']),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle']),
 })
@@ -178,6 +179,7 @@ export function normalizePreferences(value) {
     glass: normalizeGlass(input),
     motion: input.motion === 'full' ? 'system' : enumOr(input.motion, MOTIONS, DEFAULT_PREFERENCES.motion),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),
+    cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
     particleTraversalSpeed: particleTraversalSpeedOr(

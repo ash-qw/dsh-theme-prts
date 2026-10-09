@@ -46,3 +46,10 @@ For reference, the Arknights global website publishes [Terms and Conditions of R
 An applicable rights holder or authorized representative may submit a removal or attribution request through the repository's issue tracker. To help identify and review the request, it should identify the requester, the affected files or material, the relevant rights, and a means of follow-up contact.
 
 After receiving a verifiable request, the project maintainer will review it promptly and may suspend public distribution of an affected release, remove or replace the relevant material, or update attribution and provenance records. This process does not imply that the material was previously authorized and does not limit or waive any rights or remedies of a rights holder.
+
+## PRTS hand and text cursors
+
+- Files: `src/assets/cursors/prts-hand*.png`, `prts-text*.png` and `animation.json`.
+- Source: embedded `PRTS-Replica-v8-96x-normal.cur`, `normal_hold.cur`, `normal_press.ani`, `normal_release.ani`, `beam.cur` and `beam_click.ani` resources in `程序文件/PRTS-Setup.exe` from [crowninggg/prts-cursor v1.1.4, PRTS-Windows-1.1.4.zip](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4), retrieved 2026-10-09. Resources were read without executing the installer.
+- Adaptation: each 96×96 hand frame is cropped to (18, 10, 82, 84) and resized to 42×48. Source hotspot (28, 20) maps to (7, 6). ANI frame durations are preserved in the manifest; terminal 60-second hold frames are represented by static held/resting states at runtime. Text frames retain the full 96×96 canvas, resized to 48×48 with hotspot (24, 24). Text click feedback plays once; the continuous text-loop animation is not included. Link-arrow and unavailable variants are not included.
+- Upstream Credits.txt describes an unofficial personal derivative tool and attributes Arknights character/interface assets to their original rights holders. No explicit redistribution license for this artwork was found in the inspected package. This artwork is excluded from this project's MIT license; inclusion does not grant rights to the underlying artwork.
