@@ -8,18 +8,6 @@
 
 本包中的 JavaScript、CSS、构建脚本、测试，以及面向 DSH 独立创作的矢量界面设计，适用 `LICENSE` 中的 MIT 许可证。
 
-### 自适应会话跳转的参考来源
-
-会话导航中解除底部粘连、按距离调整滚动及验证滚动落点的策略，参考了 [`Wine-Red/dsh-codex-timeline`](https://github.com/Wine-Red/dsh-codex-timeline) 的提交 [`eb078c58a7662db231c5b8dd5d867f80b0b256af`](https://github.com/Wine-Red/dsh-codex-timeline/tree/eb078c58a7662db231c5b8dd5d867f80b0b256af)，并由本项目独立适配实现。
-
-该项目采用 MIT 许可证：
-
-- Copyright (c) 2026 DeepSeek
-- Copyright (c) 2026 dsh-codex-timeline contributors
-- 许可证：[`MIT`](https://github.com/Wine-Red/dsh-codex-timeline/blob/eb078c58a7662db231c5b8dd5d867f80b0b256af/LICENSE)
-
-本包中的实现位于主题内部，运行时不会加载或依赖上述插件。
-
 ## 具有明日方舟识别特征的第三方素材
 
 “明日方舟”（Arknights）、罗德岛（Rhodes Island）、P.R.T.S.、RIIC 及相关名称、角色、符号和视觉标识，涉及其各自权利人的权益，包括鹰角网络及游戏各地区发行方。

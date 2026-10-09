@@ -8,18 +8,6 @@ This file records provenance and licensing boundaries only. It does not establis
 
 The JavaScript, CSS, build scripts, tests, and original DSH-specific vector interface work in this package are licensed under the MIT License in `LICENSE`.
 
-### Adaptive conversation jump reference
-
-The conversation-scale sticky-bottom release, distance-aware scrolling, and landing-verification strategy was independently adapted with reference to [`Wine-Red/dsh-codex-timeline`](https://github.com/Wine-Red/dsh-codex-timeline) at commit [`eb078c58a7662db231c5b8dd5d867f80b0b256af`](https://github.com/Wine-Red/dsh-codex-timeline/tree/eb078c58a7662db231c5b8dd5d867f80b0b256af).
-
-That project is distributed under the MIT License:
-
-- Copyright (c) 2026 DeepSeek
-- Copyright (c) 2026 dsh-codex-timeline contributors
-- License: [`MIT`](https://github.com/Wine-Red/dsh-codex-timeline/blob/eb078c58a7662db231c5b8dd5d867f80b0b256af/LICENSE)
-
-The implementation in this package remains theme-local and does not load or depend on the referenced plugin at runtime.
-
 ## Arknights-identifying third-party material
 
 “Arknights”, Rhodes Island, P.R.T.S., RIIC, and related names, characters, symbols, and visual identities are associated with their respective rights holders, including Hypergryph and the game's regional publishers.
