@@ -126,7 +126,9 @@ export function themeSettingsMarkup() {
           <button type="button" data-prts-settings-jump="particles">粒子效果</button>
         </nav>
         <div data-prts-theme-settings-scroll>
-          <section data-prts-settings-presets data-prts-settings-section="appearance" tabindex="-1">
+          <section data-prts-settings-section="appearance" tabindex="-1">
+            <header data-prts-section-heading><strong>外观</strong><small>预设、界面材质与会话样式</small></header>
+          <section data-prts-settings-presets>
             <header><span><strong>视觉预设</strong></span></header>
             <div>${presetMarkup()}</div>
           </section>
@@ -138,14 +140,15 @@ export function themeSettingsMarkup() {
               ${settingButtons('conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']])}
             </div>
           </section>
+          </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" tabindex="-1">
-            <header><span><strong>交互</strong></span></header>
+            <header data-prts-section-heading><strong>交互</strong><small>光标、导航栏与动态反馈</small></header>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
             </div>
           </section>
           <section data-prts-settings-common data-prts-settings-section="flow" tabindex="-1">
-            <header><span><strong>会话流线</strong></span></header>
+            <header data-prts-section-heading><strong>会话流线</strong><small>当前会话的流线与辉光</small></header>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['sessionFlow', 'sessionGlow', 'sessionFlowPalette'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               ${sessionFlowColorMarkup()}
@@ -158,7 +161,7 @@ export function themeSettingsMarkup() {
           </section>
 
           <details data-prts-settings-advanced data-prts-settings-section="particles" tabindex="-1">
-            <summary><span><strong>粒子效果</strong></span><output data-prts-advanced-summary>标准 / 1×</output></summary>
+            <summary data-prts-section-heading><span><strong>粒子效果</strong><small>徽记精度与跟随移动速度</small></span><output data-prts-advanced-summary>标准 / 1×</output></summary>
             <div data-prts-settings-advanced-content>
               <section data-prts-particle-detail>
                 <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span></header>
@@ -516,6 +519,22 @@ export function createThemeSettingsOverlay({
     }, 300)
   }
 
+  function syncSectionNavigation() {
+    const scroller = panel?.querySelector('[data-prts-theme-settings-scroll]')
+    if (!scroller || !scroller.clientHeight) return
+    const sections = [...panel.querySelectorAll('[data-prts-settings-section]')]
+    const top = scroller.getBoundingClientRect().top + 32
+    let current = sections[0]
+    for (const section of sections) {
+      if (section.getBoundingClientRect().top <= top) current = section
+    }
+    if (scroller.scrollTop > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) current = sections.at(-1)
+    for (const button of panel.querySelectorAll('[data-prts-settings-jump]')) {
+      if (button.dataset.prtsSettingsJump === current?.dataset.prtsSettingsSection) button.setAttribute('aria-current', 'location')
+      else button.removeAttribute('aria-current')
+    }
+  }
+
   function onPanelClick(event) {
     if (event.target === panel) { setOpen(false); return }
     const target = event.target?.closest?.('button')
@@ -525,8 +544,9 @@ export function createThemeSettingsOverlay({
       const scroller = panel.querySelector('[data-prts-theme-settings-scroll]')
       if (section && scroller) {
         if (section.tagName === 'DETAILS') section.open = true
-        scroller.scrollTo?.({ top: target.dataset.prtsSettingsJump === 'appearance' ? 0 : scroller.scrollTop + section.getBoundingClientRect().top - scroller.getBoundingClientRect().top, behavior: 'instant' })
+        scroller.scrollTo?.({ top: target.dataset.prtsSettingsJump === 'appearance' ? 0 : scroller.scrollTop + section.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16, behavior: 'instant' })
         section.focus?.({ preventScroll: true })
+        syncSectionNavigation()
       }
       return
     }
@@ -622,6 +642,8 @@ export function createThemeSettingsOverlay({
 
   trigger?.addEventListener('click', toggle)
   panel?.addEventListener('click', onPanelClick)
+  panel?.querySelector('[data-prts-theme-settings-scroll]')?.addEventListener('scroll', syncSectionNavigation, { passive: true })
+  panel?.querySelector('[data-prts-settings-jump]')?.setAttribute('aria-current', 'location')
   panel?.addEventListener('cancel', onCancel)
   panel?.addEventListener('input', onPanelInput)
   panel?.addEventListener('change', commitFromControl)
@@ -656,6 +678,7 @@ export function createThemeSettingsOverlay({
       trigger?.setAttribute('aria-expanded', 'false')
       trigger?.removeEventListener('click', toggle)
       panel?.removeEventListener('click', onPanelClick)
+      panel?.querySelector('[data-prts-theme-settings-scroll]')?.removeEventListener('scroll', syncSectionNavigation)
       panel?.removeEventListener('cancel', onCancel)
       panel?.removeEventListener('input', onPanelInput)
       panel?.removeEventListener('change', commitFromControl)
