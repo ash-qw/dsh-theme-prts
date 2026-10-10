@@ -1120,14 +1120,15 @@ html[data-dsh-prts] [data-width-handle]:not([data-dragging]) {
   z-index: 3;
 }
 
+/* Local submission echoes precede the durable user node; style both on first paint. */
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"],
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) {
   position: relative;
   color: var(--prts-ink);
 }
 
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"],
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] [class$="_bubble"] {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] {
   border: 1px solid var(--prts-line-strong) !important;
   border-left: 4px solid var(--prts-yellow) !important;
   border-radius: var(--prts-radius-card) !important;
@@ -1138,23 +1139,23 @@ html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind=
 }
 
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"] :is([data-markdown], [class*="markdown" i]),
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] [class$="_bubble"] :is([data-markdown], [class*="markdown" i]) {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] :is([data-markdown], [class*="markdown" i]) {
   background: transparent !important;
 }
 
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"] :is(pre, table, blockquote),
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] [class$="_bubble"] :is(pre, table, blockquote) {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] :is(pre, table, blockquote) {
   border: 1px solid var(--prts-line);
   background: var(--prts-glass-dense);
 }
 
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"] :is(pre, code),
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] [class$="_bubble"] :is(pre, code) {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] :is(pre, code) {
   font-family: var(--prts-mono) !important;
 }
 
 html[data-dsh-prts][data-prts-conversation-style="native"] [data-message-role="user"] pre,
-html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind="user"] [class$="_bubble"] pre {
+html[data-dsh-prts][data-prts-conversation-style="native"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] pre {
   max-width: 100%;
   overflow: auto;
   padding: 14px;
@@ -1163,7 +1164,7 @@ html[data-dsh-prts][data-prts-conversation-style="native"] [data-chat-flow-kind=
 }
 
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-  [data-chat-flow-kind="user"],
+  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])),
   [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])
 ) {
   position: relative;
@@ -1171,7 +1172,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   overflow: visible;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"] {
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) {
   padding-inline-end: 54px;
   color: var(--prts-ink);
 }
@@ -1200,7 +1201,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
 }
 
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before,
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"]::after,
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering]))::after,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"]::before,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"]::after {
   position: absolute;
@@ -1240,7 +1241,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
     0 8px 20px var(--prts-chat-shadow);
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"]::after,
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering]))::after,
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"]::after {
   content: "我";
   right: 0;
@@ -1252,7 +1253,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   font: 500 13px/1 var(--prts-mono);
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"] [class$="_bubble"],
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"],
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"] {
   border: 1px solid var(--prts-chat-user-edge) !important;
   border-radius: 18px 6px 18px 18px !important;
@@ -1332,7 +1333,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   [data-prts-ai-surface],
   [data-message-role="assistant"],
   [data-message-role="user"],
-  [data-chat-flow-kind="user"] [class$="_bubble"]
+  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
 ) :is([data-markdown], [class*="markdown" i]) {
   background: transparent !important;
 }
@@ -1341,7 +1342,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   [data-prts-ai-surface],
   [data-message-role="assistant"],
   [data-message-role="user"],
-  [data-chat-flow-kind="user"] [class$="_bubble"]
+  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
 ) :is(pre, table, blockquote) {
   border: 1px solid color-mix(in srgb, var(--prts-cyan) 24%, var(--prts-line));
   background: color-mix(in srgb, var(--prts-canvas) 88%, transparent);
@@ -1351,7 +1352,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   [data-prts-ai-surface],
   [data-message-role="assistant"],
   [data-message-role="user"],
-  [data-chat-flow-kind="user"] [class$="_bubble"]
+  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
 ) :is(pre, code) {
   font-family: var(--prts-mono) !important;
 }
@@ -1360,7 +1361,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   [data-prts-ai-surface],
   [data-message-role="assistant"],
   [data-message-role="user"],
-  [data-chat-flow-kind="user"] [class$="_bubble"]
+  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
 ) pre {
   max-width: 100%;
   overflow: auto;
@@ -1785,7 +1786,7 @@ html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [d
 }
 
 @media (max-width: 760px) {
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"] {
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) {
     padding-inline: 8px 50px;
   }
 
@@ -1802,7 +1803,7 @@ html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [d
     border-radius: 11px 11px 13px 13px;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"]::after,
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering]))::after,
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"]::after {
     right: 8px;
     width: 34px;
@@ -1811,7 +1812,7 @@ html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [d
     font-size: 11px;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="user"] [class$="_bubble"],
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"],
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="user"] {
     padding: 11px 15px !important;
     border-radius: 16px 5px 16px 16px !important;
