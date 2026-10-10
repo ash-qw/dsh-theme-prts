@@ -56,16 +56,16 @@ test('fast repeat gestures, blur, cancellation, system selection and disposal ne
   s.dom.window.close()
 })
 
-test('text click plays once after release and cancels for selection, exit, reduced motion and disposal', () => {
+test('text cursor remains static through clicks, selection, exit and disposal', () => {
   const s = setup()
   const input = s.document.querySelector('input')
   input.style.cursor = 'url(data:image/png;base64,AA), text'
   const textFrame = () => s.document.documentElement.style.getPropertyValue('--prts-text-frame')
   const down = () => s.fire('pointerdown', { clientX: 10, clientY: 10 }, input)
-  down(); assert.match(textFrame(), /text-click/); assert.equal(s.frame(), '')
-  s.fire('pointerup', {}, input); assert.match(textFrame(), /text-click/)
+  down(); assert.equal(textFrame(), ''); assert.equal(s.frame(), '')
+  s.fire('pointerup', {}, input); assert.equal(textFrame(), '')
   s.tick(); assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
-  down(); down(); assert.equal(s.timers.size, 1)
+  down(); down(); assert.equal(s.timers.size, 0)
   s.fire('pointermove', { clientX: 25, clientY: 10 }, input)
   assert.equal(textFrame(), ''); assert.equal(s.timers.size, 0)
   down(); s.fire('pointermove'); assert.equal(textFrame(), '')
