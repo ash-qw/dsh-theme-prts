@@ -2,6 +2,8 @@
 
 本文档供维护者使用。普通用户应按照 README 的说明直接从 npm 安装。
 
+提交信息统一遵循 [AGENTS.md](AGENTS.md)：保留英文类型前缀，描述使用中文，并提供概述修改内容的正文。
+
 ## 可信发布者（Trusted Publisher）
 
 本 npm 包使用 Trusted Publishing，不需要长期有效的 npm Token。npm Trusted Publisher 配置必须与以下内容完全一致：
