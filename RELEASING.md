@@ -46,3 +46,14 @@ npm view @ash-qw/dsh-theme-prts@X.Y.Z version --registry=https://registry.npmjs.
 npm view @ash-qw/dsh-theme-prts dist-tags --json --registry=https://registry.npmjs.org
 npm view @ash-qw/dsh-theme-prts@X.Y.Z dist.attestations --json --registry=https://registry.npmjs.org
 ```
+
+工作流会在发布 npm 前校验 `CHANGELOG.md` 存在对应的 `## X.Y.Z - 日期` 非空章节；npm 发布成功后，独立的 `release` 任务从该章节提取中文说明并创建 GitHub Release，保留历史 Release。正式版的 Latest 由 GitHub 自动判定，带预发布后缀的标签标记为预发布且不设为 Latest。已存在的 Release 不会被覆盖。
+
+如果 npm 已成功而 `release` 任务失败，在 Actions 中仅重跑失败的任务，避免重复发布同一 npm 版本。发布后还应验证对应的 GitHub Release，以及 `/repos/ash-qw/dsh-theme-prts/releases/latest` 返回的最新正式版本。
+
+补建历史 Release 时，使用已有远端标签并显式指定 `--latest=false`，不重新发布 npm：
+
+```bash
+node scripts/release-notes.mjs vX.Y.Z /tmp/release-notes.md
+gh release create vX.Y.Z --verify-tag --latest=false --title vX.Y.Z --notes-file /tmp/release-notes.md
+```
