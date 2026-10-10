@@ -16,7 +16,7 @@ function setup() {
   const adapter = createCursorAdapter({ document, window, assets })
   const active = { enabled: true, cursor: 'prts' }
   adapter.update(active)
-  const frame = () => document.documentElement.style.getPropertyValue('--prts-hand-frame')
+  const frame = () => document.querySelector('[data-prts-hand-active]')?.style.cursor ?? ''
   const fire = (name, overrides = {}, target = document.querySelector('button')) => {
     const event = new window.Event(name, { bubbles: true })
     Object.assign(event, { pointerType: 'mouse', button: 0, pointerId: 1, isPrimary: true, buttons: 1 }, overrides)
@@ -99,4 +99,44 @@ test('quick taps complete press and briefly hold before release, without queuein
   s.fire('pointerdown'); assert.match(s.frame(), /press/); assert.equal(s.timers.size, 1)
   s.tick(); assert.match(s.frame(), /hold/); assert.equal(s.timers.size, 0)
   s.adapter.dispose(); s.dom.window.close()
+})
+
+test('hand animation stays local, restores inline cursors and leaves large backgrounds static', () => {
+  const s = setup()
+  const button = s.document.querySelector('button')
+  const original = button.style.cursor
+  const observer = new s.window.MutationObserver(() => {})
+  observer.observe(s.document.documentElement, { attributes: true })
+  s.fire('pointerdown')
+  assert.match(button.style.cursor, /press/)
+  s.tick(); s.fire('pointerup'); s.tick()
+  assert.equal(button.style.cursor, original)
+  assert.equal(observer.takeRecords().length, 0)
+  const background = s.document.createElement('div')
+  background.style.cursor = original
+  background.innerHTML = '<span>Content</span>'.repeat(150)
+  s.document.body.append(background)
+  s.fire('pointerdown', {}, background)
+  assert.equal(s.timers.size, 0)
+  assert.equal(background.style.cursor, original)
+  assert.equal(s.frame(), '')
+  s.fire('pointerdown')
+  s.fire('pointermove', {}, background)
+  assert.equal(button.style.cursor, original)
+  assert.equal(background.style.cursor, original)
+  s.fire('pointermove', {}, button)
+  assert.match(button.style.cursor, /press/)
+  s.adapter.dispose()
+  assert.equal(button.style.cursor, original)
+  observer.disconnect(); s.dom.window.close()
+})
+
+test('cleanup preserves a cursor changed by another plugin during a hand gesture', () => {
+  const s = setup()
+  const button = s.document.querySelector('button')
+  s.fire('pointerdown')
+  button.style.cursor = 'grab'
+  s.adapter.dispose()
+  assert.equal(button.style.cursor, 'grab')
+  s.dom.window.close()
 })

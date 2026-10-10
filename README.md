@@ -38,7 +38,7 @@ npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 - 与 Harness 同步的日间 / 夜间模式、三套外观预设和四档界面材质；
 - 城市剪影、阵营粒子徽记、会话声纹和 P.R.T.S. 启动序列；
 - 桌面、平板、手机、减少动效和降低透明度适配；
-- PRTS 手形光标，支持按下、按住和松开效果；文本框和正文文字使用静态 I 形光标，可在主题设置的“鼠标样式”切回系统光标；
+- PRTS 手形光标，支持按下、按住和松开效果（大型背景容器保持静态，避免长会话卡顿）；文本框和正文文字使用静态 I 形光标，可在主题设置的“鼠标样式”切回系统光标；
 - 无运行时网络请求、分析统计或额外遥测。
 
 鼠标素材来自 [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4)，提取后适配为网页光标；来源、处理方式和许可边界见 [第三方素材说明](THIRD_PARTY_NOTICES.zh-CN.md#prts-手形与文本光标)。

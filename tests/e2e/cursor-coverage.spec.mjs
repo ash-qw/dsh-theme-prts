@@ -65,7 +65,7 @@ test('rapid session switches retain click feedback across internal focus changes
   await page.addStyleTag({ content: await page.evaluate(() => window.prtsTest.cssText) })
   const source = (await readFile(new URL('../../src/client/cursor-adapter.js', import.meta.url), 'utf8')).replace('export function', 'function')
   await page.addScriptTag({ content: `${source}\nwindow.cursorAdapter = createCursorAdapter({ document, window, assets: window.prtsTest.assets.cursor }); window.cursorAdapter.update({ enabled: true, cursor: 'prts' });` })
-  const frame = () => page.evaluate(() => document.documentElement.style.getPropertyValue('--prts-hand-frame'))
+  const frame = () => page.evaluate(() => document.querySelector('[data-prts-hand-active]')?.style.cursor ?? '')
   await page.locator('input').focus()
   for (const index of [0, 1, 0, 1, 0, 1]) {
     const row = page.locator('[role="treeitem"]').nth(index)
@@ -121,6 +121,17 @@ test('conversation output uses text cursors while links and copy controls retain
   })
   await page.mouse.move(textPoint.x, textPoint.y)
   expect(await page.locator('#prose').evaluate(e => e.hasAttribute('data-prts-text-hit'))).toBe(true)
+  const repeatedHitMutations = await page.locator('#prose').evaluate((e, point) => {
+    const observer = new MutationObserver(() => {})
+    observer.observe(e, { attributes: true, attributeFilter: ['data-prts-text-hit'] })
+    for (let i = 0; i < 20; i++) e.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerType: 'mouse', clientX: point.x, clientY: point.y,
+    }))
+    const count = observer.takeRecords().length
+    observer.disconnect()
+    return count
+  }, textPoint)
+  expect(repeatedHitMutations).toBe(0)
   await page.locator('#prose').evaluate(e => { e.style.transform = 'translateY(200px)'; window.dispatchEvent(new Event('scroll')) })
   expect(await page.locator('#prose').evaluate(e => e.hasAttribute('data-prts-text-hit'))).toBe(false)
   await page.locator('#prose').evaluate(e => { e.style.transform = '' })
@@ -137,4 +148,72 @@ test('conversation output uses text cursors while links and copy controls retain
   expect(await page.evaluate(() => getSelection().toString().length)).toBeGreaterThan(0)
   await page.evaluate(() => { document.documentElement.dataset.prtsCursor = 'system' })
   expect(await page.locator('#prose').evaluate(e => getComputedStyle(e).cursor)).toBe('auto')
+})
+
+test('text hit testing handles zoom, wrapped text, native controls, scrolling and lifecycle cleanup', async ({ page }) => {
+  await page.setContent(`<html data-dsh-prts data-prts-cursor="prts"><body>
+    <article data-chat-flow-kind="assistant-step"><div data-markdown style="width:320px">
+      <p id="wrapped">中文测试 English words <strong>加粗文本</strong> ${'换行测试 content '.repeat(12)}</p>
+      <p id="native" style="cursor:grab">Native grab</p><p id="unselectable" style="user-select:none">No selection</p>
+      <a href="#" id="link">Link</a><button id="button">Copy</button><input id="input">
+      <div id="scroller" style="height:40px;overflow:auto"><p id="scroll-text">Scrollable text</p><div style="height:300px"></div></div>
+    </div></article><div id="outside" style="height:60px">Outside</div>
+  </body></html>`)
+  await page.evaluate(() => { window.__ModuleLoader__ = { load: entry => { window.prtsTest = entry.factory(() => ({})) } } })
+  await page.addScriptTag({ content: await readFile(new URL('../../lib/client.js', import.meta.url), 'utf8') })
+  await page.addStyleTag({ content: await page.evaluate(() => window.prtsTest.cssText) })
+  const source = (await readFile(new URL('../../src/client/cursor-adapter.js', import.meta.url), 'utf8')).replace('export function', 'function')
+  await page.addScriptTag({ content: `${source}\nwindow.cursorAdapter = createCursorAdapter({ document, window, assets: window.prtsTest.assets.cursor }); window.cursorAdapter.update({ enabled: true, cursor: 'prts' });` })
+  async function hoverCharacter(selector, offset = 0) {
+    const point = await page.locator(selector).evaluate((e, offset) => {
+      const range = document.createRange(); range.setStart(e.firstChild, offset); range.setEnd(e.firstChild, offset + 1)
+      const r = range.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    }, offset)
+    await page.mouse.move(point.x, point.y)
+  }
+  for (const zoom of [0.8, 1, 1.25]) {
+    await page.locator('article').evaluate((e, zoom) => { e.style.zoom = zoom }, zoom)
+    for (const [selector, offset] of [['#wrapped', 0], ['#wrapped', 8], ['strong', 0]]) {
+      await hoverCharacter(selector, offset)
+      await expect(page.locator(selector)).toHaveAttribute('data-prts-text-hit', '')
+    }
+    const box = await page.locator('#wrapped').boundingBox()
+    await page.mouse.move(box.x + box.width + 5, box.y + 5)
+    await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  }
+  await page.locator('article').evaluate(e => { e.style.zoom = 1 })
+  for (const [selector, cursor] of [['#native', 'grab'], ['#unselectable', 'default'], ['#link', 'pointer'], ['#button', 'pointer'], ['#input', 'text']]) {
+    await hoverCharacter('#wrapped')
+    await page.locator(selector).hover()
+    await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+    expect(await page.locator(selector).evaluate(e => getComputedStyle(e).cursor)).toMatch(new RegExp(`${cursor}$`))
+  }
+  await hoverCharacter('#scroll-text')
+  await expect(page.locator('#scroll-text')).toHaveAttribute('data-prts-text-hit', '')
+  await page.locator('#scroller').evaluate(e => { e.scrollTop = 100 })
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  // Exercise Chromium's older caret API as well as caretPositionFromPoint.
+  await page.evaluate(() => { document.caretPositionFromPoint = undefined })
+  await hoverCharacter('#wrapped')
+  await expect(page.locator('#wrapped')).toHaveAttribute('data-prts-text-hit', '')
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'mouse' })))
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  await hoverCharacter('strong')
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  await hoverCharacter('#wrapped')
+  await page.evaluate(() => window.dispatchEvent(new Event('dragstart')))
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  await hoverCharacter('strong')
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  await page.evaluate(() => { delete document.hidden })
+  await hoverCharacter('#wrapped')
+  await page.evaluate(() => window.cursorAdapter.update({ enabled: false, cursor: 'prts' }))
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+  await hoverCharacter('strong')
+  await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
 })
