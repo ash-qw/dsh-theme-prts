@@ -12,6 +12,8 @@ function closestWithClassSuffix(node, suffix) {
 }
 
 function classify(button, operation) {
+  // The host's process disclosure owns its transparent, full-width hit area.
+  if (button.hasAttribute('data-turn-process')) return null
   if (button.tagName !== 'BUTTON' || !operation.contains(button)) return null
   if (hasClassSuffix(button, '_sessionLogButton')) return 'header'
   if (button.closest('[data-produced-files-row]') || hasClassSuffix(button, '_showFolder')) return 'utility'
@@ -96,7 +98,7 @@ export function createConversationControlAdapter({ document, window }) {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ['class', 'data-approval-key'],
+        attributeFilter: ['class', 'data-approval-key', 'data-turn-process'],
       })
     },
     dispose() {
