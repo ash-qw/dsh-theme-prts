@@ -3,10 +3,11 @@
   html[data-dsh-prts][data-prts-cursor="prts"] {
     --prts-hand-cursor: var(--prts-hand-frame, url("__PRTS_HAND__") 7 6);
     --prts-text-cursor: var(--prts-text-frame, url("__PRTS_TEXT__") 24 24);
+    --prts-link-cursor: url("__PRTS_LINK__") 7 7;
     cursor: var(--prts-hand-cursor), default;
   }
   html[data-dsh-prts][data-prts-cursor="prts"] :is(button, a[href], summary, [role="button"], [role="tab"], [role="treeitem"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [data-prts-workspace-row], [data-prts-session-row], .dsh-partner-sidebar-row, select, input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], input[type="color"], input[type="range"]) {
-    cursor: var(--prts-hand-cursor), pointer;
+    cursor: var(--prts-link-cursor), pointer;
   }
   html[data-dsh-prts][data-prts-cursor="prts"] [data-prts-text-hit] {
     cursor: var(--prts-text-cursor), text;

@@ -372,10 +372,10 @@ test('renders user and assistant as directional chat bubbles with speaker avatar
   const activeLifeline = page.locator('[data-prts-session-row][aria-selected="true"] [data-prts-session-lifeline]')
   await expect(root).toHaveAttribute('data-prts-session-flow', 'on')
   await expect(activeLifeline).toHaveCSS('opacity', '0.98')
-  await sessionFlowControls.getByRole('button', { name: '关闭' }).click()
+  await sessionFlowControls.getByRole('switch').click()
   await expect(root).toHaveAttribute('data-prts-session-flow', 'off')
   await expect(activeLifeline).toHaveCSS('opacity', '0')
-  await sessionFlowControls.getByRole('button', { name: '开启' }).click()
+  await sessionFlowControls.getByRole('switch').click()
   await expect(root).toHaveAttribute('data-prts-session-flow', 'on')
   await expect(activeLifeline).toHaveCSS('opacity', '0.98')
 
@@ -388,12 +388,12 @@ test('renders user and assistant as directional chat bubbles with speaker avatar
   await expect(activeCoreHalo).toHaveCSS('stroke-width', '4.25px')
   await expect(activeCoreBody).toHaveCSS('stroke-width', '1.65px')
   await expect(activeCoreLight).toHaveCSS('opacity', '0.96')
-  await sessionGlowControls.getByRole('button', { name: '关闭' }).click()
+  await sessionGlowControls.getByRole('switch').click()
   await expect(root).toHaveAttribute('data-prts-session-glow', 'off')
   await expect(activeCoreHalo).toHaveCSS('opacity', '0')
   await expect(activeCoreBody).toHaveCSS('stroke-width', '0.9px')
   await expect(activeCoreLight).toHaveCSS('opacity', '0')
-  await sessionGlowControls.getByRole('button', { name: '开启' }).click()
+  await sessionGlowControls.getByRole('switch').click()
   await expect(root).toHaveAttribute('data-prts-session-glow', 'on')
   await expect(activeCoreLight).toHaveCSS('opacity', '0.96')
 
@@ -408,6 +408,7 @@ test('renders user and assistant as directional chat bubbles with speaker avatar
   await expect(flowPreview).toHaveAttribute('data-prts-session-flow-preview-palette', 'amber')
   const customCoreColor = appearance.locator('[data-prts-setting-color][data-prts-setting-key="sessionFlowColorCore"]')
   await expect(customCoreColor).toHaveValue('#f0c800')
+  await page.locator('[data-prts-setting-key="sessionFlowPalette"][data-prts-setting-value="custom"]').click()
   await customCoreColor.evaluate(node => {
     node.value = '#8844cc'
     node.dispatchEvent(new Event('input', { bubbles: true }))
@@ -734,7 +735,7 @@ test('keeps daylight appearance controls distinct and readable', async ({ page }
   })
   expect(materials.selected).not.toEqual(materials.unselected)
   const visualOptions = settings.locator('[data-prts-settings-common] [data-prts-setting-key]')
-  await expect(visualOptions).toHaveCount(26)
+  await expect(visualOptions).toHaveCount(20)
   const conversationThemeOptions = settings.locator('[data-prts-setting-row="conversationStyle"] [data-prts-setting-key]')
   await expect(conversationThemeOptions).toHaveCount(2)
   await expect(conversationThemeOptions.filter({ hasText: '通讯链路' })).toHaveClass(/is-selected/)
@@ -753,6 +754,7 @@ test('keeps daylight appearance controls distinct and readable', async ({ page }
   await expect(settings).toHaveScreenshot('prts-appearance-panel-light.png')
 
   const customCoreColor = settings.locator('[data-prts-setting-color][data-prts-setting-key="sessionFlowColorCore"]')
+  await page.locator('[data-prts-setting-key="sessionFlowPalette"][data-prts-setting-value="custom"]').click()
   await customCoreColor.evaluate(node => {
     node.value = '#80c040'
     node.dispatchEvent(new Event('input', { bubbles: true }))

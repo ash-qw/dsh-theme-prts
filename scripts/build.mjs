@@ -74,7 +74,13 @@ const cursorImage = async file => `data:image/png;base64,${(await readFile(resol
 const cursorAssets = {
   hotspot: cursorAnimation.hotspot,
   textHotspot: cursorAnimation.textHotspot,
-  textClick: await Promise.all(cursorAnimation.textClick.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+  link: {
+    hotspot: cursorAnimation.link.hotspot,
+    hold: await cursorImage('prts-link-hold.png'),
+    press: await Promise.all(cursorAnimation.link.press.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+    release: await Promise.all(cursorAnimation.link.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
+  },
+  resize: Object.fromEntries(await Promise.all(['ns', 'ew', 'nesw', 'nwse'].map(async direction => [direction, await cursorImage(`prts-resize-${direction}.png`)]))),
   hold: await cursorImage('prts-hand-hold.png'),
   press: await Promise.all(cursorAnimation.press.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
   release: await Promise.all(cursorAnimation.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
@@ -82,6 +88,7 @@ const cursorAssets = {
 const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'))
   .replaceAll('__PRTS_HAND__', `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors/prts-hand.png'))).toString('base64')}`)
   .replaceAll('__PRTS_TEXT__', await cursorImage('prts-text.png'))
+  .replaceAll('__PRTS_LINK__', await cursorImage('prts-link.png'))
 const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({

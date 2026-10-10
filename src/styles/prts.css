@@ -1712,7 +1712,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings__copy strong {
   font-weight: 600;
 }
 
-html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] {
+html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]) {
   position: relative;
   width: 42px;
   height: 24px;
@@ -1725,7 +1725,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] {
   cursor: pointer;
 }
 
-html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] > span {
+html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]) > span {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -1736,22 +1736,22 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] > span 
   transition: transform 120ms ease;
 }
 
-html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'].is-active {
+html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]).is-active {
   background: var(--color-primary, #d9b800);
   color: #111;
 }
 
-html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'].is-active > span {
+html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]).is-active > span {
   transform: translateX(18px);
 }
 
-html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disabled {
+html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]):disabled {
   cursor: not-allowed;
   opacity: .45;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] > span {
+  html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]) > span {
     transition: none;
   }
 }
@@ -1763,7 +1763,7 @@ html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch']:disable
     gap: 10px;
   }
 
-  html[data-dsh-prts-settings] .prts-plugin-settings button[role='switch'] {
+  html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [data-prts-setting-switch]) {
     align-self: flex-end;
   }
 }

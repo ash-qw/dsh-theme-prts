@@ -36,7 +36,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 156_160, 'the replacement stylesheets must stay compact')
+  assert.ok(Buffer.byteLength(css) < 168_000, 'stylesheets including grouped responsive settings must stay below 168 kB')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -345,7 +345,7 @@ test('retains scoped floating surfaces and a readable responsive settings workbe
   assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+button:not\(\[data-slot="sidebar\.settings"\] button\)/)
   assert.equal(css.includes('[data-sonner-toast]'), false)
   assert.doesNotMatch(css, /\.prts-settings__(?:recovery|startup|meta)/)
-  assert.match(css, /html\[data-dsh-prts-settings\] \.prts-plugin-settings button\[role='switch'\]/)
+  assert.match(css, /html\[data-dsh-prts-settings\] :is\(\.prts-plugin-settings button\[role='switch'\], \[data-prts-setting-switch\]\)/)
   assert.doesNotMatch(css, /\[data-prts-settings-grid\]/)
   assert.doesNotMatch(css, /\[data-prts-settings-diagnostic\]/)
   assert.doesNotMatch(css, /\[data-prts-density-preview\]/)

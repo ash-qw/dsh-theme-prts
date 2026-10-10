@@ -5,6 +5,7 @@ export function createCursorAdapter({ document, window, assets }) {
   let pointerId
   let timer
   let handPhase
+  let gestureAssets = assets
   let textTarget
   let lastPoint
   const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], [data-chat-flow-kind="user"] [class$="_bubble"]'
@@ -52,6 +53,35 @@ export function createCursorAdapter({ document, window, assets }) {
     if (!lastPoint) return
     updateTextHit({ ...lastPoint, target: document.elementFromPoint(lastPoint.clientX, lastPoint.clientY) })
   }
+  let resizeTarget
+  let resizeOriginal
+  let resizePriority
+  let resizeApplied
+  function clearResize() {
+    if (resizeTarget && resizeTarget.style.cursor === resizeApplied) {
+      if (resizeOriginal) resizeTarget.style.setProperty('cursor', resizeOriginal, resizePriority)
+      else resizeTarget.style.removeProperty('cursor')
+    }
+    resizeTarget = undefined
+  }
+  function updateResize(event) {
+    if (event.pointerType !== 'mouse' || !assets.resize) return
+    const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
+    if (target === resizeTarget && target.style.cursor === resizeApplied) return
+    clearResize()
+    if (!target) return
+    const cursor = window.getComputedStyle(target).cursor
+    const direction = { 'n-resize': 'ns', 's-resize': 'ns', 'ns-resize': 'ns', 'row-resize': 'ns',
+      'e-resize': 'ew', 'w-resize': 'ew', 'ew-resize': 'ew', 'col-resize': 'ew',
+      'ne-resize': 'nesw', 'sw-resize': 'nesw', 'nesw-resize': 'nesw',
+      'nw-resize': 'nwse', 'se-resize': 'nwse', 'nwse-resize': 'nwse' }[cursor]
+    if (!direction) return
+    resizeTarget = target
+    resizeOriginal = target.style.getPropertyValue('cursor')
+    resizePriority = target.style.getPropertyPriority('cursor')
+    target.style.setProperty('cursor', `url("${assets.resize[direction]}") 16 16, ${cursor}`, resizePriority)
+    resizeApplied = target.style.cursor
+  }
   const reducedMedia = window?.matchMedia?.('(prefers-reduced-motion: reduce)')
   let handTarget
   let handCursor
@@ -77,7 +107,7 @@ export function createCursorAdapter({ document, window, assets }) {
     restoreHandTarget()
     if (!canAnimate(target) || !handCursor || target === textTarget) return
     const cursor = window.getComputedStyle(target).cursor
-    if (!cursor.includes('data:image/png') || /,\s*text$/.test(cursor)) return
+    if (!cursor.includes('data:image/png') || /(?:,\s*text|resize)$/.test(cursor)) return
     handTarget = target
     originalCursor = target.style.getPropertyValue('cursor')
     originalPriority = target.style.getPropertyPriority('cursor')
@@ -102,7 +132,7 @@ export function createCursorAdapter({ document, window, assets }) {
     handPhase = undefined
   }
   function show(url) {
-    const [x, y] = assets.hotspot
+    const [x, y] = gestureAssets.hotspot
     handCursor = `url("${url}") ${x} ${y}, pointer`
     applyHandFrame()
   }
@@ -124,27 +154,29 @@ export function createCursorAdapter({ document, window, assets }) {
   }
   function down(event) {
     if (event.pointerType !== 'mouse' || event.button !== 0 || event.isPrimary === false) return
+    updateResize(event)
     updateTextHit(event)
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
     reset()
     const cursor = target ? window.getComputedStyle(target).cursor : ''
     if (!cursor.includes('data:image/png')) return
-    if (/,\s*text$/.test(cursor) || !canAnimate(target)) return
+    if (/(?:,\s*text|resize)$/.test(cursor) || !canAnimate(target)) return
+    gestureAssets = /,\s*pointer$/.test(cursor) && assets.link ? assets.link : assets
     pointerId = event.pointerId
     handCursor = cursor
     followHand(target)
-    if (reduced()) { clearTimer(); show(assets.hold); return }
+    if (reduced()) { clearTimer(); show(gestureAssets.hold); return }
     handPhase = 'press'
-    play(assets.press, () => {
+    play(gestureAssets.press, () => {
       handPhase = 'hold'
-      show(assets.hold)
+      show(gestureAssets.hold)
       // A quick tap must still reach a visible pressed pose before recovering.
       if (pointerId === undefined) timer = window.setTimeout(releaseHand, 48)
     })
   }
   function releaseHand() {
     handPhase = 'release'
-    play(assets.release, reset)
+    play(gestureAssets.release, reset)
   }
   function up(event) {
     if (pointerId === undefined || event.pointerId !== pointerId || event.button !== 0) return
@@ -154,12 +186,14 @@ export function createCursorAdapter({ document, window, assets }) {
     releaseHand()
   }
   function move(event) {
+    updateResize(event)
     updateTextHit(event)
     if (handCursor) followHand(event.target?.nodeType === 1 ? event.target : event.target?.parentElement)
     if (pointerId !== undefined && event.pointerId === pointerId && !(event.buttons & 1)) reset()
   }
   function resetInteraction() {
     reset()
+    clearResize()
     clearTextHit()
     lastPoint = undefined
   }

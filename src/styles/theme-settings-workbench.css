@@ -262,6 +262,7 @@ html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row] {
 html[data-dsh-prts] [data-prts-settings-common] [data-prts-setting-row]:nth-child(2n) { border-right: 0; }
 
 html[data-dsh-prts] [data-prts-settings-common] :is(
+  [data-prts-setting-row="sessionGlow"],
   [data-prts-setting-row="sessionFlowPalette"],
   [data-prts-setting-row="sessionFlowColors"],
   [data-prts-setting-row="sessionFlowSpeed"],
@@ -730,4 +731,165 @@ html[data-dsh-prts] :is(
 @media (prefers-reduced-transparency: reduce) {
   html[data-dsh-prts] [data-prts-theme-settings]::backdrop,
   html[data-dsh-prts] [data-prts-settings-backdrop] { background: color-mix(in srgb, var(--prts-canvas) 94%, transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+html[data-dsh-prts] [data-prts-setting-row] > [data-prts-setting-switch] {
+  justify-self: end;
+}
+
+/* Grouped settings: quiet surfaces, consistent rows, one accent. */
+html[data-dsh-prts] [data-prts-theme-settings] {
+  width: min(clamp(56rem, 62vw, 68rem), calc(100vw - 3rem));
+  height: min(48rem, calc(100dvh - 3rem));
+  max-height: calc(100dvh - 3rem);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-frame] {
+  height: 100%;
+  clip-path: none;
+  border-radius: 8px;
+  background: var(--prts-panel);
+  border-color: color-mix(in srgb, var(--prts-line) 70%, transparent);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-frame]::before { content: none; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-header] {
+  min-height: 88px;
+  padding: 20px 72px 20px 28px;
+  background: transparent;
+  border-color: color-mix(in srgb, var(--prts-line) 60%, transparent);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-header] strong {
+  font-size: 22px;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-header] small { font-weight: 500; letter-spacing: .08em; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-close] { top: 25px; right: 22px; border-radius: 4px; background: transparent; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-summary] span {
+  box-shadow: none;
+  background: transparent;
+  color: var(--prts-muted);
+  clip-path: none;
+  font-weight: 500;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-body] {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-nav] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px 14px;
+  border-right: 1px solid color-mix(in srgb, var(--prts-line) 45%, transparent);
+  background: color-mix(in srgb, var(--prts-canvas) 35%, var(--prts-panel));
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-jump] {
+  text-align: left;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--prts-muted);
+  font: 500 14px/1.4 var(--prts-body);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-jump]:hover,
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-jump]:focus-visible {
+  color: var(--prts-ink);
+  background: var(--prts-panel-raised);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-scroll] { padding: 8px 28px 28px; }
+html[data-dsh-prts] [data-prts-theme-settings] :is([data-prts-settings-presets], [data-prts-settings-common], [data-prts-settings-advanced], [data-prts-settings-actions]) {
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  margin: 0 0 18px;
+}
+html[data-dsh-prts] [data-prts-theme-settings] :is([data-prts-settings-presets], [data-prts-settings-common]) > header {
+  min-height: auto;
+  padding: 24px 0 12px;
+  border: 0;
+}
+html[data-dsh-prts] [data-prts-theme-settings] :is([data-prts-settings-presets], [data-prts-settings-common]) > header strong,
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced] summary strong {
+  font: 650 16px/1.5 var(--prts-body);
+  letter-spacing: 0;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-presets] > div { gap: 8px; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-preset-card] {
+  min-height: 94px;
+  padding: 14px !important;
+  border: 1px solid var(--prts-line) !important;
+  border-radius: 5px;
+  box-shadow: none;
+  gap: 8px;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-preset-card].is-selected {
+  border-color: var(--prts-yellow) !important;
+  background: color-mix(in srgb, var(--prts-yellow) 7%, var(--prts-panel)) !important;
+  box-shadow: none;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-preset-card] span {
+  white-space: normal;
+  color: var(--prts-muted);
+  font-weight: 400;
+  line-height: 1.6;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common-grid] { grid-template-columns: minmax(0, 1fr); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row] {
+  display: grid;
+  grid-template-columns: minmax(150px, .85fr) minmax(0, 1.6fr);
+  min-height: 76px;
+  gap: 20px;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--prts-line) 45%, transparent);
+  align-items: center;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row]:last-child { border-bottom: 0; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-setting-note] {
+  color: var(--prts-muted);
+  font: 400 12px/1.65 var(--prts-body);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-setting-row] > span > strong { font-weight: 550; line-height: 1.5; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-setting-row] > div { gap: 4px; }
+html[data-dsh-prts] [data-prts-theme-settings] button[data-prts-setting-key]:not([data-prts-preset-card]) {
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: var(--prts-panel-raised);
+  color: var(--prts-muted);
+  font-weight: 500;
+  min-height: 40px;
+  padding: 8px;
+  box-shadow: none;
+}
+html[data-dsh-prts] [data-prts-theme-settings] button[data-prts-setting-key].is-selected:not([data-prts-preset-card]) {
+  background: color-mix(in srgb, var(--prts-yellow) 12%, var(--prts-panel));
+  border-color: color-mix(in srgb, var(--prts-yellow) 70%, transparent);
+  color: var(--prts-ink);
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-setting-row="sessionFlowPalette"] > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-setting-row="sessionFlowColors"] { grid-template-columns: minmax(0, 1fr); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced] { border-top: 1px solid var(--prts-line); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced] summary { padding: 22px 0; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced] summary::after { border: 0; color: var(--prts-muted); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced-content] { border: 0; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-advanced-content] > section { padding: 0 0 20px; }
+html[data-dsh-prts] [data-prts-theme-settings] :is([data-prts-advanced-summary], [data-prts-session-flow-speed-output], [data-prts-particle-traversal-output]) { color: var(--prts-muted); font-size: 12px; font-weight: 400; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-actions] { padding-top: 24px; border-top: 1px solid var(--prts-line); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-reset-zone] { padding: 0; }
+@media (max-width: 720px) {
+  html[data-dsh-prts] [data-prts-theme-settings] { width: 100vw; height: 100dvh; max-height: none; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-frame] { border-radius: 0; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-header] { min-height: 76px; padding: 16px 58px 16px 20px; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-close] { top: 20px; right: 14px; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-body] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-nav] { flex-direction: row; padding: 8px 12px; gap: 0; border: 0; border-bottom: 1px solid var(--prts-line); }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-jump] { flex: 1; text-align: center; padding: 10px 4px; font-size: 13px; white-space: nowrap; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-theme-settings-scroll] { padding: 0 20px 24px; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-presets] > div { grid-template-columns: minmax(0, 1fr); }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-preset-card] { min-height: 70px; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row] { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row]:has(> [data-prts-setting-switch]) { grid-template-columns: minmax(0, 1fr) auto; gap: 20px; }
 }

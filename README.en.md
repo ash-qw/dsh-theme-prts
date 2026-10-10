@@ -38,7 +38,7 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - day/night modes synchronized with Harness, three appearance presets, and four material levels;
 - city silhouettes, faction particle marks, session waveforms, and a P.R.T.S. startup sequence;
 - desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations;
-- PRTS hand cursors with press, hold, and release feedback (large background containers stay static to avoid long-conversation stalls), plus a static I-beam cursor over text fields and conversation text; switch back to system cursors in theme settings;
+- PRTS hand cursors with press, hold, and release feedback (large background containers stay static to avoid long-conversation stalls), link hand cursors for clickable elements, four static resize directions, and a static I-beam cursor over text fields and conversation text; turn off “PRTS 光标” in theme settings to use system cursors;
 - no runtime network requests, analytics, or telemetry.
 
 Cursor artwork comes from [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4), extracted and adapted for web cursors. See [third-party notices](THIRD_PARTY_NOTICES.md#prts-hand-and-text-cursors) for provenance, adaptations, and licensing boundaries.

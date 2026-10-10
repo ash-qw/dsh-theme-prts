@@ -15,7 +15,7 @@ const PRESET_OPTIONS = [
 ]
 
 const COMMON_CONTROLS = [
-  ['cursor', '鼠标样式', [['system', '系统'], ['prts', 'PRTS 手形']]],
+  ['cursor', 'PRTS 光标', [['system', '关闭'], ['prts', '开启']]],
   ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
   ['texture', '环境底纹', [['off', '关闭'], ['restrained', '克制'], ['full', '完整']]],
   ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],
@@ -53,6 +53,10 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
+  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow'].includes(key)) return `<div data-prts-setting-row="${key}">
+    <span><strong>${label}</strong>${note}</span>
+    <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
+  </div>`
   const sample = value => key === 'texture' || key === 'glass' || key === 'sessionFlowPalette'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`
     : ''
@@ -114,26 +118,47 @@ export function themeSettingsMarkup() {
           <button type="button" data-prts-theme-settings-close aria-label="关闭主题设置">×</button>
         </header>
 
+        <div data-prts-settings-body>
+        <nav data-prts-settings-nav aria-label="设置分区">
+          <button type="button" data-prts-settings-jump="appearance">外观</button>
+          <button type="button" data-prts-settings-jump="interaction">交互</button>
+          <button type="button" data-prts-settings-jump="flow">会话流线</button>
+          <button type="button" data-prts-settings-jump="particles">粒子效果</button>
+        </nav>
         <div data-prts-theme-settings-scroll>
-          <section data-prts-settings-presets>
-            <header><span><small>快速配置</small><strong>视觉预设</strong></span></header>
+          <section data-prts-settings-presets data-prts-settings-section="appearance" tabindex="-1">
+            <header><span><strong>视觉预设</strong></span></header>
             <div>${presetMarkup()}</div>
           </section>
 
           <section data-prts-settings-common>
-            <header><span><small>常用设置</small><strong>主题表现</strong></span></header>
-            <div data-prts-settings-common-grid>${COMMON_CONTROLS.map(([key, label, options]) => settingButtons(key, label, options)).join('')}
+            <header><span><strong>界面外观</strong></span></header>
+            <div data-prts-settings-common-grid>
+              ${COMMON_CONTROLS.filter(([key]) => ['texture', 'glass'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
+              ${settingButtons('conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']])}
+            </div>
+          </section>
+          <section data-prts-settings-common data-prts-settings-section="interaction" tabindex="-1">
+            <header><span><strong>交互</strong></span></header>
+            <div data-prts-settings-common-grid>
+              ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
+            </div>
+          </section>
+          <section data-prts-settings-common data-prts-settings-section="flow" tabindex="-1">
+            <header><span><strong>会话流线</strong></span></header>
+            <div data-prts-settings-common-grid>
+              ${COMMON_CONTROLS.filter(([key]) => ['sessionFlow', 'sessionGlow', 'sessionFlowPalette'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               ${sessionFlowColorMarkup()}
               <label data-prts-setting-row="sessionFlowSpeed" data-prts-setting-range-row data-prts-session-flow-speed>
                 <span><strong>流线速度</strong><small data-prts-setting-note>控制当前会话流线的形变速度</small></span>
                 <div><input type="range" min="0.25" max="2" step="0.25" value="1" data-prts-setting-range data-prts-setting-key="sessionFlowSpeed" aria-label="当前会话流线速度"><output data-prts-session-flow-speed-output>1× · 标准</output></div>
               </label>
-              ${settingButtons('conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']])}
+
             </div>
           </section>
 
-          <details data-prts-settings-advanced>
-            <summary><span><small>精细调整</small><strong>粒子效果</strong></span><output data-prts-advanced-summary>标准 / 1×</output></summary>
+          <details data-prts-settings-advanced data-prts-settings-section="particles" tabindex="-1">
+            <summary><span><strong>粒子效果</strong></span><output data-prts-advanced-summary>标准 / 1×</output></summary>
             <div data-prts-settings-advanced-content>
               <section data-prts-particle-detail>
                 <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span></header>
@@ -162,6 +187,7 @@ export function themeSettingsMarkup() {
               </div>
             </div>
           </footer>
+        </div>
         </div>
       </div>
     </dialog>`
@@ -429,6 +455,18 @@ export function createThemeSettingsOverlay({
 
   function renderState() {
     if (!panel || !currentPreferences) return
+    for (const toggle of panel.querySelectorAll('[data-prts-setting-switch]')) {
+      const key = toggle.dataset.prtsSettingSwitch
+      const enabled = key === 'cursor' ? currentPreferences.cursor === 'prts'
+        : key === 'railDefaultHidden' ? currentPreferences[key] === true : currentPreferences[key] !== false
+      toggle.setAttribute('aria-checked', String(enabled))
+      toggle.classList.toggle('is-active', enabled)
+    }
+    for (const key of ['sessionGlow', 'sessionFlowPalette', 'sessionFlowColors', 'sessionFlowSpeed']) {
+      const row = panel.querySelector(`[data-prts-setting-row="${key}"]`)
+      if (row) row.hidden = currentPreferences.sessionFlow === false
+        || (key === 'sessionFlowColors' && activeSessionFlowPalette() !== 'custom')
+    }
     const particleDetail = resolveParticleDetail(currentPreferences)
     for (const button of panel.querySelectorAll('button[data-prts-setting-key]')) {
       const key = button.dataset.prtsSettingKey
@@ -482,7 +520,23 @@ export function createThemeSettingsOverlay({
     if (event.target === panel) { setOpen(false); return }
     const target = event.target?.closest?.('button')
     if (!target) return
+    if (target.hasAttribute('data-prts-settings-jump')) {
+      const section = panel.querySelector(`[data-prts-settings-section="${target.dataset.prtsSettingsJump}"]`)
+      const scroller = panel.querySelector('[data-prts-theme-settings-scroll]')
+      if (section && scroller) {
+        if (section.tagName === 'DETAILS') section.open = true
+        scroller.scrollTo?.({ top: target.dataset.prtsSettingsJump === 'appearance' ? 0 : scroller.scrollTop + section.getBoundingClientRect().top - scroller.getBoundingClientRect().top, behavior: 'instant' })
+        section.focus?.({ preventScroll: true })
+      }
+      return
+    }
     if (target.hasAttribute('data-prts-theme-settings-close')) { setOpen(false); return }
+    if (target.hasAttribute('data-prts-setting-switch')) {
+      const key = target.dataset.prtsSettingSwitch
+      const enabled = target.getAttribute('aria-checked') === 'true'
+      onPreferenceChange(key, key === 'cursor' ? (enabled ? 'system' : 'prts') : !enabled)
+      return
+    }
     if (target.hasAttribute('data-prts-setting-key')) {
       const raw = target.dataset.prtsSettingValue
       if (target.dataset.prtsSettingKey === 'sessionFlowPalette') {

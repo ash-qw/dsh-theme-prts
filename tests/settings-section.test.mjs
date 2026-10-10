@@ -173,7 +173,7 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   const brand = dom.window.document.querySelector('[data-prts-rail-brand]')
   brand.click()
   const appearancePanel = dom.window.document.querySelector('[data-prts-theme-settings]')
-  appearancePanel.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="true"]').click()
+  appearancePanel.querySelector('[data-prts-setting-switch="railDefaultHidden"]').click()
   assert.equal(appearancePanel.hasAttribute('open'), true)
   assert.equal(dom.window.document.documentElement.dataset.prtsRailMode, 'overlay')
   assert.equal(dom.window.document.querySelector('[data-prts-nav-rail]').getAttribute('aria-hidden'), 'true')
@@ -383,19 +383,11 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.equal(document.querySelectorAll('[data-prts-setting-key="particlePattern"]').length, 0)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="glass"]').length, 4)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="motion"]').length, 2)
-  assert.equal(document.querySelectorAll('[data-prts-setting-key="railDefaultHidden"]').length, 2)
-  assert.deepEqual(
-    [...document.querySelectorAll('[data-prts-setting-key="sessionFlow"]')]
-      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
-    [['false', '关闭'], ['true', '开启']],
-  )
+  assert.equal(document.querySelectorAll('[data-prts-setting-switch="railDefaultHidden"]').length, 1)
+  assert.equal(document.querySelector('[data-prts-setting-switch="sessionFlow"]').getAttribute('role'), 'switch')
   assert.equal(document.querySelector('[data-prts-setting-row="sessionFlow"] [data-prts-setting-note]').textContent,
     '仅控制当前会话卡片的三色流线')
-  assert.deepEqual(
-    [...document.querySelectorAll('[data-prts-setting-key="sessionGlow"]')]
-      .map(node => [node.dataset.prtsSettingValue, node.textContent]),
-    [['false', '关闭'], ['true', '开启']],
-  )
+  assert.equal(document.querySelector('[data-prts-setting-switch="sessionGlow"]').getAttribute('role'), 'switch')
   assert.equal(document.querySelector('[data-prts-setting-row="sessionGlow"] [data-prts-setting-note]').textContent,
     '为流线添加柔和的同色辉光')
   assert.deepEqual(
@@ -640,21 +632,17 @@ test('workbench uses inline reset confirmation and exposes persistence recovery'
   textureOff.click()
   assert.deepEqual(calls.updates, [['texture', 'off']])
   assert.equal(textureOff.hasAttribute('data-prts-setting-feedback'), true)
-  const railHiddenOff = document.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="false"]')
-  const railHiddenOn = document.querySelector('[data-prts-setting-key="railDefaultHidden"][data-prts-setting-value="true"]')
-  assert.equal(railHiddenOff.classList.contains('is-selected'), true)
+  const railHiddenOn = document.querySelector('[data-prts-setting-switch="railDefaultHidden"]')
+  assert.equal(railHiddenOn.getAttribute('aria-checked'), 'false')
   railHiddenOn.click()
   assert.deepEqual(calls.updates, [['texture', 'off'], ['railDefaultHidden', true]])
   assert.equal(panel.hasAttribute('open'), true)
-  assert.equal(railHiddenOn.hasAttribute('data-prts-setting-feedback'), true)
-  const sessionFlowOff = document.querySelector('[data-prts-setting-key="sessionFlow"][data-prts-setting-value="false"]')
-  const sessionFlowOn = document.querySelector('[data-prts-setting-key="sessionFlow"][data-prts-setting-value="true"]')
-  assert.equal(sessionFlowOff.classList.contains('is-selected'), true)
+  const sessionFlowOn = document.querySelector('[data-prts-setting-switch="sessionFlow"]')
+  assert.equal(sessionFlowOn.getAttribute('aria-checked'), 'false')
   sessionFlowOn.click()
   assert.deepEqual(calls.updates.at(-1), ['sessionFlow', true])
-  const sessionGlowOff = document.querySelector('[data-prts-setting-key="sessionGlow"][data-prts-setting-value="false"]')
-  const sessionGlowOn = document.querySelector('[data-prts-setting-key="sessionGlow"][data-prts-setting-value="true"]')
-  assert.equal(sessionGlowOff.classList.contains('is-selected'), true)
+  const sessionGlowOn = document.querySelector('[data-prts-setting-switch="sessionGlow"]')
+  assert.equal(sessionGlowOn.getAttribute('aria-checked'), 'false')
   sessionGlowOn.click()
   assert.deepEqual(calls.updates.at(-1), ['sessionGlow', true])
   const amberFlow = document.querySelector('[data-prts-setting-key="sessionFlowPalette"][data-prts-setting-value="amber"]')
