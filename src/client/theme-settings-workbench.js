@@ -121,12 +121,29 @@ export function themeSettingsMarkup() {
         </header>
 
         <div data-prts-settings-body>
+        <div data-prts-settings-sidebar>
         <nav data-prts-settings-nav role="tablist" aria-label="设置分区">
           <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">外观</button>
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子效果</button>
         </nav>
+          <footer data-prts-settings-actions aria-label="全局主题设置操作">
+            <div data-prts-persistence-error hidden role="alert">
+              <span><strong>仅本次会话生效</strong><small>无法写入本地设置，当前视觉效果仍会保留。</small></span>
+              <button type="button" data-prts-retry-save>重试保存</button>
+            </div>
+            <div data-prts-reset-zone>
+
+              <button type="button" data-prts-reset-visual title="恢复全部外观设置" aria-label="恢复全部外观设置">恢复默认</button>
+              <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复全部外观设置">
+                <span>重置四个分类的外观参数，保留主题开关、启动动画和徽记配置。</span>
+                <button type="button" data-prts-reset-confirm-action>确认恢复</button>
+                <button type="button" data-prts-reset-cancel>取消</button>
+              </div>
+            </div>
+          </footer>
+        </div>
         <div data-prts-theme-settings-scroll>
           <section data-prts-settings-section="appearance" role="tabpanel" id="prts-page-appearance" aria-labelledby="prts-tab-appearance" tabindex="0">
             <header data-prts-section-heading><strong>外观</strong><small>预设、界面材质与会话样式</small></header>
@@ -178,23 +195,9 @@ export function themeSettingsMarkup() {
             </div>
           </section>
 
-          <footer data-prts-settings-actions>
-            <div data-prts-persistence-error hidden role="alert">
-              <span><strong>仅本次会话生效</strong><small>无法写入本地设置，当前视觉效果仍会保留。</small></span>
-              <button type="button" data-prts-retry-save>重试保存</button>
-            </div>
-            <div data-prts-reset-zone>
-              <span><strong>恢复主题默认</strong><small>保留主题开关和启动动画设置</small></span>
-              <button type="button" data-prts-reset-visual>恢复默认</button>
-              <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复主题默认">
-                <span>确认恢复全部主题参数？</span>
-                <button type="button" data-prts-reset-confirm-action>确认恢复</button>
-                <button type="button" data-prts-reset-cancel>取消</button>
-              </div>
-            </div>
-          </footer>
         </div>
         </div>
+
       </div>
     </dialog>`
 }

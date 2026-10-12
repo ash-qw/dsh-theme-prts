@@ -544,39 +544,6 @@ html[data-dsh-prts] [data-prts-setting-range-row] input[type="range"] {
   flex: 1;
 }
 html[data-dsh-prts] [data-prts-setting-range] { accent-color: var(--prts-cyan); }
-html[data-dsh-prts] [data-prts-settings-actions] {
-  min-height: 58px;
-  display: block;
-  padding: 0;
-  border-bottom: 1px solid var(--prts-line-strong);
-}
-
-html[data-dsh-prts] [data-prts-persistence-error],
-html[data-dsh-prts] [data-prts-reset-zone] {
-  min-height: 58px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 11px;
-}
-
-html[data-dsh-prts] [data-prts-persistence-error] { border-bottom: 1px solid var(--prts-yellow); background: color-mix(in srgb, var(--prts-yellow) 7%, transparent); }
-html[data-dsh-prts] [data-prts-persistence-error] > span,
-html[data-dsh-prts] [data-prts-reset-zone] > span { display: grid; gap: 4px; }
-html[data-dsh-prts] [data-prts-persistence-error] strong { color: var(--prts-yellow); }
-html[data-dsh-prts] [data-prts-reset-visual],
-html[data-dsh-prts] [data-prts-reset-confirm-action] { color: var(--prts-yellow); box-shadow: inset 0 0 0 1px var(--prts-yellow); }
-
-html[data-dsh-prts] [data-prts-reset-confirm] {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-  color: var(--prts-yellow);
-  font: 700 8px/1.3 var(--prts-mono);
-}
-
 html[data-dsh-prts] [hidden] { display: none !important; }
 
 /* Readable settings typography: information never drops below 12px. */
@@ -863,7 +830,20 @@ html[data-dsh-prts] [data-prts-theme-settings] {
 & [data-prts-settings-advanced-content] { border: 0; }
 & [data-prts-settings-advanced-content] > section { padding: 0 0 20px; }
 & :is([data-prts-advanced-summary], [data-prts-session-flow-speed-output], [data-prts-particle-traversal-output]) { color: var(--prts-muted); font-size: 12px; font-weight: 400; }
-& [data-prts-settings-actions] { padding-top: 24px; border-top: 1px solid var(--prts-line); }
+& [data-prts-settings-sidebar] { display:flex; flex-direction:column; min-height:0; position:relative; border-right:1px solid var(--prts-line); }
+& [data-prts-settings-nav] { border:0; background:none; }
+& [data-prts-settings-actions] { margin:auto 0 0; padding:14px; border:0; min-height:0; }
+& [data-prts-reset-zone] { min-height:0; }
+& [data-prts-reset-visual] { color:var(--prts-muted); box-shadow:none; background:none; font-size:12px; }
+& [data-prts-reset-confirm], & [data-prts-persistence-error] { display:flex; gap:8px; align-items:center; position:absolute; left:12px; bottom:52px; width:270px; padding:16px; border:1px solid var(--prts-line); border-radius:6px; background:var(--prts-panel-raised); box-shadow:0 8px 24px #0004; z-index:5; flex-wrap:wrap; font:400 12px/1.6 var(--prts-body); }
+& [data-prts-reset-confirm] > span { flex-basis:100%; }
+@media(max-width:720px) {
+& [data-prts-settings-sidebar] { flex-direction:row; border:0; border-bottom:1px solid var(--prts-line); }
+& [data-prts-settings-nav] { flex:1; padding:8px 4px; border:0; }
+& [data-prts-settings-jump] { padding:10px 8px; }
+& [data-prts-settings-actions] { margin:0; padding:8px 4px; align-self:center; }
+& [data-prts-reset-confirm], & [data-prts-persistence-error] { left:auto; right:8px; top:100%; bottom:auto; max-width:calc(100vw - 32px); }
+}
 & [data-prts-reset-zone] { padding: 0; }
 }
 @media (max-width: 720px) {
