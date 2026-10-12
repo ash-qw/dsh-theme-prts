@@ -1,6 +1,6 @@
 # dsh-theme-prts
 
-A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harness Web. It keeps Harness behavior and data flow intact while presenting workspaces, sessions, and conversations as a Rhodes Island facility terminal.
+A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harness Web and the official desktop client. It keeps Harness behavior and data flow intact while presenting workspaces, sessions, and conversations as a Rhodes Island facility terminal.
 
 > [!IMPORTANT]
 > This is an unofficial, personal Arknights fan theme. It is not affiliated with, sponsored by, authorized by, or endorsed by Shanghai Hypergryph Network Technology Co., Ltd. or any regional publisher.
@@ -15,20 +15,22 @@ The theme is disabled by default.
 
 ## Compatibility
 
-- Declared support is limited to DeepSeek Harness Web `0.2.0-rc.2`, the version verified locally. The earlier `0.1.7`, `0.1.5`, and `0.1.2` release lines are no longer in the compatibility declaration.
+- Supports DeepSeek Harness `0.2.0-rc.2` on Web and the official desktop client. The Web version has been verified locally, and the official desktop client has been verified through actual use. The earlier `0.1.7`, `0.1.5`, and `0.1.2` release lines are no longer in the compatibility declaration.
 - The theme has been checked on a live `0.2.0-rc.2` page for mounting, workspaces, session cards, and the composer. Browser regression tests cover the native conversation width control, session status, and pending interaction indicators.
 - `engines.dsh` in `package.json` uses the same exact version for plugin market compatibility checks. Other DSH versions require separate verification.
 - For DSH `0.1.7-rc.2`, pin theme `@ash-qw/dsh-theme-prts@1.0.2`. For DSH `0.1.2` or `0.1.5`, pin theme `@ash-qw/dsh-theme-prts@0.1.102`.
 
 ## Install and update
 
-In an environment where DSH Web already runs normally, execute:
+Web and the official desktop client use the same theme package, `@ash-qw/dsh-theme-prts`; no separate desktop edition is needed.
+
+For Web command-line installation, run the following in an environment where DSH Web already runs normally:
 
 ```bash
 npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 ```
 
-Restarting DSH Web after installation or update is recommended to ensure the theme is fully loaded. Then enable it under “Settings → Plugins → P.R.T.S.” The Rhodes Island emblem at the upper left of the main interface opens the complete appearance controls.
+Restarting your DSH Web service or official desktop client after installation or update is recommended to ensure the theme is fully loaded. Then enable it under “Settings → Plugins → P.R.T.S.” The Rhodes Island emblem at the upper left of the main interface opens the complete appearance controls.
 
 The theme is published publicly on npm and requires no GitHub login or access token. Run the install command again to update to `latest`; to pin a release, use `@ash-qw/dsh-theme-prts@<version>`. If the command reports `pnpm not found`, install pnpm first.
 
@@ -37,7 +39,7 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - Facility-style P.R.T.S. / Rhodes Island / RIIC workspaces, sessions, and conversations;
 - day/night modes synchronized with Harness, three appearance presets, and four material levels;
 - city silhouettes, faction particle marks, session waveforms, and a P.R.T.S. startup sequence;
-- desktop, tablet, phone, reduced-motion, and reduced-transparency accommodations;
+- computer, tablet, and phone screen layouts, with reduced-motion and reduced-transparency accommodations;
 - PRTS hand cursors with press, hold, and release feedback (large background containers stay static to avoid long-conversation stalls), link hand cursors for clickable elements, four static resize directions, and a static I-beam cursor over text fields and conversation text; turn off “PRTS 光标” in theme settings to use system cursors;
 - no runtime network requests, analytics, or telemetry.
 
