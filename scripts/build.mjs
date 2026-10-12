@@ -147,7 +147,6 @@ const clientModulePaths = [
   'src/client/startup-sequence.js',
   'src/client/settings-page.js',
   'src/client/theme-settings-workbench.js',
-  'src/client/resize-shield-adapter.js',
   'src/client/operations-shell-v2.js',
   'src/client/index.js',
 ]

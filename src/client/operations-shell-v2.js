@@ -1,5 +1,4 @@
 import { createThemeSettingsOverlay, themeSettingsMarkup } from './theme-settings-workbench.js'
-import { createResizeShieldAdapter } from './resize-shield-adapter.js'
 
 const PHONE_RAIL_BREAKPOINT = 640
 const RAIL_HOLD_DELAY_MS = 350
@@ -53,7 +52,6 @@ export function createOperationsShell({
   onRetrySave = () => {},
 }) {
   const root = document.documentElement
-  const resizeShield = createResizeShieldAdapter({ window })
   let shell
   let navRail
   let railLauncher
@@ -463,11 +461,6 @@ export function createOperationsShell({
       onResetVisual: onVisualReset,
       onRetrySave,
     })
-    resizeShield.start([
-      operationRegion,
-      shell.querySelector('[data-prts-theme-settings]'),
-      shell.querySelector('[data-prts-settings-backdrop]'),
-    ])
     conversationObserver = new window.MutationObserver(syncConversationState)
     conversationObserver.observe(operationRegion, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-chat-flow-kind', 'data-message-role'] })
     schemeObserver = new window.MutationObserver(syncSchemeToggle)
@@ -520,7 +513,6 @@ export function createOperationsShell({
     railViewportQuery = undefined
     railPointerQuery = undefined
     railHoverQuery = undefined
-    resizeShield.dispose()
     settingsOverlay?.dispose()
     conversationObserver?.disconnect()
     schemeObserver?.disconnect()

@@ -1461,14 +1461,6 @@ html[data-dsh-prts] [data-prts-particle-layer] {
   transition: opacity 120ms ease-out;
 }
 
-/* Keep the host frame measurable while pruning the expensive operation subtree
-   during a viewport resize burst. Navigation and the native sessions sidebar
-   remain rendered; the shield is removed after the viewport settles. */
-html[data-dsh-prts] [data-prts-resize-shield] {
-  content-visibility: hidden !important;
-  contain-intrinsic-size: auto 800px;
-}
-
 /* Resize state lives on the small visual surfaces that need it, never on the root tree. */
 html[data-dsh-prts] [data-prts-particle-layer][data-prts-resizing] {
   opacity: .78;

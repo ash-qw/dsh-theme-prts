@@ -77,48 +77,24 @@ test('@stabilization Rhodes mark owns one shared theme settings panel and visual
   await expect(brand).toBeFocused()
 })
 
-test('@stabilization resize shield prunes only operation surfaces and clears after settle', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await enable(page)
-  await page.locator('[data-prts-rail-brand]').click()
-  const panel = page.locator('[data-prts-theme-settings]')
-  await expect(panel).toBeVisible()
-
-  const burst = await page.evaluate(() => {
-    window.dispatchEvent(new Event('resize'))
-    const inspect = selector => {
-      const node = document.querySelector(selector)
-      return {
-        shielded: node?.hasAttribute('data-prts-resize-shield'),
-        contentVisibility: node ? getComputedStyle(node).contentVisibility : '',
-      }
+test('@stabilization keyboard viewport changes preserve input focus and operation visibility', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({baseURL,hasTouch:true,viewport:{width:1280,height:900}})
+  const page = await context.newPage()
+  try {
+    await enable(page)
+    const input = page.getByRole('textbox', {name:'Send a message'})
+    await input.tap()
+    await input.fill('尚未发送的测试内容')
+    const before = await page.evaluate(() => performance.timeOrigin)
+    for (const height of [550,900,600,900]) {
+      await page.setViewportSize({width:1280,height})
+      await expect(input).toBeFocused()
+      await expect(input).toHaveValue('尚未发送的测试内容')
+      await expect(page.locator('[data-prts-resize-shield]')).toHaveCount(0)
+      expect(await page.locator('[data-prts-region="operation"]').evaluate(e=>getComputedStyle(e).contentVisibility)).not.toBe('hidden')
     }
-    return {
-      operation: inspect('[data-prts-region="operation"]'),
-      panel: inspect('[data-prts-theme-settings]'),
-      backdrop: inspect('[data-prts-settings-backdrop]'),
-      rail: inspect('[data-prts-nav-rail]'),
-      sessions: inspect('[data-prts-region="sessions"]'),
-    }
-  })
-  for (const key of ['operation', 'panel', 'backdrop']) {
-    expect(burst[key]).toEqual({ shielded: true, contentVisibility: 'hidden' })
-  }
-  expect(burst.rail.shielded).toBe(false)
-  expect(burst.sessions.shielded).toBe(false)
-
-  await expect.poll(
-    () => page.locator('[data-prts-resize-shield]').count(),
-    { timeout: 1000 },
-  ).toBe(0)
-  await expect(panel).toBeVisible()
-
-  await page.evaluate(() => {
-    window.dispatchEvent(new Event('resize'))
-    document.querySelector('[data-prts-theme-disable]').click()
-  })
-  await expect(page.locator('html')).not.toHaveAttribute('data-dsh-prts', '')
-  await expect(page.locator('[data-prts-resize-shield]')).toHaveCount(0)
+    expect(await page.evaluate(() => performance.timeOrigin)).toBe(before)
+  } finally { await context.close() }
 })
 
 
