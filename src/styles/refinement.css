@@ -203,8 +203,8 @@ html[data-dsh-prts] [data-prts-composer-fallback]::after {
     calc(100% - 2px) 0, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) 100%,
     2px 100%, 0 calc(100% - 2px), 0 2px
   );
-  backdrop-filter: var(--prts-active-glass-filter);
-  -webkit-backdrop-filter: var(--prts-active-glass-filter);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   pointer-events: none;
 }
 

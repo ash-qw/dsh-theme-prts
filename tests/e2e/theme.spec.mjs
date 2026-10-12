@@ -330,7 +330,7 @@ test('renders user and assistant as directional chat bubbles with speaker avatar
     outerFilter: 'none',
     outerClip: 'none',
     overflow: 'visible',
-    decorationFilter: 'blur(22px) saturate(1.55)',
+    decorationFilter: 'none',
     decorationClip: expect.stringContaining('polygon'),
   })
 
@@ -361,10 +361,10 @@ test('renders user and assistant as directional chat bubbles with speaker avatar
 
   const glassControls = appearance.locator('[data-prts-setting-row="glass"]')
   await glassControls.getByRole('button', { name: '柔和' }).click()
-  await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('blur(18px) saturate(1.45)')
+  await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('none')
   expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
   await glassControls.getByRole('button', { name: '清晰' }).click()
-  await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('blur(28px) saturate(1.8)')
+  await expect.poll(() => composer.evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('none')
   expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
   await glassControls.getByRole('button', { name: '关闭' }).click()
   expect(await captureAssistantPresentation(page)).toEqual(themedAssistant)
