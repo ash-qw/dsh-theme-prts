@@ -506,5 +506,61 @@
         "duration": 60000.0
       }
     ]
+  },
+  "states": {
+    "grab": {
+      "file": "prts-grab.png",
+      "source": "PRTS-Replica-v8-96x-grab_enter_0011.cur",
+      "crop": [
+        18,
+        40,
+        86,
+        96
+      ],
+      "size": [
+        45,
+        37
+      ],
+      "hotspot": [
+        22,
+        19
+      ]
+    },
+    "grabbing": {
+      "file": "prts-grabbing.png",
+      "source": "PRTS-Replica-v8-96x-grab_loop_0000.cur",
+      "crop": [
+        18,
+        40,
+        86,
+        96
+      ],
+      "size": [
+        45,
+        37
+      ],
+      "hotspot": [
+        22,
+        19
+      ]
+    },
+    "not-allowed": {
+      "file": "prts-not-allowed.png",
+      "source": "PRTS-Replica-v8-96x-unavail1_static.cur",
+      "crop": [
+        18,
+        10,
+        96,
+        96
+      ],
+      "size": [
+        51,
+        56
+      ],
+      "hotspot": [
+        7,
+        7
+      ]
+    }
   }
 }

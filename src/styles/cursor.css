@@ -15,7 +15,13 @@
   html[data-dsh-prts][data-prts-cursor="prts"] :is(textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="url"], input[type="password"], input[type="number"], input[type="tel"], [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]) {
     cursor: var(--prts-text-cursor), text;
   }
+  html[data-dsh-prts][data-prts-cursor="prts"] :is(.dsh-partner-pendant-hit, .dsh-partner-pendant-anchor, [data-prts-emblem-reorder]):enabled {
+    cursor: url("__PRTS_GRAB__") 22 19, grab;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] :is(.dsh-partner-pendant-hit, .dsh-partner-pendant-anchor, [data-prts-emblem-reorder]):enabled:active {
+    cursor: url("__PRTS_GRABBING__") 22 19, grabbing;
+  }
   html[data-dsh-prts][data-prts-cursor="prts"] :is(:disabled, [aria-disabled="true"]) {
-    cursor: not-allowed !important;
+    cursor: url("__PRTS_NOT_ALLOWED__") 7 7, not-allowed !important;
   }
 }

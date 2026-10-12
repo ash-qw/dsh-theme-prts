@@ -107,7 +107,7 @@ export function createCursorAdapter({ document, window, assets }) {
     restoreHandTarget()
     if (!canAnimate(target) || !handCursor || target === textTarget) return
     const cursor = window.getComputedStyle(target).cursor
-    if (!cursor.includes('data:image/png') || /(?:,\s*text|resize)$/.test(cursor)) return
+    if (!cursor.includes('data:image/png') || /(?:,\s*(?:text|grab|grabbing|not-allowed|no-drop)|resize)$/.test(cursor)) return
     handTarget = target
     originalCursor = target.style.getPropertyValue('cursor')
     originalPriority = target.style.getPropertyPriority('cursor')
@@ -160,7 +160,7 @@ export function createCursorAdapter({ document, window, assets }) {
     reset()
     const cursor = target ? window.getComputedStyle(target).cursor : ''
     if (!cursor.includes('data:image/png')) return
-    if (/(?:,\s*text|resize)$/.test(cursor) || !canAnimate(target)) return
+    if (/(?:,\s*(?:text|grab|grabbing|not-allowed|no-drop)|resize)$/.test(cursor) || !canAnimate(target)) return
     gestureAssets = /,\s*pointer$/.test(cursor) && assets.link ? assets.link : assets
     pointerId = event.pointerId
     handCursor = cursor

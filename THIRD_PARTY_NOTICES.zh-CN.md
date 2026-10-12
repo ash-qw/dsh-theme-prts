@@ -39,7 +39,9 @@ P.R.T.S. 头像、阵营标识及衍生徽记仅收录于个人、非商业同�
 
 ## PRTS 手形、文本与调整大小光标
 
-- 文件：`src/assets/cursors/prts-hand*.png`、`prts-link*.png`、`prts-text*.png`、`prts-resize-*.png` 及 `animation.json`。
+- 文件：`src/assets/cursors/prts-hand*.png`、`prts-link*.png`、`prts-text*.png`、`prts-resize-*.png`, `prts-grab.png`, `prts-grabbing.png`, `prts-not-allowed.png` 及 `animation.json`。
 - 来源：[crowninggg/prts-cursor v1.1.4 的 PRTS-Windows-1.1.4.zip](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4)，获取日期为 2026-10-09。使用其中 `程序文件/PRTS-Setup.exe` 内嵌的 `PRTS-Replica-v8-96x-normal.cur`、`normal_hold.cur`、`normal_press.ani`、`normal_release.ani`、`beam.cur`、`beam_click.ani`、`link.cur`、`link_hold.cur`、`link_press.ani`、`link_release.ani` 及 `sel_1_static.cur` 至 `sel_4_static.cur` 资源。提取时仅读取资源，未运行安装程序。
-- 适配方式：每张 96×96 手形帧裁剪至矩形 (18, 10, 82, 84)，再缩放为 42×48；原始点击热点 (28, 20) 映射为 (7, 6)。ANI 帧时长保留在清单中，末尾 60 秒停留帧在运行时由静态按住或静止状态代替。文本帧保留完整的 96×96 画布，缩放至 48×48，热点为 (24, 24)。链接帧裁剪至 (18, 10, 96, 96)，缩放为 51×56，热点为 (7, 7)，保留箭头。四种静态调整大小光标保留完整画布，缩放至 32×32，热点为 (16, 16)。文本点击帧保留在源码素材中，但不再打包或播放；未收录持续循环的文本动画和禁止操作变体。
+- 适配方式：每张 96×96 手形帧裁剪至矩形 (18, 10, 82, 84)，再缩放为 42×48；原始点击热点 (28, 20) 映射为 (7, 6)。ANI 帧时长保留在清单中，末尾 60 秒停留帧在运行时由静态按住或静止状态代替。文本帧保留完整的 96×96 画布，缩放至 48×48，热点为 (24, 24)。链接帧裁剪至 (18, 10, 96, 96)，缩放为 51×56，热点为 (7, 7)，保留箭头。四种静态调整大小光标保留完整画布，缩放至 32×32，热点为 (16, 16)。文本点击帧保留在源码素材中，但不再打包或播放；未收录持续循环的文本动画。
 - 权利说明：上游 `Credits.txt` 将其描述为非官方自用衍生工具，并注明明日方舟角色及界面素材归原权利人所有。在已检查的安装包中，未发现这些美术素材的明确再分发许可。它们不属于本项目 MIT 许可证的授权范围；本项目收录这些素材并不授予原美术作品的相关权利。
+
+- 2026-10-12 补充同一发行包中的抓握与禁止素材：取 `grab_enter_0011.cur` 和 `grab_loop_0000.cur` 为静态可抓取、握住状态，裁剪 (18, 40, 86, 96)，缩放至 45×37，网页抓握热点设为手形中心 (22, 19)。取 `unavail1_static.cur` 为禁止状态，裁剪 (18, 10, 96, 96)，缩放至 51×56，热点 (7, 7)。未运行安装程序，未播放循环动画。

@@ -89,6 +89,9 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_HAND__', `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors/prts-hand.png'))).toString('base64')}`)
   .replaceAll('__PRTS_TEXT__', await cursorImage('prts-text.png'))
   .replaceAll('__PRTS_LINK__', await cursorImage('prts-link.png'))
+  .replaceAll('__PRTS_GRAB__', await cursorImage('prts-grab.png'))
+  .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
+  .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
