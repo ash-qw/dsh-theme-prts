@@ -156,3 +156,53 @@ test('portable assets restore source, parameters and particle output in another 
   ])await assert.rejects(reopened.importAsset(bad))
   assert.equal(reopened.snapshot().revision,1)
 })
+
+test('tool-returned image attachments enter the real preview and apply flow without reupload',async t=>{
+  const {service,bytes}=await fixture(t)
+  const ref={attachmentId:'generated-image',name:'AI线稿.png',mediaType:'image/png',bytes:bytes.length}
+  const events=[
+    {type:'tool/call',data:{callId:'read',name:'read_image'}},
+    {type:'tool/result',data:{message:{toolCallId:'read',content:[{type:'image',attachment:ref}]}}},
+    {type:'tool/call',data:{callId:'preview',name:'prts_emblem_preview'}},
+    {type:'tool/result',data:{message:{toolCallId:'preview',content:[{type:'image',attachment:{...ref,attachmentId:'rendered-preview'}}]}}},
+    {type:'tool/result',data:{message:{isError:true,content:[{type:'image',attachment:{...ref,attachmentId:'failed'}}]}}},
+    {type:'assistant/message',data:{message:{content:[{type:'image',attachment:{...ref,attachmentId:'invented'}}]}}},
+    {type:'tool/result',data:{message:{content:[{type:'text',text:JSON.stringify({attachment:ref})}]}}},
+  ]
+  let reads=0
+  const tools=emblemTools(service,{readImage:async attachment=>{
+    reads++;assert.equal(attachment.attachmentId,ref.attachmentId)
+    assert.equal(attachment.origin,undefined);assert.equal(attachment.toolName,undefined)
+    return {data:bytes}
+  }})
+  const exec={agent:{session:{snapshotEvents:()=>events}}}
+  const initial=await tools[0].execute({},exec)
+  assert.equal(initial.images.length,1)
+  assert.equal(initial.images[0].origin,'tool')
+  assert.equal(initial.images[0].toolName,'read_image')
+  for(const id of ['another-session','rendered-preview','failed','invented'])
+    await assert.rejects(tools[1].execute({attachmentId:id},exec),/没有这张图片/)
+  assert.equal(reads,0)
+  const draft=await tools[1].execute({attachmentId:ref.attachmentId,params:{mode:'lineart'}},exec)
+  assert.ok(draft.particles.standard>0)
+  assert.equal(service.snapshot().revision,0)
+  await tools[2].execute({draftId:draft.draftId,target:'hero',revision:initial.revision},exec)
+  assert.equal(service.snapshot().configuration.hero.label,'AI线稿.png')
+  const asset=await service.exportAsset(draft.draftId)
+  assert.equal(asset.params.mode,'lineart')
+  const imported=await service.importAsset(asset)
+  assert.deepEqual(imported.value.targets,(await service.draft(draft.draftId)).value.targets)
+})
+
+test('line source and cleanup persist through editing and portable assets; older parameters get defaults',async t=>{
+  const {service}=await fixture(t)
+  const bytes=await sharp(Buffer.from('<svg width="320" height="320"><rect width="320" height="320" fill="white"/><circle cx="160" cy="160" r="100" fill="none" stroke="black" stroke-width="3"/></svg>')).png().toBuffer()
+  const d=await service.preview({bytes,params:{mode:'lineart',lineSource:'ink',cleanup:4}})
+  const edited=await service.preview({baseId:d.id,params:{threshold:90}})
+  assert.equal(edited.params.lineSource,'ink');assert.equal(edited.params.cleanup,4)
+  const restored=await service.importAsset(await service.exportAsset(edited.id))
+  assert.deepEqual(restored.value.targets,edited.value.targets)
+  assert.deepEqual(restored.params,edited.params)
+  assert.equal(parameters({}, {mode:'lineart',threshold:128,zoom:1,x:0,y:0}).cleanup,2)
+  for(const params of [{cleanup:-1},{cleanup:13},{cleanup:1.5},{lineSource:'unknown'}])assert.throws(()=>parameters(params),/范围/)
+})

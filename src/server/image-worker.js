@@ -22,7 +22,7 @@ try {
     const x = Math.max(0,left), end = Math.min(320,left+width)
     if (end > x) rgba.set(resized.subarray(((y-top)*width+x-left)*4,((y-top)*width+end-left)*4),(y*320+x)*4)
   }
-  const value = processCustomEmblemPixels(rgba,320,mode,params.threshold)
+  const value = processCustomEmblemPixels(rgba,320,mode,params.threshold,undefined,params)
   const dots = value.targets.standard.map(p => {
     const r = p.kind === 'skeleton' ? 1.2 : .9
     return `<circle cx="${192+p.x*350}" cy="${192+p.y*350}" r="${r}"/>`

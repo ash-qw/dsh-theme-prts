@@ -8,12 +8,13 @@ export const EMBLEMS = [
   ['rhodes-island','罗德岛'],['lungmen','龙门'],['penguin-logistics','企鹅物流'],['rhine-lab','莱茵生命'],['reunion','整合运动'],
 ].map(([key,label])=>({key,label}))
 export const API = '/prts-theme-api/emblems'
-export const DEFAULT_PARAMS = Object.freeze({mode:'auto',threshold:128,zoom:.85,x:0,y:0})
+export const DEFAULT_PARAMS = Object.freeze({mode:'auto',lineSource:'edges',cleanup:2,threshold:128,zoom:.85,x:0,y:0})
 export function fault(status,message) { return Object.assign(new Error(message),{status}) }
 export function parameters(input = {}, base = DEFAULT_PARAMS) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw fault(400,'编辑参数无效')
-  const result = {...base,...input}
-  if (Object.keys(result).some(k=>!Object.hasOwn(DEFAULT_PARAMS,k)) || !['auto','alpha','dark','light'].includes(result.mode)
+  const result = {...DEFAULT_PARAMS,...base,...input}
+  if (Object.keys(result).some(k=>!Object.hasOwn(DEFAULT_PARAMS,k)) || !['auto','alpha','dark','light','lineart'].includes(result.mode)
+    || !['edges','ink'].includes(result.lineSource) || !Number.isInteger(result.cleanup) || result.cleanup<0 || result.cleanup>12
     || !Number.isInteger(result.threshold) || result.threshold<1 || result.threshold>254
     || !Number.isFinite(result.zoom) || result.zoom<.5 || result.zoom>2
     || !Number.isFinite(result.x) || Math.abs(result.x)>.5 || !Number.isFinite(result.y) || Math.abs(result.y)>.5) throw fault(400,'编辑参数超出范围')
