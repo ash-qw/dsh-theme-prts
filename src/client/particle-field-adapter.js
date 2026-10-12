@@ -365,6 +365,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     },
     opticalScale: suppliedHeroMask.opticalScale,
   } : maskRecords[rhodesIndex]
+  let customEmblemConfiguration = null
   const targetCache = new Map()
   let particles = []
   let pointerActive = false
@@ -448,23 +449,30 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function sequenceIndexForSegment(segmentValue) {
-    const length = Math.max(1, emblemSequence.length)
+    const length = Math.max(1, (customEmblemConfiguration?.conversation ?? emblemSequence).length)
     return ((segmentValue % length) + length) % length
   }
 
   function emblemForSegment(segmentValue) {
-    return emblemSequence[sequenceIndexForSegment(segmentValue)] ?? emblemSequence[0]
+    const sequence = customEmblemConfiguration?.conversation ?? emblemSequence
+    return sequence[sequenceIndexForSegment(segmentValue)] ?? sequence[0]
   }
 
-  function targetsForIndex(index, density = 'standard') {
-    const key = `${index}:${density}`
+  function targetsForBuiltin(entry, density = 'standard') {
+    const index = emblemSequence.findIndex(item => item.key === entry?.key)
+    const key = `builtin:${index}:${density}`
     const cached = targetCache.get(key)
     if (cached) return cached
     const record = maskRecords[index]
     const targets = record ? createOrthogonalTargets(record.mask, density) : []
-    if (!targets.length) return []
-    targetCache.set(key, targets)
+    if (targets.length) targetCache.set(key, targets)
     return targets
+  }
+
+  function targetsForIndex(index, density = 'standard') {
+    const entry = (customEmblemConfiguration?.conversation ?? emblemSequence)[index]
+    if (entry?.kind === 'custom') return entry.targets[density] ?? entry.targets.standard
+    return targetsForBuiltin(entry, density)
   }
 
   function targetsForSegment(segmentValue, density = preferences.conversationParticleDensity) {
@@ -472,11 +480,13 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function heroEmblem() {
+    if (customEmblemConfiguration?.hero) return customEmblemConfiguration.hero
     return emblemSequence[rhodesIndex] ?? emblemSequence[0]
   }
 
   function targetsForHero(density = preferences.heroParticleDensity) {
     const effectiveDensity = effectiveHeroDensity(density)
+    if (customEmblemConfiguration?.hero) return customEmblemConfiguration.hero.targets[effectiveDensity] ?? customEmblemConfiguration.hero.targets.standard
     const key = `hero:${effectiveDensity}`
     const cached = targetCache.get(key)
     if (cached) return cached
@@ -688,7 +698,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   function scheduleTargetPrewarm() {
     cancelTargetPrewarm()
     if (typeof window.requestIdleCallback !== 'function' || !particles.length) return
-    targetPrewarmQueue = emblemSequence.map((_, index) => index)
+    targetPrewarmQueue = (customEmblemConfiguration?.conversation ?? emblemSequence).map((_, index) => index)
       .filter(index => index !== sequenceIndexForSegment(segment))
     const warmNext = () => {
       targetPrewarmHandle = undefined
@@ -1835,6 +1845,21 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       if (schemeTransitionPaused === next) return
       schemeTransitionPaused = next
       updateFrameGate()
+    },
+    previewEmblem(entry) {
+      if (entry?.kind === 'custom') return entry
+      const points = entry ? targetsForBuiltin(entry, 'standard') : heroMaskRecord ? createOrthogonalTargets(heroMaskRecord.mask, 'standard') : []
+      return { targets: { standard: points } }
+    },
+    setCustomEmblemConfiguration(value) {
+      const previousSequence = customEmblemConfiguration?.conversation ?? emblemSequence
+      const nextSequence = value?.conversation ?? emblemSequence
+      const changed = heroActive
+        ? (customEmblemConfiguration?.hero ?? null) !== (value?.hero ?? null)
+        : previousSequence.length !== nextSequence.length || previousSequence.some((entry, index) =>
+          entry.key !== nextSequence[index]?.key || entry.targets !== nextSequence[index]?.targets)
+      customEmblemConfiguration = value
+      if (canvas && changed) { resetTraversal(); scheduleFrame() }
     },
     update(nextPreferences = {}) {
       const previousPreferences = preferences

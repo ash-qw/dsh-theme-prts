@@ -1,7 +1,12 @@
+import { tmpdir } from 'node:os'
+import { randomUUID } from 'node:crypto'
+import { createEmblemService, API } from '../../src/server/emblems.js'
+import { registerEmblemApi } from '../../src/server/api.js'
 import { createServer } from 'node:http'
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, stat, mkdtemp } from 'node:fs/promises'
 import { extname, resolve, sep } from 'node:path'
 
+const emblemFixtures = new Map()
 const root = process.cwd()
 const port = Number(process.env.PORT || 4173)
 const fixturePath = '/tests/fixtures/rc7-harness.html'
@@ -305,7 +310,8 @@ const fixtureBootstrap = `
     slots: {
       inject(_name, factory) { return factory() },
       register(options, component) {
-        const store = storeFor(options.store)
+        if (options.name === 'tool.call.toolview') return () => {}
+      const store = storeFor(options.store)
         const injected = options.name === 'details'
           ? options.inject?.('fixture-session', store.actions) || {}
           : options.inject?.(store.actions) || {}
@@ -359,6 +365,17 @@ const mime = {
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://127.0.0.1:${port}`)
+    if (url.pathname.startsWith(API)) {
+      let id = request.headers.cookie?.match(/prtsFixture=([a-z0-9-]+)/)?.[1]
+      if (!id) { id=randomUUID();response.setHeader('set-cookie',`prtsFixture=${id}; Path=/; SameSite=Strict`) }
+      if (!emblemFixtures.has(id)) emblemFixtures.set(id,(async()=>{
+        const service=await createEmblemService(await mkdtemp(`${tmpdir()}/prts-fixture-`))
+        let handler
+        registerEmblemApi({connection:{admit:()=>({peer:{}})},webServer:{register:route=>{handler=route.handler;return()=>{}}}},service)
+        return handler
+      })())
+      await (await emblemFixtures.get(id))(request,response);return
+    }
     if (url.pathname === '/__fixture_bootstrap.js') {
       response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' })
       response.end(fixtureBootstrap)

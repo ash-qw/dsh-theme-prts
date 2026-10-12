@@ -124,6 +124,9 @@ const heroEmblemMask = buildMaskRecord('rhodes-island-hero', factionEmblemBytes[
 
 const clientModulePaths = [
   'src/client/preferences.js',
+  'src/client/emblem-reorder.js',
+  'src/client/custom-emblem.js',
+  'src/client/emblem-tool-preview.js',
   'src/client/host-geometry-adapter.js',
   'src/client/composer-glass-adapter.js',
   'src/client/floating-glass-adapter.js',
@@ -163,7 +166,7 @@ function bundleModule(source) {
 
 const bundledSource = moduleSources.map(bundleModule).join('\n')
 
-const host = `export const PACKAGE_ID = ${JSON.stringify(packageName)}\nexport const THEME_PLUGIN_ID = 'dsh-theme-prts'\nexport function apply() {}\n`
+const host = `export { PACKAGE_ID, THEME_PLUGIN_ID, inject, apply } from '../src/index.js'\n`
 const client = `window.__ModuleLoader__.load({
   id: ${JSON.stringify(packageName)},
   factory: (require) => {

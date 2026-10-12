@@ -47,6 +47,14 @@ Cursor artwork comes from [crowninggg/prts-cursor v1.1.4](https://github.com/cro
 
 “Settings → Plugins → P.R.T.S.” provides the theme and startup-animation switches. The Rhodes Island emblem at the upper left of the main interface provides presets, environment texture, particle marks, interface material, navigation, and accessibility controls.
 
+The appearance panel has four pages: Appearance, Interaction, Session Flow, and Particle Effects. Switching pages preserves each page’s scroll position and unfinished emblem edits. On narrow screens, tabs appear above the content; arrow keys also switch pages.
+
+Under Particle Effects → Emblem Management, configure the new-session emblem independently from the conversation rotation list. Mix built-in and uploaded images in the list, preview or replace individual entries, add or remove entries (1–12). Long-press anywhere on an emblem card to drag it into a new position; release to save or press Escape to cancel. Keyboard users can press Space on the thumbnail, use arrow keys to reorder, and press Enter to save. Each area can be restored independently. Upload a PNG, WebP, or JPEG and adjust extraction, threshold, scale, and crop position before applying. Conversation emblems retain scroll-driven rotation, interaction, and reassembly. Images are uploaded to the current DSH host and processed in a separate worker thread. Sources, parameters, drafts, and applied settings are stored under `$DSH_HOME/plugins/dsh-theme-prts/emblems`, shared across workspaces, sessions, and browsers connected to that instance. Saved emblems remain editable and pages synchronize automatically. The theme does not send images to third-party image services. Images are limited to 8 MB and 16 megapixels; transparent logos or monochrome silhouettes work best.
+
+Click Export Asset on a custom emblem to download a single `.prts-emblem.json` package containing its source image and editing parameters. In another DSH instance, choose Add Emblem or Preview / Replace, then import the package and review it before applying. Imported emblems remain editable; importing does not automatically overwrite the hero or rotation list. Packages are limited to 12 MB; particles are rebuilt from the original parameters on import.
+
+In any DSH session where the tools are allowed, upload an image and ask the AI to preview it as a PRTS particle emblem. `prts_emblem_inspect`, `prts_emblem_preview`, and `prts_emblem_apply` let the AI adjust extraction, threshold, scale, and crop, then apply a draft to the new-session emblem or conversation rotation list. Previews do not change applied settings; conflicting writes require a fresh read. Previews appear in native chat tool cards; image-capable models also receive the preview as image input. Redrawing still requires an image-editing tool in that session. Around 200 recent drafts are retained, while editing sources for applied emblems are protected. Server-side processing requires Node.js 20.9 or later.
+
 The theme does not proactively restyle menus, dialogs, or overlays created by third-party plugins.
 
 ## Recovery and removal
@@ -61,7 +69,7 @@ Restarting DSH Web after removal is recommended. Browser theme preferences are r
 
 ## Development
 
-Node.js 18 or newer is required:
+Node.js 20.9 or newer is required (Node.js 24 is recommended, matching DSH):
 
 ```bash
 npm ci

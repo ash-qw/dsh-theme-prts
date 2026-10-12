@@ -143,7 +143,7 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   const ctx = createCtx(calls)
   const React = { createElement() {} }
   api.applyPrtsPlugin(ctx, { document: dom.window.document, window: dom.window, React, defineStore: spec => spec, cssText: 'html[data-dsh-prts]{}', assets: {} })
-  assert.deepEqual(calls.injected, ['settings.plugins.tab'])
+  assert.deepEqual(calls.injected, ['tool.call.toolview', 'settings.plugins.tab'])
   assert.equal(calls.locale, undefined)
   const [options] = calls.registrations.find(([value]) => value.id === 'prts-appearance')
   assert.equal(options.id, 'prts-appearance')
@@ -376,7 +376,8 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   const advanced = document.querySelector('[data-prts-settings-advanced]')
   assert.equal(document.querySelector('[data-prts-custom-state]'), null)
   assert.ok(advanced)
-  assert.equal(advanced.open, false)
+  assert.equal(advanced.hidden, true)
+  assert.equal(advanced.getAttribute("role"), "tabpanel")
   assert.equal(document.querySelectorAll('[data-prts-setting-key="particleDetail"]').length, 3)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="conversationParticleDensity"]').length, 0)
   assert.equal(document.querySelectorAll('[data-prts-setting-key="heroParticleDensity"]').length, 0)
@@ -436,7 +437,7 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.ok(document.querySelector('[data-prts-setting-row="glass"] [data-prts-transparency-status]'))
   assert.ok(document.querySelector('[data-prts-setting-row="motion"] [data-prts-effective-motion]'))
   assert.equal(document.querySelectorAll('[data-prts-scale-calibration]').length, 0)
-  assert.match(advanced.querySelector('summary').textContent, /粒子效果/)
+  assert.match(advanced.querySelector('[data-prts-section-heading]').textContent, /粒子效果/)
   assert.ok(document.querySelector('[data-prts-persistence-status]'))
 })
 

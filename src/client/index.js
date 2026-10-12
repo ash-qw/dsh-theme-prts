@@ -1,3 +1,5 @@
+import { registerEmblemToolPreview } from './emblem-tool-preview.js'
+import { createCustomEmblemStore } from './custom-emblem.js'
 import { DEFAULT_PREFERENCES, isSafeMode, loadPreferences, persistPreferences, resetPreferenceGroup, updatePreferenceValue } from './preferences.js'
 import { createHostGeometryAdapter } from './host-geometry-adapter.js'
 import { createComposerGlassAdapter } from './composer-glass-adapter.js'
@@ -42,6 +44,7 @@ export function applyPrtsPlugin(ctx, environment) {
     startupTimings,
   } = environment
   const safeMode = isSafeMode(window?.location?.search ?? '')
+  const stopEmblemPreview = safeMode ? null : registerEmblemToolPreview(ctx, React)
   const storage = window?.localStorage
   const themeService = contextService(ctx, 'theme')
   const composerGlass = createComposerGlassAdapter({ document, window })
@@ -61,6 +64,7 @@ export function applyPrtsPlugin(ctx, environment) {
       sync()
     },
   })
+  const customEmblemStore = createCustomEmblemStore({ window, emblems: assets.emblems, preview: entry => particleField.previewEmblem?.(entry), onChange: value => particleField.setCustomEmblemConfiguration?.(value) })
   const startup = createPrtsStartupSequence({
     document,
     window,
@@ -187,7 +191,7 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
-      document, window, assets, adapter, hostGeometry,
+      document, window, assets, adapter, hostGeometry, customEmblemStore,
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
       },
@@ -339,7 +343,9 @@ export function applyPrtsPlugin(ctx, environment) {
     applyVisualState()
   }
   ctx.effect(() => () => {
+    if (typeof stopEmblemPreview === 'function') stopEmblemPreview()
     statusSource.dispose()
+    customEmblemStore.dispose()
     particleField.dispose()
     startup.dispose({ restoreFocus: false })
     stopStartupReadyWatch()

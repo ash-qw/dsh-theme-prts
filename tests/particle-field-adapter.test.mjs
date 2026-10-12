@@ -1318,3 +1318,36 @@ test('keeps the fresh-session emblem size continuous across the former phone bre
   assert.ok(Math.abs(sizes[1] - sizes[0]) < 1)
   assert.ok(Math.abs(sizes[2] - sizes[1]) < 1)
 })
+
+test('hero and mixed conversation configuration are independent and restore built-ins', () => {
+  const { dom, scroller, step } = fixture()
+  const builtin = {kind:'builtin',key:'rhodes-island',label:'罗德岛'}
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window,
+    emblems: [builtin], emblemMasks: masksFor() })
+  const preferences = { enabled:true, texture:'full', motion:'system', conversationParticleDensity:'standard', heroParticleDensity:'standard' }
+  adapter.update(preferences)
+  const original = adapter.inspect().targetParticles
+  const points = Array.from({length:12},(_,i)=>({x:(i%4-2)/10,y:(Math.floor(i/4)-1)/10,kind:'fill',latticeRow:Math.floor(i/4),latticeColumn:i%4,component:0}))
+  const custom = {kind:'custom',key:'custom',label:'上传图案',targets:Object.fromEntries(['sparse','light','standard','dense','ultra'].map(d=>[d,points]))}
+  adapter.setCustomEmblemConfiguration({version:2,hero:custom,conversation:[builtin]})
+  assert.equal(adapter.inspect().emblemKey,'rhodes-island')
+  assert.equal(adapter.inspect().targetParticles,original)
+  adapter.setCustomEmblemConfiguration({version:2,hero:null,conversation:[custom,builtin]})
+  assert.equal(adapter.inspect().emblemKey,'custom')
+  assert.equal(adapter.inspect().particles,12)
+  scroller.scrollTop = 824;scroller.dispatchEvent(new dom.window.Event('scroll'));step(16);step(1000)
+  assert.equal(adapter.inspect().emblemKey,'rhodes-island')
+  assert.equal(adapter.inspect().targetParticles,original)
+  scroller.scrollTop = 1648;scroller.dispatchEvent(new dom.window.Event('scroll'));step(16);step(1000)
+  assert.equal(adapter.inspect().emblemKey,'custom')
+  const hero=dom.window.document.createElement('div');hero.setAttribute('data-slot','conversation.hero.brand.mark')
+  scroller.prepend(hero);adapter.update(preferences)
+  assert.equal(adapter.inspect().hero,true)
+  assert.equal(adapter.inspect().emblemKey,'rhodes-island')
+  adapter.setCustomEmblemConfiguration({version:2,hero:custom,conversation:[builtin]})
+  assert.equal(adapter.inspect().emblemKey,'custom')
+  assert.equal(adapter.inspect().targetParticles,12)
+  adapter.setCustomEmblemConfiguration({version:2,hero:null,conversation:[builtin]})
+  assert.equal(adapter.inspect().emblemKey,'rhodes-island')
+  adapter.dispose();dom.window.close()
+})

@@ -64,7 +64,7 @@ test('@stabilization Rhodes mark owns one shared theme settings panel and visual
   await expect(panel).toBeVisible()
   await expect(panel.locator('[data-prts-setting-row="particlePattern"]')).toHaveCount(0)
   await expect(panel).toContainText('粒子精度')
-  await expect(panel.locator('[data-prts-settings-advanced]')).not.toHaveAttribute('open', '')
+  await expect(panel.locator('[data-prts-settings-advanced]')).toBeHidden()
   await panel.locator('[data-prts-setting-key="preset"][data-prts-setting-value="quiet-reading"]').click()
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).preset)).toBe('quiet-reading')
   await panel.locator('[data-prts-reset-visual]').click()

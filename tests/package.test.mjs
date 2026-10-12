@@ -40,7 +40,7 @@ test('declares only the locally verified dsh 0.2.0-rc.2 client contract', async 
   })
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
-    node: '>=18',
+    node: '>=20.9.0',
     dsh: '0.2.0-rc.2',
   })
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
@@ -75,9 +75,9 @@ test('build writes Host and browser module-loader entries', async () => {
   const host = await readText('../lib/index.js')
   const client = await readText('../lib/client.js')
   const pkg = JSON.parse(await readText('../package.json'))
-  const packageId = host.match(/export const PACKAGE_ID = ['"]([^'"]+)['"]/)?.[1]
+  const packageId = (await import('../lib/index.js')).PACKAGE_ID
   assert.equal(packageId, pkg.name, 'Host PACKAGE_ID must match package.json')
-  assert.match(host, /export function apply\(\) \{\}/)
+  assert.match(host, /from '\.\.\/src\/index\.js'/)
   assert.match(client, /window\.__ModuleLoader__\.load/)
   const moduleLoaderId = client.match(/window\.__ModuleLoader__\.load\(\{\s*id:\s*"([^"]+)"/)?.[1]
   assert.equal(moduleLoaderId, pkg.name, 'client ModuleLoader ID must match package.json')
@@ -93,7 +93,7 @@ test('Host entry imports under the package ESM contract used by the supported ds
   assert.equal(host.THEME_PLUGIN_ID, 'dsh-theme-prts')
   assert.notEqual(host.PACKAGE_ID, host.THEME_PLUGIN_ID)
   assert.equal(typeof host.apply, 'function')
-  assert.equal(host.apply(), undefined)
+  assert.deepEqual(host.inject, ['tools','attachments','connection','webServer'])
 })
 
 test('ships the exact P.R.T.S. original avatar used by the startup sequence', async () => {
