@@ -193,7 +193,6 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let observer
   let resizeObserver
   let resizeFrame
-  let resizeTimer
   let scanFrame
   let stopSessionList = () => {}
   let stopWorkspaceList = () => {}
@@ -363,6 +362,10 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function flushVectors() {
+    if (resizeFrame !== undefined) {
+      if (window?.cancelAnimationFrame) window.cancelAnimationFrame(resizeFrame)
+      else window?.clearTimeout?.(resizeFrame)
+    }
     resizeFrame = undefined
     const measurements = []
     for (const [owner, observedSize] of dirtyVectors) {
@@ -533,11 +536,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
             const rect = entry.contentRect
             dirtyVectors.set(entry.target, rect ? { width: rect.width, height: rect.height } : undefined)
           }
-          if (resizeTimer !== undefined) window?.clearTimeout?.(resizeTimer)
-          resizeTimer = window?.setTimeout?.(() => {
-            resizeTimer = undefined
-            scheduleVectors()
-          }, 160)
+          // ResizeObserver runs before paint. Update only the SVG geometry here so
+          // the previous viewBox is never stretched across the new card width.
+          flushVectors()
         })
       }
       scan()
@@ -580,8 +581,6 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         else window?.clearTimeout?.(resizeFrame)
       }
       resizeFrame = undefined
-      if (resizeTimer !== undefined) window?.clearTimeout?.(resizeTimer)
-      resizeTimer = undefined
       lifelineAnimator.dispose()
       clear()
     },

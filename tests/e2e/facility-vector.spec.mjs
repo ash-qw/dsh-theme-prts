@@ -58,6 +58,9 @@ test('@facility-vector keeps one closed path through native sidebar width change
     expect(geometry.fallback).toBe('none')
   }
 
+  // Restore the reference card width before the independent status/visual checks.
+  await frame.evaluate(node => { node.style.gridTemplateColumns = '287px minmax(0px, 1fr) 0px' })
+
   const row = page.locator('[data-prts-workspace-row]')
   const nearLayer = row.locator('[data-prts-silhouette-layer="near"]')
   await expect(row.locator('[data-prts-row-projection]')).toHaveCount(0)
@@ -129,6 +132,7 @@ test('@facility-vector keeps one closed path through native sidebar width change
   const runningPath = await lifelineFilament.getAttribute('d')
   await expect.poll(() => lifelineFilament.getAttribute('d')).not.toBe(runningPath)
 
+  await page.mouse.move(1200, 800) // Leave the status popover before targeting the row beneath it.
   await session.hover()
   await expect(pickup).toHaveCSS('opacity', '0.58')
   await expect(session.locator('[data-prts-session-time]')).toHaveCSS('opacity', '0')
@@ -336,3 +340,40 @@ for (const scheme of ['dark', 'light']) {
     })
   }
 }
+
+test('@facility-vector keeps notch dimensions fixed during continuous sidebar resizing before paint',async({page})=>{
+  await enable(page)
+  const errors=[]
+  page.on('pageerror',error=>errors.push(error.message))
+  const samples=await page.evaluate(async()=>{
+    const frame=document.querySelector('[data-prts-region="frame"]')
+    const faces=[...document.querySelectorAll('[data-prts-facility-face][data-prts-facility-vector]')]
+    const samples=[]
+    // Registered after the theme observer: inspect the geometry in the same pre-paint phase.
+    const observer=new ResizeObserver(entries=>{
+      for(const {target} of entries){
+        const svg=target.querySelector('[data-prts-facility-svg]')
+        if(!svg?.hasAttribute('data-prts-top-notch'))continue
+        const path=svg.querySelector('[data-prts-facility-layer="outline"]')
+        const points=path.getAttribute('d').match(/-?\d+(?:\.\d+)?/g).map(Number),matrix=svg.getScreenCTM()
+        samples.push({opening:(points[8]-points[2])*matrix.a,depth:(points[5]-points[3])*matrix.d,expectedDepth:svg.hasAttribute('data-prts-session-notch')?4.5:10/3})
+      }
+    })
+    faces.forEach(face=>observer.observe(face))
+    for(let i=0;i<32;i++){
+      await new Promise(requestAnimationFrame)
+      const width=i<16?360-i*9:225+(i-16)*9
+      frame.style.gridTemplateColumns=`${width}px minmax(0,1fr) 0px`
+    }
+    await new Promise(requestAnimationFrame)
+    await new Promise(requestAnimationFrame)
+    observer.disconnect()
+    return samples
+  })
+  expect(samples.length).toBeGreaterThan(30)
+  for(const sample of samples){
+    expect(sample.opening).toBeCloseTo(50,1)
+    expect(sample.depth).toBeCloseTo(sample.expectedDepth,1)
+  }
+  expect(errors).toEqual([])
+})

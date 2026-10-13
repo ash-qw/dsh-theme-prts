@@ -21,6 +21,7 @@ const SILHOUETTE_PATHS = Object.freeze({
 })
 
 let silhouetteId = 0
+const renderStates = new WeakMap()
 
 export const FACILITY_TEXTURES = Object.freeze(['none', 'grid', 'scanline', 'silhouette', 'pickup'])
 
@@ -86,6 +87,7 @@ export function ensureFacilityTextureDefs(document) {
 }
 
 function appendSilhouetteScene(document, graphic) {
+  renderStates.delete(graphic)
   const clipId = `prts-facility-silhouette-clip-${++silhouetteId}`
   const defs = svgNode(document, 'defs')
   const clip = svgNode(document, 'clipPath', { id: clipId, clipPathUnits: 'userSpaceOnUse' })
@@ -112,6 +114,7 @@ function appendSilhouetteScene(document, graphic) {
 }
 
 function appendSessionPickup(document, graphic) {
+  renderStates.delete(graphic)
   const clipId = `prts-facility-pickup-clip-${++silhouetteId}`
   const defs = svgNode(document, 'defs')
   const clip = svgNode(document, 'clipPath', { id: clipId, clipPathUnits: 'userSpaceOnUse' })
@@ -171,6 +174,7 @@ function appendSessionStatusUnderlay(document, graphic) {
   const surface = graphic.querySelector('[data-prts-facility-layer="surface"]')
   if (!surface) return
   if (!graphic.querySelector('[data-prts-session-status-underlay]')) {
+    renderStates.delete(graphic)
     graphic.insertBefore(svgNode(document, 'path', {
       'data-prts-session-status-underlay': '',
       'aria-hidden': 'true',
@@ -179,6 +183,7 @@ function appendSessionStatusUnderlay(document, graphic) {
     }), surface)
   }
   if (!graphic.querySelector('[data-prts-session-idle-indicator]')) {
+    renderStates.delete(graphic)
     graphic.insertBefore(svgNode(document, 'rect', {
       'data-prts-session-idle-indicator': '',
       'aria-hidden': 'true',
@@ -249,48 +254,60 @@ export function renderFacilityGraphic(owner, { width, height } = {}) {
   const graphic = owner?.querySelector?.(':scope > svg[data-prts-facility-svg]')
   const topNotch = graphic?.hasAttribute('data-prts-top-notch')
   const sessionNotch = graphic?.hasAttribute('data-prts-session-notch')
-  const path = createFacilityPath({ width, height, topNotch, sessionNotch })
-  if (!graphic || !path) {
+  if (!graphic || !Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= FACILITY_GEOMETRY.sideOpening + 2) {
+    if (graphic) renderStates.delete(graphic)
     owner?.removeAttribute?.('data-prts-facility-size')
     setReady(owner, false)
     return false
   }
 
   const size = `${Number(width.toFixed(3))}x${Number(height.toFixed(3))}:${topNotch ? 't' : '-'}${sessionNotch ? 's' : '-'}`
-  const lifeline = graphic.querySelector('[data-prts-session-lifeline]')
-  const lifelineGeometry = lifeline ? sessionLifelineGeometry(width, height) : undefined
-  if (owner.getAttribute('data-prts-facility-size') !== size) {
-    graphic.setAttribute('viewBox', `0 0 ${Number(width.toFixed(3))} ${Number(height.toFixed(3))}`)
-    for (const layer of graphic.querySelectorAll('[data-prts-facility-layer], [data-prts-facility-clip]')) layer.setAttribute('d', path)
-    const statusUnderlay = graphic.querySelector('[data-prts-session-status-underlay]')
-    statusUnderlay?.setAttribute('d', createFacilityPath({ width, height }))
-    const idleIndicator = graphic.querySelector('[data-prts-session-idle-indicator]')
-    idleIndicator?.setAttribute('x', String(Number((width / 2 - 25).toFixed(3))))
-    const silhouette = graphic.querySelector('[data-prts-facility-silhouette]')
-    if (silhouette) {
-      const availableHeight = Math.max(1, height - 2)
-      silhouette.setAttribute('transform', `translate(0 1) scale(1 ${Number((availableHeight / 38).toFixed(5))})`)
-    }
-    const pickup = graphic.querySelector('[data-prts-session-pickup]')
-    if (pickup) {
-      const center = Number((height / 2).toFixed(3))
-      for (const baseline of pickup.querySelectorAll('[data-prts-session-pickup-baseline]')) {
-        baseline.setAttribute('y1', String(center))
-        baseline.setAttribute('y2', String(center))
-      }
-      for (const indicator of pickup.querySelectorAll('[data-prts-session-pickup-indicator]')) {
-        indicator.setAttribute('cy', String(center))
-      }
-      for (const bar of pickup.querySelectorAll('[data-prts-session-pickup-bar]')) {
-        const barHeight = Number(bar.getAttribute('height')) || 0
-        bar.setAttribute('y', String(Number((center - barHeight / 2).toFixed(3))))
-      }
-    }
-    if (lifeline) {
-      configureSessionLifeline(lifeline, lifelineGeometry)
-    }
-    owner.setAttribute('data-prts-facility-size', size)
+  let state = renderStates.get(graphic)
+  if (state?.size === size) {
+    setReady(owner, true)
+    return true
   }
+  if (!state) {
+    state = {
+      layers: graphic.querySelectorAll('[data-prts-facility-layer], [data-prts-facility-clip]'),
+      statusUnderlay: graphic.querySelector('[data-prts-session-status-underlay]'),
+      idleIndicator: graphic.querySelector('[data-prts-session-idle-indicator]'),
+      silhouette: graphic.querySelector('[data-prts-facility-silhouette]'),
+      pickup: graphic.querySelector('[data-prts-session-pickup]'),
+      lifeline: graphic.querySelector('[data-prts-session-lifeline]'),
+    }
+    renderStates.set(graphic, state)
+  }
+  const { statusUnderlay, idleIndicator, silhouette, pickup, lifeline } = state
+  const path = createFacilityPath({ width, height, topNotch, sessionNotch })
+  graphic.setAttribute('viewBox', `0 0 ${Number(width.toFixed(3))} ${Number(height.toFixed(3))}`)
+  for (const layer of state.layers) layer.setAttribute('d', path)
+  statusUnderlay?.setAttribute('d', createFacilityPath({ width, height }))
+  idleIndicator?.setAttribute('x', String(Number((width / 2 - 25).toFixed(3))))
+  if (silhouette && state.height !== height) {
+    const availableHeight = Math.max(1, height - 2)
+    silhouette.setAttribute('transform', `translate(0 1) scale(1 ${Number((availableHeight / 38).toFixed(5))})`)
+  }
+  if (pickup && state.height !== height) {
+    const center = Number((height / 2).toFixed(3))
+    for (const baseline of pickup.querySelectorAll('[data-prts-session-pickup-baseline]')) {
+      baseline.setAttribute('y1', String(center))
+      baseline.setAttribute('y2', String(center))
+    }
+    for (const indicator of pickup.querySelectorAll('[data-prts-session-pickup-indicator]')) {
+      indicator.setAttribute('cy', String(center))
+    }
+    for (const bar of pickup.querySelectorAll('[data-prts-session-pickup-bar]')) {
+      const barHeight = Number(bar.getAttribute('height')) || 0
+      bar.setAttribute('y', String(Number((center - barHeight / 2).toFixed(3))))
+    }
+  }
+  if (lifeline) {
+    configureSessionLifeline(lifeline, sessionLifelineGeometry(width, height))
+  }
+  state.size = size
+  state.height = height
+  owner.setAttribute('data-prts-facility-size', size)
   setReady(owner, true)
   return true
 }
