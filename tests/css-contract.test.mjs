@@ -28,8 +28,6 @@ test('styles the host frame without taking ownership of the shared details colum
     '--prts-rail-width: 52px',
     '[data-prts-rail-mode="overlay"]',
     '[data-prts-rail-launcher]',
-    '--prts-sessions-width: 286px',
-    '--prts-sessions-compact: 54px',
   ])
   assert.doesNotMatch(css, /\[data-prts-region="details"\]/)
   assert.doesNotMatch(css, /--prts-frame-details|--prts-details-compact/)

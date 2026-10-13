@@ -325,7 +325,7 @@ padding-block: 9px;
 }
 html[data-dsh-prts] [data-prts-settings-common] [data-prts-session-flow-color-workbench] {
 display: grid;
-grid-template-columns: minmax(160px, .8fr) minmax(0, 1.2fr);
+grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 align-items: center;
 gap: 10px;
 }
@@ -745,7 +745,7 @@ color: var(--prts-ink);
 }
 html[data-dsh-prts] [data-prts-theme-settings] {
 & [data-prts-setting-row="sessionFlowPalette"] > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-& [data-prts-setting-row="sessionFlowColors"] { grid-template-columns: minmax(0, 1fr); }
+& [data-prts-settings-common] [data-prts-setting-row="sessionFlowColors"] { grid-template-columns: minmax(0, 1fr); }
 & [data-prts-settings-advanced] { border-top: 1px solid var(--prts-line); }
 & [data-prts-settings-advanced] > [data-prts-section-heading] { padding: 22px 0; }
 & [data-prts-settings-section][hidden] { display: none !important; }

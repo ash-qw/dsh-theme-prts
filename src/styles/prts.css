@@ -20,8 +20,6 @@ html[data-dsh-prts] {
   --prts-host-top-inset: 0px;
   --prts-rail-width: 52px;
   --prts-nav-width: 52px;
-  --prts-sessions-width: 286px;
-  --prts-sessions-compact: 54px;
   --prts-workspace-height: 38px;
   --prts-session-height: 36px;
   --prts-facility-gap: 7px;
@@ -843,7 +841,7 @@ html[data-dsh-prts] [data-prts-region="sessions"] :is(
   [data-rc7-sidebar-root], [data-slot="sidebar"] > :first-child) {
   box-sizing: border-box;
   width: 100% !important;
-  min-width: var(--prts-sessions-width);
+  min-width: 0;
   padding: 14px 10px;
   overflow: hidden auto;
   background: transparent !important;
