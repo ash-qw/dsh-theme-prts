@@ -600,7 +600,7 @@ for(const cursor of ['prts','system'])test(`whole emblem card exposes grab and a
   expect(await button.evaluate(e=>getComputedStyle(e).cursor)).not.toMatch(/grabbing$/)
 })
 
-test('desktop touch can hold a card label, move and cancel without saving',async({browser,baseURL})=>{
+for (const [jitter, ending] of [[false,'cancel'],[true,'cancel'],[true,'save'],[true,'capture-loss']]) test(`desktop touch can hold a card label and move (jitter=${jitter}, ending=${ending})`,async({browser,baseURL})=>{
   const context=await browser.newContext({baseURL,hasTouch:true,isMobile:false,viewport:{width:1280,height:900}})
   const page=await context.newPage()
   try{
@@ -615,13 +615,54 @@ test('desktop touch can hold a card label, move and cancel without saving',async
     const box=await label.boundingBox(),target=await rows.nth(2).boundingBox()
     const cdp=await context.newCDPSession(page),x=box.x+8,y=box.y+8
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]})
+    if(jitter)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+2,y:y+2}]})
     await expect(page.locator('[data-prts-emblem-drag-ghost]')).toBeVisible()
     for(let i=1;i<=6;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+(target.y+target.height/2-y)*i/6}]})
     await expect(page.locator('[data-prts-emblem-drag-ghost]')).toBeVisible()
     await expect.poll(()=>rows.evaluateAll(es=>es.map(e=>e.dataset.emblemKey))).not.toEqual(original)
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]})
+    if(ending==='capture-loss'){
+      await page.evaluate(()=>{
+        const list=document.querySelector('[data-prts-emblem-list]')
+        list.addEventListener('pointermove',event=>list.releasePointerCapture(event.pointerId),{once:true})
+      })
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:target.y+target.height/2+1}]})
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:target.y+target.height/2+2}]})
+    }else await cdp.send('Input.dispatchTouchEvent',{type:ending==='save'?'touchEnd':'touchCancel',touchPoints:[]})
     await expect(page.locator('[data-prts-emblem-drag-ghost]')).toHaveCount(0)
     await expect(page.locator('[data-prts-emblem-sort-active]')).toHaveCount(0)
-    expect(await rows.evaluateAll(es=>es.map(e=>e.dataset.emblemKey))).toEqual(original)
+    if(ending==='save'){
+      await expect(page.locator('[data-prts-emblem-status]')).toContainText('已保存')
+      const saved=await rows.evaluateAll(es=>es.map(e=>e.dataset.emblemKey))
+      expect(saved).not.toEqual(original)
+      await page.reload();await open(page)
+      expect(await rows.evaluateAll(es=>es.map(e=>e.dataset.emblemKey))).toEqual(saved)
+    }else expect(await rows.evaluateAll(es=>es.map(e=>e.dataset.emblemKey))).toEqual(original)
+  }finally{await context.close()}
+})
+
+for(const single of [false,true])test(`desktop touch swipes keep scrolling across multiple moves (single=${single})`,async({browser,baseURL})=>{
+  const context=await browser.newContext({baseURL,hasTouch:true,isMobile:false,viewport:{width:1280,height:720}})
+  const page=await context.newPage()
+  try{
+    await start(page);await open(page)
+    const rows=page.locator('[data-prts-emblem-list] > li[data-emblem-key]')
+    if(single)await rows.evaluateAll(es=>es.slice(1).forEach(e=>e.remove()))
+    const label=rows.first().locator(':scope > span')
+    await label.scrollIntoViewIfNeeded()
+    const scroll=page.locator('[data-prts-theme-settings-scroll]')
+    // Leave room below even in the one-item case so boundary clamping cannot mask a stalled swipe.
+    await scroll.evaluate(e=>{const spacer=document.createElement('div');spacer.style.height='600px';e.append(spacer)})
+    const box=await label.boundingBox(),x=box.x+8,y=box.y+8
+    const cdp=await context.newCDPSession(page)
+    const before=await scroll.evaluate(e=>e.scrollTop)
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]})
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-2}]})
+    for(let step=1;step<=4;step++){
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*20}]})
+      await expect.poll(()=>scroll.evaluate(e=>e.scrollTop)).toBeGreaterThanOrEqual(before+step*20-2)
+    }
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    await page.waitForTimeout(450)
+    await expect(page.locator('[data-prts-emblem-drag-ghost]')).toHaveCount(0)
   }finally{await context.close()}
 })

@@ -83,9 +83,13 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     const row=event.target.closest('[data-emblem-key]')
     const handle=row?.querySelector('[data-prts-emblem-reorder]')
     suppressClick=false
-    if (!handle || handle.disabled || event.button!==0 || event.isPrimary===false || !canStart() || rows().length<2) return
+    if (!handle || event.button!==0 || event.isPrimary===false) return
+    const sortable = !handle.disabled && canStart() && rows().length>=2
+    // touch-action:none also applies to a single/temporarily disabled card.
+    // It still needs swipe scrolling even when sorting cannot start.
+    if (!sortable && event.pointerType!=='touch') return
     gesture={handle,row,pointerType:event.pointerType,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,original:rows(),active:false}
-    holdTimer=window.setTimeout(activate,400)
+    if (sortable) holdTimer=window.setTimeout(activate,400)
   }
   const move = event => {
     if (!gesture || gesture.pointerId!==event.pointerId) return
@@ -109,6 +113,11 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     finish(event.clientX>=box.left && event.clientX<=box.right && event.clientY>=viewport.top && event.clientY<=viewport.bottom)
   }
   const cancelPointer = event => {if (gesture?.pointerId===event.pointerId) finish()}
+  // A touch initially belongs to its hit target. Transferring capture to the
+  // list emits a bubbling loss event from that child, not a canceled drag.
+  const lostCapture = event => {
+    if (event.target === list && !list.hasPointerCapture(event.pointerId)) cancelPointer(event)
+  }
   const cancel = () => finish()
   const visibility = () => {if (window.document.hidden) finish()}
   const keydown = event => {
@@ -140,7 +149,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
   window.addEventListener('pointermove',move,{passive:false})
   window.addEventListener('pointerup',up)
   window.addEventListener('pointercancel',cancelPointer)
-  list.addEventListener('lostpointercapture',cancelPointer)
+  list.addEventListener('lostpointercapture',lostCapture)
   window.addEventListener('keydown',keydown,true)
   window.addEventListener('blur',cancel)
   window.addEventListener('resize',cancel)
@@ -149,7 +158,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     finish()
     list.removeEventListener('touchmove',touchmove);list.removeEventListener('pointerdown',down);list.removeEventListener('contextmenu',context);list.removeEventListener('click',click,true)
     window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',cancelPointer)
-    list.removeEventListener('lostpointercapture',cancelPointer);window.removeEventListener('keydown',keydown,true);window.removeEventListener('blur',cancel);window.removeEventListener('resize',cancel)
+    list.removeEventListener('lostpointercapture',lostCapture);window.removeEventListener('keydown',keydown,true);window.removeEventListener('blur',cancel);window.removeEventListener('resize',cancel)
     window.document.removeEventListener('visibilitychange',visibility)
   } }
 }
