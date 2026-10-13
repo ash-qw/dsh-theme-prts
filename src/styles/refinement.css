@@ -310,8 +310,7 @@ html[data-dsh-prts] :is(
   [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
-  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
-  [data-produced-files-row] > button[type="button"]
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 ) {
   --prts-control-outline: var(--prts-line);
   --prts-control-surface: var(--prts-panel-raised);
@@ -333,8 +332,7 @@ html[data-dsh-prts] :is(
   [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
-  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
-  [data-produced-files-row] > button[type="button"]
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 )::before {
   content: "";
   position: absolute;
@@ -353,8 +351,7 @@ html[data-dsh-prts] :is(
   [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
   [data-prts-glass-control],
-  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"]),
-  [data-produced-files-row] > button[type="button"]
+  [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 ):is(:hover, :focus-visible) {
   --prts-control-outline: var(--prts-yellow);
 }
@@ -441,4 +438,19 @@ html[data-dsh-prts] [data-prts-hero-active] [data-composer-seat] {
   min-width: 0 !important;
   align-self: end;
   justify-self: center;
+}
+
+/* File presentations share one rounded material; preview hit targets stay native. */
+html[data-dsh-prts] :is([data-presented-file],[data-prts-conversation-control="file"],[data-produced-files-row] > button[type="button"]){
+  border:1px solid var(--prts-glass-border)!important;
+  border-radius:10px!important;corner-shape:round!important;clip-path:none!important;
+  background:var(--prts-active-glass)!important;color:var(--prts-ink);
+  backdrop-filter:var(--prts-active-glass-filter);
+  &::before{content:none}
+  &:is(:hover,:focus-within){border-color:var(--prts-yellow)!important}
+}
+/* The host change-card wrapper must not clip a smaller inner outline. */
+html[data-dsh-prts] [class$="_card"]:has(> span > [data-prts-conversation-control="file"]){
+  border:0!important;border-radius:10px!important;corner-shape:round!important;
+  background:transparent!important;box-shadow:none!important;
 }

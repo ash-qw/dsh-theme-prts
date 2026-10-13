@@ -18,6 +18,7 @@ test('classifies only stable conversation controls without depending on localize
       <article data-chat-flow-kind="assistant-step">
         <button class="o3BgMG_inspectButton">任意语言</button>
         <button aria-label="copy"><svg></svg></button>
+        <div data-presented-file><button class="host_cardPreview" aria-label="Preview file"></button></div>
       </article>
       <section data-approval-key="approval-1">
         <button class="fixture_reject">任意语言</button>
@@ -34,7 +35,8 @@ test('classifies only stable conversation controls without depending on localize
   const kinds = [...document.querySelectorAll(`[${CONVERSATION_CONTROL_ATTRIBUTE}]`)]
     .map(node => node.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE))
     .sort()
-  assert.deepEqual(kinds, ['cta', 'danger', 'header', 'inspect', 'micro', 'utility', 'utility', 'utility'])
+  assert.deepEqual(kinds, ['cta', 'danger', 'file', 'header', 'inspect', 'micro', 'utility', 'utility'])
+  assert.equal(document.querySelector('.host_cardPreview').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
   assert.equal(document.querySelector('a').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
   assert.equal(document.querySelector('.outside_sessionLogButton').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
 
@@ -76,5 +78,22 @@ test('preserves process disclosures across states without excluding neighboring 
   await flush(dom.window)
   assert.equal(action.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
   adapter.dispose()
+  dom.window.close()
+})
+
+
+test('groups change cards and both file-link class formats without styling transparent hit targets',()=>{
+  const dom=new JSDOM(`<main data-prts-region="operation"><article data-chat-flow-kind="assistant-step">
+    <button class="future_header"><span class="future_tile"></span><span class="future_titles">文件</span></button>
+    <button class="future_fileLink">文件</button><button class="_fileMention_hash_1 _fileLink_hash_2">文件</button>
+    <button class="other_header">其它操作</button>
+    <div data-presented-file><button class="future_cardPreview"></button></div>
+  </article></main>`,{pretendToBeVisual:true})
+  const {document}=dom.window,adapter=createConversationControlAdapter({document,window:dom.window})
+  adapter.start()
+  assert.equal(document.querySelectorAll('[data-prts-conversation-control="file"]').length,3)
+  assert.equal(document.querySelector('.other_header').getAttribute(CONVERSATION_CONTROL_ATTRIBUTE),'micro')
+  assert.equal(document.querySelector('.future_cardPreview').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE),false)
+  adapter.dispose();assert.equal(document.querySelectorAll('[data-prts-conversation-control]').length,0)
   dom.window.close()
 })

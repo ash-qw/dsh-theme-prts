@@ -951,10 +951,10 @@ test('keeps the quick scheme control at the rail foot and glassifies real conver
   })
   const file = page.locator('[data-produced-files-row] > button[type="button"]')
   await expect(file).toHaveText('session_log')
-  await expect(file).toHaveAttribute('data-prts-conversation-control', 'utility')
-  await expect(file).toHaveCSS('border-radius', '0px')
+  await expect(file).toHaveAttribute('data-prts-conversation-control', 'file')
+  await expect(file).toHaveCSS('border-radius', '10px')
   await expect(file).toHaveCSS('min-height', '36px')
-  await expect(file).toHaveCSS('backdrop-filter', 'none')
+  await expect(file).not.toHaveCSS('backdrop-filter', 'none')
   const controlContours = await page.evaluate(() => {
     const contour = node => ({
       border: getComputedStyle(node).borderStyle,
@@ -966,7 +966,7 @@ test('keeps the quick scheme control at the rail foot and glassifies real conver
       file: contour(document.querySelector('[data-produced-files-row] > button[type="button"]')),
     }
   })
-  for (const contour of Object.values(controlContours)) {
+  for (const contour of [controlContours.sessionLog]) {
     expect(contour.border).toBe('none')
     expect(contour.outer).toContain('polygon')
     expect(contour.inner).toContain('polygon')

@@ -14,9 +14,17 @@ function closestWithClassSuffix(node, suffix) {
 function classify(button, operation) {
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
+  // File previews are transparent hit targets; the enclosing card owns its material and outline.
+  if (button.closest('[data-presented-file]') && hasClassSuffix(button, '_cardPreview')) return null
   if (button.tagName !== 'BUTTON' || !operation.contains(button)) return null
   if (hasClassSuffix(button, '_sessionLogButton')) return 'header'
-  if (button.closest('[data-produced-files-row]') || hasClassSuffix(button, '_showFolder')) return 'utility'
+  const tokens=[...(button.classList ?? [])]
+  const fileLink=tokens.some(token=>/(?:^|_)file(?:Link|Mention)(?:_|$)/.test(token))
+  const fileChange=hasClassSuffix(button,'_header')
+    && [...button.children].some(node=>hasClassSuffix(node,'_tile'))
+    && [...button.children].some(node=>hasClassSuffix(node,'_titles'))
+  if (fileLink || fileChange || button.closest('[data-produced-files-row]')) return 'file'
+  if (hasClassSuffix(button, '_showFolder')) return 'utility'
   if (closestWithClassSuffix(button, '_older')) return 'utility'
   if (hasClassSuffix(button, '_inspectButton')) return 'inspect'
 
