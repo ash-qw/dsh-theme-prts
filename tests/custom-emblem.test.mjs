@@ -157,3 +157,27 @@ test('ink extraction yields one-particle strokes without double contours',()=>{
     assert.ok([...rows.values()].every(n=>n===1),'one particle per row')
   }
 })
+
+test('draft reads share pending requests, reuse immutable IDs and retry failures',async()=>{
+  const {createCustomEmblemStore}=await import('../src/client/custom-emblem.js')
+  let reads=0,fail=true,release
+  const gate=new Promise(resolve=>{release=resolve})
+  const window={AbortController,setTimeout,clearTimeout,addEventListener(){},removeEventListener(){},fetch:async url=>{
+    if(url.endsWith('/configuration'))return {ok:true,json:async()=>({revision:0,configuration:{version:2,hero:null,conversation:[]}})}
+    reads++;await gate
+    return {ok:!fail,json:async()=>fail?{error:'暂时不可用'}:{draftId:url.split('/').at(-1),params:{zoom:1.2}}}
+  }}
+  const store=createCustomEmblemStore({window})
+  await store.ready
+  const first=store.getDraft('one'),shared=store.getDraft('one')
+  assert.equal(first,shared);assert.equal(reads,1)
+  const rejected=assert.rejects(first,/暂时不可用/)
+  release();await rejected
+  fail=false
+  const recovered=await store.getDraft('one')
+  assert.equal(reads,2)
+  assert.equal(await store.getDraft('one'),recovered)
+  assert.equal(reads,2)
+  await store.getDraft('two');assert.equal(reads,3)
+  store.dispose()
+})

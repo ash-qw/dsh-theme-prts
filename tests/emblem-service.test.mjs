@@ -206,3 +206,23 @@ test('line source and cleanup persist through editing and portable assets; older
   assert.equal(parameters({}, {mode:'lineart',threshold:128,zoom:1,x:0,y:0}).cleanup,2)
   for(const params of [{cleanup:-1},{cleanup:13},{cleanup:1.5},{lineSource:'unknown'}])assert.throws(()=>parameters(params),/范围/)
 })
+
+test('moving the crop preserves particle identity and restores clipped points in every extraction mode',async t=>{
+  const {service,bytes}=await fixture(t)
+  for(const params of [{mode:'alpha',zoom:.85},{mode:'alpha',zoom:2},{mode:'lineart',lineSource:'edges',cleanup:0,zoom:1.2}]) {
+    const original=await service.preview({bytes,params})
+    const moved=await service.preview({baseId:original.id,params:{x:.173,y:-.087}})
+    const restored=await service.preview({baseId:moved.id,params:{x:0,y:0}})
+    assert.deepEqual(restored.value.targets,original.value.targets)
+    assert.deepEqual(moved.previewPoints,original.previewPoints.map(p=>({...p,x:p.x+.173,y:p.y-.087})))
+    assert.deepEqual(moved.value.targets.standard,moved.previewPoints.filter(p=>Math.abs(p.x)<=.5&&Math.abs(p.y)<=.5))
+    for(const [density,points] of Object.entries(original.value.targets)) {
+      const shifted=new Map(moved.value.targets[density].map(p=>[`${p.latticeRow}:${p.latticeColumn}`,p]))
+      for(const p of points) {
+        const x=p.x+.173,y=p.y-.087
+        if(Math.abs(x)>.5||Math.abs(y)>.5)continue
+        assert.deepEqual(shifted.get(`${p.latticeRow}:${p.latticeColumn}`),{...p,x,y})
+      }
+    }
+  }
+})

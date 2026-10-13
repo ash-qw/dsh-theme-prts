@@ -93,7 +93,7 @@ export function simplifyEmblemLines(cells, size, cleanup = 2) {
 
 // Shared with the image worker; inject the same density profiles into its scope.
 export function processCustomEmblemPixels(rgba, size, mode = 'auto', threshold = 128, profiles = PARTICLE_DENSITY_PROFILES, lineOptions = {}) {
-  if (size !== 320 || rgba.length !== size * size * 4) throw new Error('图片数据无效')
+  if ((!Number.isInteger(size) || size < 320 || size > 640) || rgba.length !== size * size * 4) throw new Error('图片数据无效')
   const alpha = new Uint8Array(size * size)
   const lines = mode === 'lineart' ? extractEmblemLines(rgba, size, threshold, lineOptions.lineSource) : null
   let transparent = false
@@ -165,6 +165,25 @@ export function createCustomEmblemStore({ window, emblems = [], preview = () => 
     if (!response.ok) throw new Error(result.error || '无法连接徽记服务')
     return result
   }
+  // Draft IDs are immutable. Bound the cache and share in-flight reads.
+  const drafts = new Map()
+  const remember = result => {
+    if (!disposed) {
+      drafts.delete(result.draftId); drafts.set(result.draftId,Promise.resolve(result))
+      while (drafts.size > 24) drafts.delete(drafts.keys().next().value)
+    }
+    return result
+  }
+  const getDraft = id => {
+    if (drafts.has(id)) return drafts.get(id)
+    const pending = request(`/draft/${encodeURIComponent(id)}`).catch(error => {
+      if (drafts.get(id) === pending) drafts.delete(id)
+      throw error
+    })
+    drafts.set(id,pending)
+    while (drafts.size > 24) drafts.delete(drafts.keys().next().value)
+    return pending
+  }
   const accept = state => {
     if (disposed || state.revision <= revision) return
     if (!validEmblemConfiguration(state.configuration,emblems)) throw new Error('徽记配置无效')
@@ -206,8 +225,8 @@ export function createCustomEmblemStore({ window, emblems = [], preview = () => 
       catch(error) { await refresh().catch(()=>{}); throw error }
     },
     exportAsset: id => request(`/draft/${encodeURIComponent(id)}/export`),
-    importAsset: (asset,signal) => request('/import',asset,signal),
-    getDraft: id => request(`/draft/${encodeURIComponent(id)}`),
+    importAsset: (asset,signal) => request('/import',asset,signal).then(remember),
+    getDraft,
     async process({file,draftId,params},signal) {
       let image
       if (file) image = await new Promise((resolve,reject)=>{
@@ -215,9 +234,9 @@ export function createCustomEmblemStore({ window, emblems = [], preview = () => 
         reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('图片读取失败'))
         reader.readAsDataURL(file)
       })
-      return request('/preview',{image,draftId,params,label:file?.name},signal)
+      return request('/preview',{image,draftId,params,label:file?.name},signal).then(remember)
     },
-    dispose() { disposed=true; controller.abort(); window.clearTimeout(reconnectTimer);events?.close();subscribers.clear();window.removeEventListener('focus',focus) },
+    dispose() { disposed=true; drafts.clear(); controller.abort(); window.clearTimeout(reconnectTimer);events?.close();subscribers.clear();window.removeEventListener('focus',focus) },
   }
 }
 
@@ -229,12 +248,32 @@ export function customEmblemMarkup() {
       <ol data-prts-emblem-list></ol>
       <div data-prts-emblem-actions><button type="button" data-prts-emblem-add>新增徽记</button><button type="button" data-prts-emblem-reset-list>恢复内置列表</button></div>
     </div>
-    <div data-prts-emblem-workspace hidden>
+    <dialog data-prts-emblem-reset-confirm hidden aria-label="确认恢复内置徽记">
+      <strong data-prts-emblem-reset-title></strong>
+      <p>是否先导出自定义徽记？恢复内置后，以下徽记将从此处移除；未导出的素材将无法从设置中找回。请确认下载文件已保存，再恢复内置。</p>
+      <div data-prts-emblem-reset-exports></div>
+      <p data-prts-emblem-reset-status role="status"></p>
+      <div data-prts-emblem-actions>
+        <button type="button" data-prts-emblem-reset-cancel autofocus>取消</button>
+        <button type="button" data-prts-emblem-reset-proceed>确认恢复内置</button>
+      </div>
+    </dialog>
+    <dialog data-prts-emblem-discard hidden aria-label="放弃未应用的修改">
+      <strong>放弃未应用的修改？</strong><p>当前预览和参数尚未应用，关闭后需要重新编辑。</p>
+      <div data-prts-emblem-actions><button type="button" data-prts-emblem-keep autofocus>继续编辑</button><button type="button" data-prts-emblem-discard-apply>放弃修改</button></div>
+    </dialog>
+    <dialog data-prts-emblem-workspace hidden aria-label="编辑粒子徽记">
+      <div data-prts-emblem-edit-header>
       <strong data-prts-emblem-target></strong>
-      <label>上传替换图片<input type="file" accept="image/png,image/jpeg,image/webp" data-prts-emblem-file></label>
-      <small>支持 PNG、WebP、JPEG，最大 8 MB / 1600 万像素。透明底标志和黑白剪影效果更好。</small>
-      <label>或导入徽记素材包<input type="file" accept=".prts-emblem.json,application/json" data-prts-emblem-import></label>
-      <small>导入 .prts-emblem.json 可恢复原图和调整参数，预览后再应用。</small>
+      <button type="button" data-prts-emblem-cancel aria-label="关闭徽记编辑">×</button></div>
+      <div data-prts-emblem-edit-body>
+        <aside data-prts-emblem-edit-preview><canvas width="280" height="280" data-prts-emblem-preview aria-label="拖动调整徽记位置，也可使用方向键微调" tabindex="0" hidden></canvas><p data-prts-emblem-empty>选择图片后在此预览粒子效果</p></aside>
+        <div data-prts-emblem-edit-controls>
+      <label>素材来源<select data-prts-emblem-source><option value="image">上传图片</option><option value="package">导入素材包</option></select></label>
+      <label data-prts-emblem-source-kind="image">选择图片<input type="file" accept="image/png,image/jpeg,image/webp" data-prts-emblem-file></label>
+      <small data-prts-emblem-source-kind="image">支持 PNG、WebP、JPEG，最大 8 MB / 1600 万像素。透明底标志和黑白剪影效果更好。</small>
+      <label data-prts-emblem-source-kind="package" hidden>选择素材包<input type="file" accept=".prts-emblem.json,application/json" data-prts-emblem-import></label>
+      <small data-prts-emblem-source-kind="package" hidden>导入 .prts-emblem.json 可恢复原图和调整参数，预览后再应用。</small>
       <div data-prts-emblem-editor hidden>
         <label>提取方式<select data-prts-emblem-mode><option value="auto">自动识别</option><option value="alpha">透明轮廓</option><option value="dark">保留暗部</option><option value="light">保留亮部</option><option value="lineart">线稿轮廓</option></select></label>
         <small>线稿模式提取轮廓；阈值越高，保留的细节越少。彩色原图建议先由 AI 简化背景与纹理。</small>
@@ -245,12 +284,13 @@ export function customEmblemMarkup() {
         </div>
         <label>阈值<input type="range" min="1" max="254" value="128" data-prts-emblem-threshold></label>
         <label>缩放与留白<input type="range" min="0.5" max="2" step="0.05" value="0.85" data-prts-emblem-zoom></label>
-        <label>水平裁剪<input type="range" min="-0.5" max="0.5" step="0.025" value="0" data-prts-emblem-x></label>
-        <label>垂直裁剪<input type="range" min="-0.5" max="0.5" step="0.025" value="0" data-prts-emblem-y></label>
+        <input type="hidden" value="0" data-prts-emblem-x><input type="hidden" value="0" data-prts-emblem-y>
+        <div data-prts-emblem-actions><button type="button" data-prts-emblem-center>居中</button></div>
+        <small>拖动取景框内的图案调整位置；方向键微调，Shift 加快。松手后生成准确预览。</small>
       </div>
-      <canvas width="280" height="280" data-prts-emblem-preview aria-label="徽记粒子预览" hidden></canvas>
-      <div data-prts-emblem-actions><button type="button" data-prts-emblem-apply disabled>应用到此处</button><button type="button" data-prts-emblem-cancel>取消编辑</button></div>
-    </div>
+        </div></div>
+      <footer data-prts-emblem-edit-bar><div data-prts-emblem-edit-status></div><div data-prts-emblem-actions><button type="button" data-prts-emblem-cancel>取消编辑</button><button type="button" data-prts-emblem-apply disabled>应用到此处</button></div></footer>
+    </dialog>
     <p role="status" aria-live="polite" data-prts-emblem-status>正在读取徽记设置…</p>
   </section>`
 }
@@ -261,48 +301,56 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
   const get = suffix => root.querySelector(`[data-prts-emblem-${suffix}]`)
   const fileInput = get('file'), canvas = get('preview'), status = get('status')
   let file, draft, processingController, sourceDraftId, timer, generation = 0, disposed = false, saving = false
-  let destination = null, previewValue = null, loaded = false, reorder
-  const draw = (value, pointer) => {
+  let destination = null, previewValue = null, loaded = false, reorder, pendingReset = null, dirty = false, editTrigger = null
+  let drag = null, dragFrame = null, rendered = null, processing = false, pendingPosition = false
+  const draw = (value, offset) => {
+    if (!offset) rendered = value ? {value,x:Number(get('x').value),y:Number(get('y').value)} : null
     canvas.hidden = !value
+    get('empty').hidden = Boolean(value)
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, 280, 280)
     ctx.fillStyle = '#0d1114'; ctx.fillRect(0, 0, 280, 280)
+    canvas.setAttribute('aria-disabled', String(!file && !sourceDraftId))
+    if(!drag)canvas.style.cursor=file || sourceDraftId?'grab':'default'
+    ctx.save();ctx.beginPath();ctx.rect(15,15,250,250);ctx.clip()
     ctx.fillStyle = '#edf1f2'
-    for (const point of value?.targets.standard ?? []) {
-      let x = 140 + point.x * 250, y = 140 + point.y * 250
-      if (pointer) {
-        const dx = x - pointer.x, dy = y - pointer.y, distance = Math.hypot(dx, dy)
-        if (distance > 0 && distance < 48) { const shift = (48 - distance) * .35; x += dx / distance * shift; y += dy / distance * shift }
-      }
+    for (const point of value?.previewPoints ?? value?.targets.standard ?? []) {
+      const x = 140 + (point.x + (offset?.x || 0)) * 250, y = 140 + (point.y + (offset?.y || 0)) * 250
       ctx.fillRect(x, y, point.kind === 'skeleton' ? 2 : 1.5, point.kind === 'skeleton' ? 2 : 1.5)
     }
+    ctx.restore();ctx.strokeStyle='#68747a';ctx.strokeRect(15.5,15.5,249,249)
   }
-  const stop = () => { processingController?.abort(); processingController = undefined }
+
+  const stop = () => { processingController?.abort(); processingController = undefined; processing = false }
   const process = async () => {
+    window.clearTimeout(timer);pendingPosition=false
     get('line-options').hidden = get('mode').value !== 'lineart'
     if ((!file && !sourceDraftId) || disposed) return
     const token = ++generation
     stop(); draft = null; get('apply').disabled = true
+    processing = true
     status.textContent = '正在处理图片…'
     processingController = new window.AbortController()
     try {
       const result = await store.process({file,draftId:file?undefined:sourceDraftId,params:{mode:get('mode').value,lineSource:get('lineSource').value,cleanup:Number(get('cleanup').value),threshold:Number(get('threshold').value),zoom:Number(get('zoom').value),x:Number(get('x').value),y:Number(get('y').value)}},processingController.signal)
       if (disposed || token !== generation) return
-      draft = {...result.value,draftId:result.draftId,label:result.label}
+      draft = {...result.value,previewPoints:result.previewPoints,draftId:result.draftId,label:result.label}
       draw(draft); get('apply').disabled = saving
-      status.textContent = `标准密度预览：${draft.targets.standard.length} 个粒子 · 尚未应用，可移动鼠标查看扰动`
+      status.textContent = `标准密度预览：${draft.targets.standard.length} 个粒子 · 尚未应用，可拖动取景框调整位置`
     } catch(error) {
       if (disposed || token !== generation) return
       status.textContent = error.message || '图片处理失败';draw(null)
-    }
+    } finally { if(token===generation)processing=false }
   }
   const importAsset = async input => {
     const selected=input.files?.[0]
     if (!selected) return
     input.value=''
+    dirty = true
     const token=++generation
     stop();window.clearTimeout(timer);draft=null;get('apply').disabled=true
+    processing=true
     status.textContent='正在导入徽记素材…'
     processingController=new window.AbortController()
     const signal=processingController.signal
@@ -314,15 +362,21 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
       const result=await store.importAsset(asset,signal)
       if(disposed || token!==generation)return
       file=null;fileInput.value='';sourceDraftId=result.draftId
-      draft={...result.value,draftId:result.draftId,label:result.label}
+      draft={...result.value,previewPoints:result.previewPoints,draftId:result.draftId,label:result.label}
       for(const [key,value] of Object.entries({lineSource:'edges',cleanup:2,...result.params}))get(key).value=String(value)
       get('line-options').hidden = get('mode').value !== 'lineart'
       get('editor').hidden=false;draw(draft);get('apply').disabled=saving
       status.textContent='素材已导入预览，可继续调整；点击“应用到此处”才会保存'
     }catch(error){if(!disposed && token===generation)status.textContent=error.message}
+    finally{if(token===generation)processing=false}
+  }
+  const selectSource = value => {
+    get('source').value = value
+    for (const element of root.querySelectorAll('[data-prts-emblem-source-kind]')) element.hidden = element.dataset.prtsEmblemSourceKind !== value
   }
   const change = event => {
     if (saving) return
+    if(event.target===get('source')) { selectSource(event.target.value); return }
     if(event.target===get('import')) {
       if(event.type==='change')void importAsset(event.target)
       return
@@ -336,14 +390,56 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
         get('apply').disabled = true; get('editor').hidden = true; draw(previewValue)
         status.textContent = '请选择不超过 8 MB 的 PNG、WebP 或 JPEG 图片'; fileInput.value = ''; return
       }
-      file = next; get('editor').hidden = false
+      dirty = true; file = next; get('editor').hidden = false
       process()
     } else if (event.target.closest('[data-prts-emblem-editor]')) {
+      dirty = true
       window.clearTimeout(timer); ++generation; stop(); draft = null; get('apply').disabled = true
-      timer = window.setTimeout(process, 140)
+      pendingPosition=true;timer = window.setTimeout(process, 140)
     }
   }
+  const closeReset = (focus = false) => {
+    const trigger = pendingReset?.trigger
+    pendingReset = null; get('reset-confirm').close?.(); get('reset-confirm').hidden = true
+    get('reset-exports').replaceChildren()
+    if (focus && trigger?.isConnected) trigger.focus({preventScroll:true})
+  }
+  const requestReset = async (scope, trigger) => {
+    const state = store.get()
+    const entries = (scope === 'hero' ? [state.hero] : state.conversation).filter(e=>e?.kind==='custom')
+    if (!entries.length) {
+      await persist(scope==='hero'?{...state,hero:null}:{...state,conversation:store.defaults().conversation})
+      return
+    }
+    closeReset()
+    pendingReset = {scope,trigger,entries}
+    get('reset-title').textContent = scope==='hero' ? '恢复新会话内置徽记' : '恢复正文内置徽记列表'
+    for (const [index,entry] of entries.entries()) {
+      const row = window.document.createElement('div')
+      row.setAttribute('data-prts-emblem-reset-asset','')
+      const label = window.document.createElement('span'); label.textContent = entry.label
+      const exportButton = button('导出素材','export-reset',index)
+      const icon = window.document.createElement('span'); icon.textContent = '↓'; icon.setAttribute('aria-hidden','true')
+      exportButton.prepend(icon)
+      row.append(thumbnail(entry),label,exportButton)
+      get('reset-exports').append(row)
+    }
+    get('reset-confirm').hidden = false
+    get('reset-status').textContent = ''
+    get('reset-confirm').showModal()
+    get('reset-cancel').focus({preventScroll:true})
+  }
+  const closeDiscard = () => { get('discard').close?.(); get('discard').hidden = true }
+  const requestClose = () => {
+    if (saving) return
+    if (!dirty) { cancel(); return }
+    get('discard').hidden = false; get('discard').showModal()
+  }
   const cancel = () => {
+    endDrag(false); processing=false;pendingPosition=false
+    closeReset(); closeDiscard(); dirty = false
+    get('workspace').close?.(); root.append(status)
+    editTrigger?.isConnected && editTrigger.focus({preventScroll:true})
     ++generation; stop(); window.clearTimeout(timer)
     file = null; draft = null; sourceDraftId = null; previewValue = null; destination = null; fileInput.value = ''
     get('import').value = ''
@@ -391,18 +487,42 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
     get('add').disabled = saving || !loaded || state.conversation.length >= 12
     get('reset-list').disabled = saving || !loaded
   }
+  let prefetchEnabled = false
+  const prefetch = async () => {
+    prefetchEnabled = true
+    await store.ready
+    if (disposed) return
+    const state = store.get()
+    const ids = new Set([state.hero,...state.conversation].map(e=>e?.draftId).filter(Boolean))
+    // Keep background reads sequential; opening an entry shares its pending request.
+    for (const id of ids) {
+      if (disposed) return
+      await store.getDraft(id).catch(()=>{})
+    }
+  }
+  const setLoading = loading => {
+    get('edit-controls').style.visibility = loading ? 'hidden' : ''
+    get('edit-controls').inert = loading
+    get('workspace').setAttribute('aria-busy',String(loading))
+  }
   const startEdit = async target => {
-    cancel(); destination = target
+    const trigger = window.document.activeElement
+    cancel(); editTrigger = trigger; destination = target
     const state = store.get()
     const entry = target === 'hero' ? state.hero : target === 'new' ? null : state.conversation[target]
     previewValue = target === 'new' ? null : entryPreview(entry)
     get('target').textContent = target === 'hero' ? '编辑新会话徽记' : target === 'new' ? '新增正文轮换徽记' : `替换正文第 ${target+1} 张徽记`
+    selectSource('image')
     get('workspace').hidden = false
+    get('edit-body').style.height = entry?.draftId ? '60dvh' : ''
+    setLoading(Boolean(entry?.draftId))
     for (const [key,value] of Object.entries({mode:'auto',lineSource:'edges',cleanup:'2',threshold:'128',zoom:'0.85',x:'0',y:'0'})) get(key).value = value
     get('line-options').hidden = true
     draw(previewValue)
     status.textContent = '上传图片或导入徽记素材包后可调整并预览，点击“应用到此处”才会保存'
-    get('workspace').scrollIntoView?.({block:'nearest'})
+    if (entry?.draftId) status.textContent = '正在读取徽记设置…'
+    get('edit-status').append(status)
+    get('workspace').showModal()
     if (entry?.draftId) {
       const token = generation
       try {
@@ -412,14 +532,20 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
         for (const [key,value] of Object.entries({lineSource:'edges',cleanup:2,...saved.params})) get(key).value = String(value)
         get('line-options').hidden = get('mode').value !== 'lineart'
         get('editor').hidden = false
+        draw({...saved.value,previewPoints:saved.previewPoints})
         status.textContent = '可继续调整原图参数，或上传替换图片；应用后才会保存'
-      } catch(error) { if (!disposed && token === generation) status.textContent = error.message }
+        setLoading(false)
+        if (!saved.previewPoints) await process()
+      } catch(error) { if (!disposed && token === generation) status.textContent = `${error.message}；可关闭后重试，或选择替换素材` }
+      finally { if (!disposed && token === generation) setLoading(false) }
     }
 
   }
   const unsubscribe = store.subscribe(() => {
+    closeReset()
     if (destination !== null && !saving) { cancel();status.textContent='徽记设置已在其他页面或会话更新，请重新选择要编辑的徽记' }
     renderList()
+    if (prefetchEnabled) void prefetch()
   })
   store.ready.then(() => { if (!disposed) { loaded = true; renderList(); status.textContent = '新会话与正文徽记独立保存；正文至少保留一张' } })
   const persist = async value => {
@@ -441,10 +567,23 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
   const click = async event => {
     const target = event.target.closest('button')
     if (!target || target.disabled || saving || !loaded || reorder?.active) return
-    if (target.hasAttribute('data-prts-emblem-cancel')) { cancel(); status.textContent = '已取消编辑，当前徽记保持不变'; return }
+    if (target.hasAttribute('data-prts-emblem-center')) {
+      if ((!file && !sourceDraftId) || processing) return
+      get('x').value='0';get('y').value='0';dirty=true;await process();return
+    }
+    if (target.hasAttribute('data-prts-emblem-keep')) { closeDiscard(); return }
+    if (target.hasAttribute('data-prts-emblem-discard-apply')) { cancel(); status.textContent='已放弃未应用的修改'; return }
+    if (target.hasAttribute('data-prts-emblem-reset-cancel')) { closeReset(true); return }
+    if (target.hasAttribute('data-prts-emblem-reset-proceed')) {
+      if (!pendingReset) return
+      const {scope} = pendingReset, state = store.get()
+      await persist(scope==='hero'?{...state,hero:null}:{...state,conversation:store.defaults().conversation})
+      return
+    }
+    if (target.hasAttribute('data-prts-emblem-cancel')) { requestClose(); return }
     if (target.hasAttribute('data-prts-emblem-add')) { startEdit('new'); return }
     const state = store.get()
-    if (target.hasAttribute('data-prts-emblem-reset-list')) { await persist({...state,conversation:store.defaults().conversation}); return }
+    if (target.hasAttribute('data-prts-emblem-reset-list')) { await requestReset('conversation',target); return }
     if (target.hasAttribute('data-prts-emblem-apply')) {
       if (!draft || destination === null) return
       const value = {...draft,kind:'custom',key:window.crypto.randomUUID(),label:(file?.name || draft.label || '自定义徽记').slice(0,100)}
@@ -458,8 +597,8 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
       return
     }
     const action = target.dataset.emblemAction, index = Number(target.dataset.emblemIndex)
-    if(action==='export-hero'||action==='export') {
-      const entry=action==='export-hero'?state.hero:state.conversation[index]
+    if(action==='export-hero'||action==='export'||action==='export-reset') {
+      const entry=action==='export-reset'?pendingReset?.entries[index]:action==='export-hero'?state.hero:state.conversation[index]
       if(!entry?.draftId)return
       target.disabled=true
       try {
@@ -471,12 +610,13 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
         link.hidden=true;root.append(link);link.click();link.remove()
         window.setTimeout(()=>window.URL.revokeObjectURL(url),1000)
         status.textContent='已导出徽记素材包，包含原图和调整参数，可在其他 DSH 中导入'
-      }catch(error){if(!disposed)status.textContent=`导出失败：${error.message}`}
+        if(action==='export-reset' && pendingReset)get('reset-status').textContent='已发起下载，请确认素材包已保存，再恢复内置。'
+      }catch(error){if(!disposed){status.textContent=`导出失败：${error.message}`;if(action==='export-reset' && pendingReset)get('reset-status').textContent=status.textContent}}
       finally{if(!disposed)target.disabled=saving}
       return
     }
     if (action === 'hero') { startEdit('hero'); return }
-    if (action === 'reset-hero') { await persist({...state,hero:null}); return }
+    if (action === 'reset-hero') { await requestReset('hero',target); return }
     if (!Number.isInteger(index) || index < 0 || index >= state.conversation.length) return
     if (action === 'edit') { startEdit(index); return }
     const conversation = [...state.conversation]
@@ -494,19 +634,87 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
       moved?.querySelector('[data-prts-emblem-reorder]')?.focus({preventScroll:true})
     },
   })
-  const move = event => {
-    const box = canvas.getBoundingClientRect()
-    draw(draft || previewValue, { x: (event.clientX-box.left)*280/box.width, y: (event.clientY-box.top)*280/box.height })
+  const resetKey = event => {
+    if (event.key==='Escape' && destination !== null) {
+      event.preventDefault(); event.stopPropagation()
+      if (get('discard').open) closeDiscard(); else requestClose()
+      return
+    }
+    if (event.key==='Escape' && pendingReset) { event.preventDefault(); event.stopPropagation(); if(!saving)closeReset(true) }
   }
-  const leave = () => draw(draft || previewValue)
+  const resetCancel = event => { event.preventDefault(); event.stopPropagation(); if(!saving)closeReset(true) }
+  const editorCancel = event => {
+    if (event.target !== get('workspace') && event.target !== get('discard')) return
+    event.preventDefault(); event.stopPropagation()
+    if (event.target===get('discard')) closeDiscard(); else requestClose()
+  }
+  get('workspace').addEventListener('cancel',editorCancel)
+  get('discard').addEventListener('cancel',editorCancel)
+  get('reset-confirm').addEventListener('cancel',resetCancel)
+  root.addEventListener('keydown',resetKey)
+  const clampPosition = value => Math.max(-.5,Math.min(.5,value))
+  const renderPosition = () => {
+    if (rendered) draw(rendered.value,{x:Number(get('x').value)-rendered.x,y:Number(get('y').value)-rendered.y})
+  }
+  const beginDrag = event => {
+    if (event.button!==0 || !event.isPrimary || saving || processing || pendingPosition || (!file && !sourceDraftId) || !rendered || drag) return
+    event.preventDefault();canvas.focus({preventScroll:true})
+    window.clearTimeout(timer)
+    drag={id:event.pointerId,startX:event.clientX,startY:event.clientY,x:Number(get('x').value),y:Number(get('y').value),draft,dirty}
+    canvas.setPointerCapture(event.pointerId);canvas.style.cursor='grabbing'
+  }
+  const move = event => {
+    if (!drag || event.pointerId!==drag.id) return
+    const box=canvas.getBoundingClientRect(), scale=box.width*250/280
+    get('x').value=String(clampPosition(drag.x+(event.clientX-drag.startX)/scale))
+    get('y').value=String(clampPosition(drag.y+(event.clientY-drag.startY)/scale))
+    get('apply').disabled=true
+    if(dragFrame===null)dragFrame=window.requestAnimationFrame(()=>{dragFrame=null;renderPosition()})
+  }
+  function endDrag(commit) {
+    if(!drag)return
+    const previous=drag;drag=null
+    if(dragFrame!==null){window.cancelAnimationFrame(dragFrame);dragFrame=null}
+    canvas.style.removeProperty('cursor')
+    if(canvas.hasPointerCapture?.(previous.id))canvas.releasePointerCapture(previous.id)
+    if(!commit) {
+      get('x').value=String(previous.x);get('y').value=String(previous.y)
+      draft=previous.draft;dirty=previous.dirty;renderPosition();get('apply').disabled=saving || !draft
+      return
+    }
+    if(Number(get('x').value)===previous.x && Number(get('y').value)===previous.y){get('apply').disabled=saving || !draft;return}
+    dirty=true;renderPosition();void process()
+  }
+  const release = event => {if(drag?.id===event.pointerId){move(event);endDrag(true)}}
+  const abortDrag = event => {if(drag?.id===event.pointerId)endDrag(false)}
+  const positionKey = event => {
+    if(event.key==='Escape' && drag){event.preventDefault();event.stopPropagation();endDrag(false);return}
+    if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key) || saving || processing || (!file && !sourceDraftId) || !rendered || drag)return
+    event.preventDefault();event.stopPropagation()
+    const axis=['ArrowLeft','ArrowRight'].includes(event.key)?'x':'y',sign=['ArrowLeft','ArrowUp'].includes(event.key)?-1:1
+    get(axis).value=String(clampPosition(Number(get(axis).value)+sign*(event.shiftKey ? .025 : .005)))
+    dirty=true;get('apply').disabled=true;renderPosition()
+    window.clearTimeout(timer);pendingPosition=true;timer=window.setTimeout(process,140)
+  }
   root.addEventListener('change', change)
   root.addEventListener('input', change)
   root.addEventListener('click', click)
-  canvas.addEventListener('pointermove', move)
-  canvas.addEventListener('pointerleave', leave)
-  return { cancelReorder: () => reorder.cancel(), dispose() {
+  canvas.addEventListener('pointerdown',beginDrag)
+  canvas.addEventListener('pointermove',move)
+  canvas.addEventListener('pointerup',release)
+  canvas.addEventListener('pointercancel',abortDrag)
+  canvas.addEventListener('lostpointercapture',abortDrag)
+  canvas.addEventListener('keydown',positionKey)
+  return { prefetch, close:cancel, cancelReorder: () => reorder.cancel(), dispose() {
+    cancel()
+    get('workspace').removeEventListener('cancel',editorCancel)
+    get('discard').removeEventListener('cancel',editorCancel)
+    get('reset-confirm').removeEventListener('cancel',resetCancel)
+    root.removeEventListener('keydown',resetKey); closeReset()
     disposed = true; reorder.dispose(); ++generation; stop(); window.clearTimeout(timer); unsubscribe()
     root.removeEventListener('change', change); root.removeEventListener('input', change); root.removeEventListener('click', click)
-    canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerleave', leave)
+    canvas.removeEventListener('pointerdown',beginDrag);canvas.removeEventListener('pointermove',move)
+    canvas.removeEventListener('pointerup',release);canvas.removeEventListener('pointercancel',abortDrag)
+    canvas.removeEventListener('lostpointercapture',abortDrag);canvas.removeEventListener('keydown',positionKey)
   } }
 }

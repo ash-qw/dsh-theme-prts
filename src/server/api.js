@@ -28,7 +28,7 @@ export function registerEmblemApi(ctx,service) {
       if(req.method==='GET'&&exported){json(res,200,await service.exportAsset(exported[1]));return}
       const match=path.match(/^\/draft\/([a-zA-Z0-9-]+)(?:\/(preview\.png|source))?$/)
       if(req.method==='GET'&&match){
-        if(!match[2]){const d=await service.draft(match[1]);json(res,200,{...draftView(d),value:d.value});return}
+        if(!match[2]){const d=await service.draft(match[1]);json(res,200,{...draftView(d),value:d.value,previewPoints:d.previewPoints});return}
         const bytes=await service.image(match[1],match[2]==='source')
         res.writeHead(200,{'content-type':match[2]==='source'?'application/octet-stream':'image/png','cache-control':'private, max-age=3600','x-content-type-options':'nosniff'});res.end(bytes);return
       }
@@ -40,12 +40,12 @@ export function registerEmblemApi(ctx,service) {
       if(path==='/configuration'){json(res,200,await service.save(data.configuration,data.revision,controller.signal));return}
       if(path==='/import'){
         const d=await service.importAsset(data,controller.signal)
-        json(res,200,{...draftView(d),value:d.value});return
+        json(res,200,{...draftView(d),value:d.value,previewPoints:d.previewPoints});return
       }
       if(path==='/preview'){
         if(data.image && (typeof data.image!=='string'||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.image)))throw fault(400,'图片编码无效')
         const d=await service.preview({bytes:data.image?Buffer.from(data.image,'base64'):undefined,baseId:data.draftId,params:data.params,label:data.label},controller.signal)
-        json(res,200,{...draftView(d),value:d.value});return
+        json(res,200,{...draftView(d),value:d.value,previewPoints:d.previewPoints});return
       }
       throw fault(404,'接口不存在')
     }catch(error){if(!res.headersSent)json(res,error.status||500,{error:error.message});else res.end()}

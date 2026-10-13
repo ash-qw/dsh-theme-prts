@@ -123,7 +123,7 @@ export async function createEmblemService(directory) {
         const result=await processImage(bytes,effective,signal)
         signal?.throwIfAborted()
         const id=randomUUID(),sourceId=createHash('sha256').update(bytes).digest('hex')
-        const value={id,sourceId,params:effective,label:String(label||previous?.label||'自定义徽记').slice(0,100),createdAt:Date.now(),value:result.value}
+        const value={id,sourceId,params:effective,label:String(label||previous?.label||'自定义徽记').slice(0,100),createdAt:Date.now(),value:result.value,previewPoints:result.previewPoints}
         await atomic(join(directory,`${sourceId}.source`),bytes)
         await atomic(join(directory,`${id}.png`),result.preview)
         await atomic(join(directory,`${id}.draft.json`),JSON.stringify(value))

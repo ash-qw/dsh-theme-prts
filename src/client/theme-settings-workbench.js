@@ -293,6 +293,7 @@ export function createThemeSettingsOverlay({
       panel.setAttribute('data-prts-settings-visible', '')
       ;(panel.querySelector('[data-prts-theme-settings-close]') ?? focusable()[0] ?? panel).focus?.()
     } else {
+      customEditor.close?.()
       panel.removeAttribute('data-prts-settings-visible')
       hidePanel()
       setResetConfirmation(false)
@@ -533,6 +534,7 @@ export function createThemeSettingsOverlay({
     const scroller = panel?.querySelector('[data-prts-theme-settings-scroll]')
     const section = panel?.querySelector(`[data-prts-settings-section="${key}"]`)
     if (!scroller || !section) return
+    if (key === 'particles') void customEditor.prefetch?.()
     if (key !== activeSection) {
       sectionScroll.set(activeSection, scroller.scrollTop)
       customEditor.cancelReorder?.()
@@ -642,7 +644,11 @@ export function createThemeSettingsOverlay({
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
   }
 
-  function onCancel(event) { event.preventDefault(); setOpen(false) }
+  function onCancel(event) {
+    // File inputs also emit bubbling cancel events when their picker is dismissed.
+    if (event.target !== panel) return
+    event.preventDefault(); setOpen(false)
+  }
   const toggle = () => setOpen(!isOpen)
   const closeFromBackdrop = () => setOpen(false)
   const renderMediaState = () => renderState()
