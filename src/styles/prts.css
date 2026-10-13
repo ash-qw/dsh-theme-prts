@@ -180,7 +180,8 @@ html[data-dsh-prts] [data-prts-theme-settings] button {
   color: inherit;
 }
 
-html[data-dsh-prts] :focus-visible {
+/* Focus decoration belongs to theme controls, not host or third-party pages. */
+html[data-dsh-prts] :is([data-prts-shell], [data-prts-theme-settings], [data-prts-plugin-settings]) :focus-visible {
   outline: 2px solid var(--prts-yellow) !important;
   outline-offset: 2px !important;
 }
