@@ -1,4 +1,4 @@
-// Hold anywhere on a card to sort; movement before the hold keeps native touch scrolling.
+// Cards own touch gestures: immediate swipes scroll, while a hold locks into sorting.
 export function mountEmblemReorder({ list, window, status, canStart, onStart, onCommit }) {
   let gesture = null, holdTimer, frame, previousTime = 0, suppressClick = false
   const rows = () => [...list.children].filter(row => row.hasAttribute('data-emblem-key'))
@@ -13,6 +13,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     gesture = null; clear()
     current.ghost?.remove();current.row.removeAttribute('data-prts-emblem-dragging')
     list.removeAttribute('data-prts-emblem-sorting')
+    scroller?.removeAttribute('data-prts-emblem-sort-active')
     current.handle.setAttribute('aria-pressed','false')
     try { if (list.hasPointerCapture?.(current.pointerId)) list.releasePointerCapture(current.pointerId) } catch {}
     const ordered = rows().map(row=>row.dataset.emblemKey)
@@ -59,6 +60,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     current.handle.setAttribute('aria-pressed','true')
     list.setAttribute('data-prts-emblem-sorting','')
     if (!current.keyboard) {
+      scroller?.setAttribute('data-prts-emblem-sort-active','')
       const box=current.row.getBoundingClientRect()
       const ghost=current.row.cloneNode(true)
       ghost.removeAttribute('data-emblem-key');ghost.setAttribute('data-prts-emblem-drag-ghost','')
@@ -82,17 +84,27 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     const handle=row?.querySelector('[data-prts-emblem-reorder]')
     suppressClick=false
     if (!handle || handle.disabled || event.button!==0 || event.isPrimary===false || !canStart() || rows().length<2) return
-    gesture={handle,row,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,original:rows(),active:false}
+    gesture={handle,row,pointerType:event.pointerType,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,original:rows(),active:false}
     holdTimer=window.setTimeout(activate,400)
   }
   const move = event => {
     if (!gesture || gesture.pointerId!==event.pointerId) return
+    const previousY=gesture.y
     gesture.x=event.clientX;gesture.y=event.clientY
-    if (!gesture.active && Math.hypot(gesture.x-gesture.startX,gesture.y-gesture.startY)>8) {finish();return}
-    if (gesture.active) event.preventDefault()
+    if (!gesture.active && !gesture.scrolling && Math.hypot(gesture.x-gesture.startX,gesture.y-gesture.startY)>8) {
+      if (gesture.pointerType !== 'touch') {finish();return}
+      window.clearTimeout(holdTimer)
+      gesture.scrolling=true;suppressClick=true
+      try {list.setPointerCapture(gesture.pointerId)}catch{finish();return}
+      // Include the movement accumulated while deciding between a tap and a swipe.
+      if(scroller)scroller.scrollTop += gesture.startY-previousY
+    }
+    if (gesture.scrolling && scroller) scroller.scrollTop += previousY-gesture.y
+    if (gesture.active || gesture.scrolling) event.preventDefault()
   }
   const up = event => {
     if (gesture?.pointerId!==event.pointerId) return
+    if (gesture.scrolling) {finish();return}
     const box=list.getBoundingClientRect(), viewport=(scroller || list).getBoundingClientRect()
     finish(event.clientX>=box.left && event.clientX<=box.right && event.clientY>=viewport.top && event.clientY<=viewport.bottom)
   }
