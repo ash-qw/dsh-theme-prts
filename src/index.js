@@ -12,5 +12,5 @@ export async function apply(ctx) {
   const service=await createEmblemService(directory)
   const disposers=emblemTools(service,ctx.attachments).map(tool=>ctx.tools.register(tool))
   disposers.push(registerEmblemApi(ctx,service))
-  ctx.on('dispose',()=>{for(const dispose of disposers.reverse())dispose()})
+  ctx.on('dispose',async()=>{for(const dispose of disposers.reverse())dispose();await service.dispose()})
 }

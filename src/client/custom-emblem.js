@@ -111,14 +111,15 @@ export function processCustomEmblemPixels(rgba, size, mode = 'auto', threshold =
     const points = []
     // Map every contour pixel to its containing lattice cell. Unlike point sampling,
     // this retains thin strokes between lattice centers at every density and crop.
+    const gridSize = Math.ceil(size / pitch) + 1
     let lineCells = new Set()
     if (lines) for (let i = 0; i < lines.length; i++) if (lines[i]) {
-      lineCells.add(Math.floor(Math.floor(i / size) / pitch) * size + Math.floor((i % size) / pitch))
+      lineCells.add(Math.floor(Math.floor(i / size) / pitch) * gridSize + Math.floor((i % size) / pitch))
     }
-    if (lines) lineCells = simplifyEmblemLines(lineCells, size, lineOptions.cleanup ?? 2)
+    if (lines) lineCells = simplifyEmblemLines(lineCells, gridSize, lineOptions.cleanup ?? 2)
     for (let y = pitch / 2, row = 0; y < size; y += pitch, row++) {
       for (let x = pitch / 2, column = 0; x < size; x += pitch, column++) {
-        if (lines ? !lineCells.has(row * size + column) : !at(x, y)) continue
+        if (lines ? !lineCells.has(row * gridSize + column) : !at(x, y)) continue
         const edge = Boolean(lines) || !at(x - pitch, y) || !at(x + pitch, y) || !at(x, y - pitch) || !at(x, y + pitch)
         points.push({ x: (x - size / 2) / size, y: (y - size / 2) / size,
           kind: edge ? 'skeleton' : 'fill', latticeColumn: column, latticeRow: row, component: 0 })
@@ -322,18 +323,28 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
     ctx.restore();ctx.strokeStyle='#68747a';ctx.strokeRect(15.5,15.5,249,249)
   }
 
-  const stop = () => { processingController?.abort(); processingController = undefined; processing = false }
+  let rerunRequested = false, lastEditParams = ''
+  const readParams = () => ({mode:get('mode').value,lineSource:get('lineSource').value,cleanup:Number(get('cleanup').value),threshold:Number(get('threshold').value),zoom:Number(get('zoom').value),x:Number(get('x').value),y:Number(get('y').value)})
+  const stop = () => { processingController?.abort(); processingController = undefined; processing = false; rerunRequested = false }
+
   const process = async () => {
     window.clearTimeout(timer);pendingPosition=false
+    if (processing) { rerunRequested = true; return }
     get('line-options').hidden = get('mode').value !== 'lineart'
     if ((!file && !sourceDraftId) || disposed) return
     const token = ++generation
     stop(); draft = null; get('apply').disabled = true
     processing = true
     status.textContent = '正在处理图片…'
-    processingController = new window.AbortController()
+    const controller = processingController = new window.AbortController()
+    const params = readParams(), sourceFile = file
+    lastEditParams = JSON.stringify(params)
     try {
-      const result = await store.process({file,draftId:file?undefined:sourceDraftId,params:{mode:get('mode').value,lineSource:get('lineSource').value,cleanup:Number(get('cleanup').value),threshold:Number(get('threshold').value),zoom:Number(get('zoom').value),x:Number(get('x').value),y:Number(get('y').value)}},processingController.signal)
+      const result = await store.process({file:sourceFile,draftId:sourceFile?undefined:sourceDraftId,params},controller.signal)
+      if (!disposed && processingController === controller && !controller.signal.aborted) {
+        // Reuse the uploaded source even when a newer parameter value is waiting.
+        sourceDraftId = result.draftId; file = null
+      }
       if (disposed || token !== generation) return
       draft = {...result.value,previewPoints:result.previewPoints,draftId:result.draftId,label:result.label}
       draw(draft); get('apply').disabled = saving
@@ -341,7 +352,12 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
     } catch(error) {
       if (disposed || token !== generation) return
       status.textContent = error.message || '图片处理失败';draw(null)
-    } finally { if(token===generation)processing=false }
+    } finally {
+      if (processingController === controller) {
+        processing = false; processingController = undefined
+        if (rerunRequested && !disposed) { rerunRequested = false; void process() }
+      }
+    }
   }
   const importAsset = async input => {
     const selected=input.files?.[0]
@@ -390,11 +406,14 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
         get('apply').disabled = true; get('editor').hidden = true; draw(previewValue)
         status.textContent = '请选择不超过 8 MB 的 PNG、WebP 或 JPEG 图片'; fileInput.value = ''; return
       }
-      dirty = true; file = next; get('editor').hidden = false
+      stop(); dirty = true; file = next; get('editor').hidden = false
       process()
     } else if (event.target.closest('[data-prts-emblem-editor]')) {
+      const signature = JSON.stringify(readParams())
+      if (signature === lastEditParams) return
+      lastEditParams = signature
       dirty = true
-      window.clearTimeout(timer); ++generation; stop(); draft = null; get('apply').disabled = true
+      window.clearTimeout(timer); ++generation; draft = null; get('apply').disabled = true
       pendingPosition=true;timer = window.setTimeout(process, 140)
     }
   }
@@ -436,7 +455,7 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
     get('discard').hidden = false; get('discard').showModal()
   }
   const cancel = () => {
-    endDrag(false); processing=false;pendingPosition=false
+    endDrag(false); processing=false;pendingPosition=false;lastEditParams=''
     closeReset(); closeDiscard(); dirty = false
     get('workspace').close?.(); root.append(status)
     editTrigger?.isConnected && editTrigger.focus({preventScroll:true})

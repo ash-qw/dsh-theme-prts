@@ -20,25 +20,31 @@ export function parameters(input = {}, base = DEFAULT_PARAMS) {
     || !Number.isFinite(result.x) || Math.abs(result.x)>.5 || !Number.isFinite(result.y) || Math.abs(result.y)>.5) throw fault(400,'编辑参数超出范围')
   return result
 }
-export function processImage(bytes, params, signal) {
+export function processImage(bytes, params, signal, prepared, reusableWorker) {
   signal?.throwIfAborted()
   return new Promise((resolve,reject)=>{
-    const worker = new Worker(new URL('./image-worker.js',import.meta.url), {workerData:{bytes,params},execArgv:[]})
+    const worker = reusableWorker || new Worker(new URL('./image-worker.js',import.meta.url), {workerData:{bytes,params,prepared},execArgv:[]})
+    worker.ref()
     let settled = false
     const finish = async (error,value) => {
       if(settled)return; settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort)
-      await worker.terminate()
+      if(error || !reusableWorker) await worker.terminate()
+      worker.off('error',onError);worker.off('exit',onExit);worker.off('message',onMessage)
+      worker.unref()
       if(error)reject(error);else resolve(value)
     }
     const abort = ()=>void finish(signal.reason || new Error('已取消'))
+    const onError = error=>void finish(error)
+    const onExit = code=>{if(!settled)void finish(new Error(`图片处理进程提前退出 (${code})`))}
+    const onMessage = result=>void finish(result.error?fault(400,result.error):null,result)
     const timer = setTimeout(()=>void finish(fault(408,'图片处理超时，请缩小图片后重试')),15000)
     signal?.addEventListener('abort',abort,{once:true})
-    worker.once('error',error=>void finish(error))
-    worker.once('exit',code=>{if(!settled)void finish(new Error(`图片处理进程提前退出 (${code})`))})
-    worker.once('message',result=>void finish(result.error?fault(400,result.error):null,result))
+    worker.once('error',onError);worker.once('exit',onExit);worker.once('message',onMessage)
     if(signal?.aborted)abort()
+    else if(reusableWorker) worker.postMessage({bytes,params,prepared})
   })
 }
+
 async function atomic(path,value) {
   const temp = `${path}.${randomUUID()}.tmp`
   await writeFile(temp,value,{mode:0o600});await rename(temp,path)
@@ -54,7 +60,7 @@ export async function createEmblemService(directory) {
     if(!Number.isInteger(stored.revision)||!validEmblemConfiguration(stored.configuration,EMBLEMS))throw Error('已保存的徽记配置无效')
     state=stored
   } catch(error) { if(error.code!=='ENOENT')throw error }
-  let queue=Promise.resolve(), processing=false
+  let queue=Promise.resolve(), previewQueue=Promise.resolve(), preparedCache, imageWorker, workerIdleTimer, disposed=false
   const listeners=new Set()
   const serialize=fn=>{const next=queue.then(fn);queue=next.catch(()=>{});return next}
   const snapshot=()=>structuredClone(state)
@@ -85,6 +91,11 @@ export async function createEmblemService(directory) {
   })
   return {
     snapshot,save,draft,
+    async dispose() {
+      disposed=true;clearTimeout(workerIdleTimer);preparedCache=undefined
+      const worker=imageWorker;imageWorker=undefined
+      if(worker)await worker.terminate()
+    },
     async exportAsset(id) {
       const d=await draft(id)
       const bytes=await readFile(join(directory,`${d.sourceId}.source`))
@@ -102,10 +113,10 @@ export async function createEmblemService(directory) {
     },
     previewPath: id=>join(directory,`${checkedId(id)}.png`),
     subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},
-    async preview({bytes,params={},baseId,label},signal) {
-      if(processing)throw fault(409,'正在处理另一张徽记，请稍后重试')
-      processing=true
-      try {
+    preview({bytes,params={},baseId,label},signal) {
+      const pending = previewQueue.then(async () => {
+        if(disposed)throw fault(503,'徽记服务已关闭')
+        signal?.throwIfAborted()
         const previous=baseId?await draft(baseId):null
         const effective=parameters(params,previous?.params)
         if(previous)bytes=await readFile(join(directory,`${previous.sourceId}.source`))
@@ -120,15 +131,36 @@ export async function createEmblemService(directory) {
           for(const d of expired){await unlink(join(directory,`${d.id}.draft.json`));await unlink(join(directory,`${d.id}.png`))}
           for(const sourceId of new Set(expired.map(d=>d.sourceId)))if(!retainedSources.has(sourceId))await unlink(join(directory,`${sourceId}.source`))
         })
-        const result=await processImage(bytes,effective,signal)
         signal?.throwIfAborted()
-        const id=randomUUID(),sourceId=createHash('sha256').update(bytes).digest('hex')
+        const sourceHash=createHash('sha256').update(bytes).digest('hex')
+        const cacheKey=`${sourceHash}:${effective.zoom}`
+        clearTimeout(workerIdleTimer)
+        if (!imageWorker || imageWorker.threadId === -1) imageWorker = new Worker(new URL('./image-worker.js',import.meta.url),{execArgv:[]})
+        let result
+        try {
+          result=await processImage(bytes,effective,signal,preparedCache?.key===cacheKey?preparedCache.data:undefined,imageWorker)
+        } finally {
+          // Reuse the warmed-up worker while editing, then release its memory.
+          if (!disposed) {
+          workerIdleTimer=setTimeout(()=>{
+            void imageWorker?.terminate();imageWorker=undefined;preparedCache=undefined
+          },30000)
+          workerIdleTimer.unref()
+          }
+        }
+        if(disposed)throw fault(503,'徽记服务已关闭')
+        preparedCache={key:cacheKey,data:result.prepared}
+        signal?.throwIfAborted()
+        const id=randomUUID(),sourceId=sourceHash
         const value={id,sourceId,params:effective,label:String(label||previous?.label||'自定义徽记').slice(0,100),createdAt:Date.now(),value:result.value,previewPoints:result.previewPoints}
         await atomic(join(directory,`${sourceId}.source`),bytes)
         await atomic(join(directory,`${id}.png`),result.preview)
         await atomic(join(directory,`${id}.draft.json`),JSON.stringify(value))
         return value
-      } finally {processing=false}
+      })
+      // A cancelled worker must fully exit before the next request starts.
+      previewQueue=pending.catch(()=>{})
+      return pending
     },
     async image(id,source=false) {const d=await draft(id);return readFile(join(directory,source?`${d.sourceId}.source`:`${d.id}.png`))},
     async apply({draftId,target,entryKey,revision},signal) {

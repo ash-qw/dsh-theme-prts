@@ -13,6 +13,7 @@ async function fixture(t) {
   const directory=await mkdtemp(join(tmpdir(),'prts-service-'))
   t.after(()=>rm(directory,{recursive:true,force:true}))
   const service=await createEmblemService(directory)
+  t.after(()=>service.dispose())
   const bytes=await sharp(Buffer.from('<svg width="200" height="200"><rect x="40" y="40" width="120" height="120" fill="black"/></svg>')).png().toBuffer()
   return {directory,service,bytes}
 }
@@ -33,6 +34,7 @@ test('drafts preserve editable sources; commits persist and reject concurrent st
   assert.equal(attempts.filter(v=>v.status==='fulfilled').length,1)
   assert.equal(changes,2);unsubscribe()
   const reopened=await createEmblemService(directory)
+  t.after(()=>reopened.dispose())
   assert.equal(reopened.snapshot().revision,2)
   assert.equal(reopened.snapshot().configuration.hero.draftId,second.id)
   assert.equal(reopened.snapshot().configuration.conversation.length,6)
@@ -145,6 +147,7 @@ test('portable assets restore source, parameters and particle output in another 
   assert.equal(destination.service.snapshot().revision,0)
   await destination.service.apply({draftId:imported.id,target:'hero',revision:0})
   const reopened=await createEmblemService(destination.directory)
+  t.after(()=>reopened.dispose())
   const edited=await reopened.preview({baseId:imported.id,params:{zoom:1.3}})
   assert.equal(edited.params.threshold,170)
   assert.equal(edited.params.zoom,1.3)
@@ -225,4 +228,39 @@ test('moving the crop preserves particle identity and restores clipped points in
       }
     }
   }
+})
+
+test('preview requests wait for cancelled workers and queued cancellation does not block the latest parameters',async t=>{
+  const {service,bytes}=await fixture(t)
+  const active=new AbortController(),queued=new AbortController()
+  const first=service.preview({bytes,params:{mode:'lineart'}},active.signal)
+  const firstRejected=assert.rejects(first,/取消旧预览/)
+  await new Promise(resolve=>setTimeout(resolve,30))
+  const skipped=service.preview({bytes,params:{threshold:100}},queued.signal)
+  const skippedRejected=assert.rejects(skipped,/取消排队预览/)
+  const latest=service.preview({bytes,params:{threshold:190}})
+  queued.abort(new Error('取消排队预览'))
+  active.abort(new Error('取消旧预览'))
+  await Promise.all([firstRejected,skippedRejected])
+  assert.equal((await latest).params.threshold,190)
+  const results=await Promise.all([service.preview({bytes,params:{threshold:80}}),service.preview({bytes,params:{threshold:170}})])
+  assert.deepEqual(results.map(d=>d.params.threshold),[80,170])
+})
+
+test('prepared pixels match uncached processing across thresholds, modes and zoom levels',async t=>{
+  const {processImage}=await import('../src/server/emblems.js')
+  const {bytes}=await fixture(t)
+  const first=await processImage(bytes,parameters({}))
+  for(const params of [{threshold:190},{mode:'lineart',lineSource:'edges',cleanup:0}]) {
+    const effective=parameters(params)
+    const cached=await processImage(bytes,effective,undefined,first.prepared)
+    const fresh=await processImage(bytes,effective)
+    assert.deepEqual(cached.value,fresh.value)
+    assert.deepEqual(cached.previewPoints,fresh.previewPoints)
+  }
+  const {service}=await fixture(t)
+  await service.preview({bytes})
+  const zoomed=await service.preview({bytes,params:{zoom:1.5}})
+  const fresh=await processImage(bytes,parameters({zoom:1.5}))
+  assert.deepEqual(zoomed.value,fresh.value)
 })

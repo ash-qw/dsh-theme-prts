@@ -543,3 +543,38 @@ test('editor preloads drafts, keeps layout during slow reads and reuses cached s
   await expect(page.locator('[data-prts-emblem-zoom]')).toHaveValue('1.2')
   expect(requests).toBe(1)
 })
+
+test('rapid threshold edits keep one request active and process only the latest value without reupload',async({page})=>{
+  await start(page);await open(page)
+  await page.locator('[data-emblem-action="hero"]').click()
+  await upload(page,await image(page),'threshold.png')
+  const requests=[]
+  let release
+  const gate=new Promise(resolve=>{release=resolve})
+  await page.route('**/emblems/preview',async route=>{
+    requests.push(route.request().postDataJSON())
+    const response=await route.fetch()
+    if(requests.length===1)await gate
+    await route.fulfill({response})
+  })
+  const slider=page.locator('[data-prts-emblem-threshold]')
+  await slider.fill('100')
+  await expect.poll(()=>requests.length).toBe(1)
+  for(const value of ['130','160','190'])await slider.fill(value)
+  // Allow the debounce to expire while the older response is still held.
+  await page.waitForTimeout(220)
+  expect(requests).toHaveLength(1)
+  await expect(page.locator('[data-prts-emblem-apply]')).toBeDisabled()
+  release()
+  await expect(page.locator('[data-prts-emblem-apply]')).toBeEnabled()
+  expect(requests.map(r=>r.params.threshold)).toEqual([100,190])
+  expect(requests.every(r=>r.draftId&&!r.image)).toBeTruthy()
+  await slider.dispatchEvent('change')
+  await page.waitForTimeout(220)
+  expect(requests).toHaveLength(2)
+  await expect(page.locator('[data-prts-emblem-status]')).not.toContainText('正在处理另一张')
+  await apply(page)
+  const saved=await page.request.get('/prts-theme-api/emblems/configuration').then(r=>r.json())
+  const draft=await page.request.get(`/prts-theme-api/emblems/draft/${saved.configuration.hero.draftId}`).then(r=>r.json())
+  expect(draft.params.threshold).toBe(190)
+})
