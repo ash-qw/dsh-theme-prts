@@ -1,3 +1,4 @@
+import { createAvatarService, registerAvatarApi, AVATAR_API } from '../../src/server/avatars.js'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { createEmblemService, API } from '../../src/server/emblems.js'
@@ -7,6 +8,7 @@ import { readFile, stat, mkdtemp } from 'node:fs/promises'
 import { extname, resolve, sep } from 'node:path'
 
 const emblemFixtures = new Map()
+const avatarFixtures = new Map()
 const root = process.cwd()
 const port = Number(process.env.PORT || 4173)
 const fixturePath = '/tests/fixtures/rc7-harness.html'
@@ -365,6 +367,17 @@ const mime = {
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://127.0.0.1:${port}`)
+    if (url.pathname.startsWith(AVATAR_API)) {
+      let id=request.headers.cookie?.match(/prtsAvatarFixture=([a-z0-9-]+)/)?.[1]
+      if(!id){id=randomUUID();response.setHeader('set-cookie',`prtsAvatarFixture=${id}; Path=/; SameSite=Strict`)}
+      if(!avatarFixtures.has(id))avatarFixtures.set(id,(async()=>{
+        const service=await createAvatarService(await mkdtemp(`${tmpdir()}/prts-avatar-fixture-`))
+        let handler
+        registerAvatarApi({connection:{admit:()=>({peer:{}})},webServer:{register:route=>{handler=route.handler;return()=>{}}}},service)
+        return handler
+      })())
+      await (await avatarFixtures.get(id))(request,response);return
+    }
     if (url.pathname.startsWith(API)) {
       let id = request.headers.cookie?.match(/prtsFixture=([a-z0-9-]+)/)?.[1]
       if (!id) { id=randomUUID();response.setHeader('set-cookie',`prtsFixture=${id}; Path=/; SameSite=Strict`) }

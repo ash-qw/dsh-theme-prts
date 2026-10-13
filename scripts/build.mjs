@@ -129,6 +129,8 @@ const clientModulePaths = [
   'src/client/preferences.js',
   'src/client/emblem-reorder.js',
   'src/client/custom-emblem.js',
+  'src/client/avatar-crop.js',
+  'src/client/custom-avatar.js',
   'src/client/emblem-tool-preview.js',
   'src/client/host-geometry-adapter.js',
   'src/client/composer-glass-adapter.js',

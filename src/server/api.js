@@ -1,16 +1,22 @@
 import { API, draftView, fault } from './emblems.js'
 
-async function body(req) {
+// Avoid repeated groups: multi-megabyte images can exhaust V8's regexp stack.
+export function isBase64(value){return typeof value==='string'&&value.length%4===0&&/^[A-Za-z0-9+/]*={0,2}$/.test(value)}
+
+export async function body(req) {
   const chunks=[];let size=0
   for await(const chunk of req){size+=chunk.length;if(size>16*1024*1024)throw fault(413,'请求过大');chunks.push(chunk)}
   try{return JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw fault(400,'请求数据无效')}
 }
-function json(res,status,value){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value))}
+export function json(res,status,value){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(value))}
 export function registerEmblemApi(ctx,service) {
+  const connection=ctx.connection
+  let disposed=false
   const streams=new Set()
   const dispose=ctx.webServer.register({kind:'prefix',path:API,handler:async(req,res)=>{
     try {
-      const admission=ctx.connection.admit(req)
+      if(disposed){json(res,503,{error:'主题服务正在重新加载，请稍后重试'});return}
+      const admission=connection.admit(req)
       if('rejection' in admission){json(res,401,{error:'请先登录 DSH'});return}
       const path=new URL(req.url,'http://localhost').pathname.slice(API.length)
       if(req.method==='GET'&&path==='/events') {
@@ -43,12 +49,12 @@ export function registerEmblemApi(ctx,service) {
         json(res,200,{...draftView(d),value:d.value,previewPoints:d.previewPoints});return
       }
       if(path==='/preview'){
-        if(data.image && (typeof data.image!=='string'||! /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.image)))throw fault(400,'图片编码无效')
+        if(data.image && !isBase64(data.image))throw fault(400,'图片编码无效')
         const d=await service.preview({bytes:data.image?Buffer.from(data.image,'base64'):undefined,baseId:data.draftId,params:data.params,label:data.label},controller.signal)
         json(res,200,{...draftView(d),value:d.value,previewPoints:d.previewPoints});return
       }
       throw fault(404,'接口不存在')
     }catch(error){if(!res.headersSent)json(res,error.status||500,{error:error.message});else res.end()}
   }})
-  return()=>{dispose();for(const res of streams)res.end();streams.clear()}
+  return()=>{disposed=true;dispose();for(const res of streams)res.end();streams.clear()}
 }

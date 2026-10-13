@@ -13,7 +13,7 @@ export function sessionImages(agent) {
     for(const part of message.content ?? []) {
       const ref=part.attachment
       if(!ref || typeof ref.attachmentId!=='string' || !ref.attachmentId)continue
-      if(part.type!=='image' && !(part.type==='file' && (/^image\/(png|jpeg|webp)$/.test(ref.mediaType || '') || /\.(png|jpe?g|webp)$/i.test(ref.name || ''))))continue
+      if(part.type!=='image' && !(part.type==='file' && (/^image\/(png|jpeg|webp|gif|avif)$/.test(ref.mediaType || '') || /\.(png|jpe?g|webp|gif|avif)$/i.test(ref.name || ''))))continue
       if(images.has(ref.attachmentId))continue
       images.set(ref.attachmentId,{...ref,attachmentKind:part.type,origin:uploaded?'upload':'tool',...(toolName?{toolName}:{})})
     }

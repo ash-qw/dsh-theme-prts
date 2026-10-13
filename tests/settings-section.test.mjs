@@ -403,7 +403,7 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   assert.deepEqual(
     [...document.querySelectorAll('[data-prts-setting-key="conversationStyle"]')]
       .map(node => [node.dataset.prtsSettingValue, node.textContent]),
-    [['native', '原有'], ['deck-chat', '通讯链路']],
+    [['native', '经典简洁正文，保留熟悉的阅读布局'], ['deck-chat', 'Baker终末地通讯风格，圆形头像与消息气泡']],
   )
   assert.equal(document.querySelector('[data-prts-setting-row="railDefaultHidden"] [data-prts-setting-note]').textContent,
     '在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开')

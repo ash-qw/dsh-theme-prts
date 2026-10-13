@@ -13,6 +13,8 @@ A personal, non-commercial Arknights / P.R.T.S. fan UI plugin for DeepSeek Harne
 
 The theme is disabled by default.
 
+The Baker conversation theme is inspired by the messenger in Arknights: Endfield. Select Baker under Appearance, then click either avatar to upload, crop, or restore its default. Original images and crop positions are stored on the server and shared within the same DSH instance, allowing later re-cropping. Drag to reposition and use the slider, mouse wheel, or trackpad to zoom. Changes apply after confirmation. Animated images use the first frame; each upload is limited to 5 MB.
+
 ## Compatibility
 
 - Supports DeepSeek Harness `0.2.0-rc.2` on Web and the official desktop client. The Web version has been verified locally, and the official desktop client has been verified through actual use. The earlier `0.1.7`, `0.1.5`, and `0.1.2` release lines are no longer in the compatibility declaration.
@@ -79,3 +81,7 @@ npm run check
 ```
 
 See [CHANGELOG.md](CHANGELOG.md) for release history and [RELEASING.md](RELEASING.md) for maintainer release instructions.
+
+### Set Baker avatars from a DSH conversation
+
+Upload an image and ask the AI to set it as your Baker avatar, or have it generate/edit an image first. `prts_avatar_inspect` reads current configuration and conversation images; `prts_avatar_apply` replaces user/AI avatars, re-crops the current original, or restores defaults. Changes are shared within the DSH instance. Replacing an avatar discards its previous original. Avatars appear in Baker mode; tools do not change the device-local conversation theme.

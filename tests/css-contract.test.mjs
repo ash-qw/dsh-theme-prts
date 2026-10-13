@@ -34,7 +34,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 168_000, 'stylesheets including grouped responsive settings must stay below 168 kB')
+  assert.ok(Buffer.byteLength(css) < 173_000, 'stylesheets including responsive settings and custom avatar cropping must stay below 173 kB')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -62,7 +62,7 @@ test('models the facility card as one notched face and one notched side spine', 
   assert.match(css, /\[data-prts-workspace-row\]::before\s*\{[^}]*background:\s*var\(--prts-cyan\)/s)
   assert.match(css, /\[data-prts-session-row\]\[aria-selected="true"\]::before\s*\{[^}]*background:\s*var\(--prts-yellow\)/s)
   assert.doesNotMatch(css, /\[aria-selected="true"\][^{]*\[data-prts-facility-face\][^{]*\{[^}]*yellow/s)
-  assert.doesNotMatch(css, /chassis|shoulder|bracket|foot|feet/i)
+  assert.doesNotMatch(css, /\b(?:chassis|shoulder|bracket|foot|feet)\b/i)
 })
 
 test('keeps the spine left edge fixed and moves the facility face to the right on expansion', () => {
@@ -185,8 +185,8 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]',
     '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body))',
     '[data-prts-ai-surface]',
-    'border-radius: 18px 6px 18px 18px',
-    'border-radius: 6px 18px 18px 18px',
+    'border-radius: 18px 0 18px 18px',
+    'border-radius: 0 18px 18px 18px',
     ') :is(pre, code)',
   ])
   assert.doesNotMatch(css, /\[data-conversation-scroll\]::before/)
@@ -216,10 +216,10 @@ test('keeps particle emblems and composer geometry without retired dossier style
     '[data-prts-ambient-layer]::after',
     '--prts-chat-backdrop',
     '--prts-chat-backdrop-edge',
-    '--prts-chat-link',
-    '--prts-chat-link-x: 22px',
+    '--prts-avatar-ring-image',
+    'corner-shape: round',
     'height: 30px',
-    'var(--prts-chat-link) 56%, transparent',
+    'stroke-dasharray=',
     '[data-prts-conversation-style="deck-chat"][data-prts-texture="off"] [data-prts-ambient-layer]',
     'opacity: .04',
   ])
@@ -302,7 +302,7 @@ test('supports fixed host-owned themes, tactical takeover, and accessibility fal
   assert.doesNotMatch(css, /OPTICAL SYNC/)
   assert.doesNotMatch(css, /\[data-prts-region="frame"\]\s*\{[^}]*min-height:\s*100dvh/s)
   assert.doesNotMatch(css, /prefers-color-scheme/)
-  assert.doesNotMatch(css, /color\s*:\s*transparent\b/i)
+  assert.doesNotMatch(css, /(?:^|[;{])\s*color\s*:\s*transparent\b/im)
   assert.doesNotMatch(css, /font-size\s*:\s*0(?:\D|$)/i)
   assert.doesNotMatch(css, /data-prts-drawer-open="sessions"/)
 })

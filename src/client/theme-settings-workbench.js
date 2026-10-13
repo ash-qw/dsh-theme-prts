@@ -1,3 +1,4 @@
+import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
 import { customEmblemMarkup, mountCustomEmblemEditor } from './custom-emblem.js'
 import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, SESSION_FLOW_SPEED_DEFAULT, SESSION_FLOW_SPEED_MAX, SESSION_FLOW_SPEED_MIN, SESSION_FLOW_SPEED_STEP, resolveParticleDetail } from './preferences.js'
 
@@ -156,8 +157,15 @@ export function themeSettingsMarkup() {
             <header><span><strong>界面外观</strong></span></header>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['texture', 'glass'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
-              ${settingButtons('conversationStyle', '会话主题', [['native', '原有'], ['deck-chat', '通讯链路']])}
             </div>
+          </section>
+          <section data-prts-conversation-settings>
+            <header><strong>会话主题</strong><small>选择消息的呈现方式</small></header>
+            <div data-prts-conversation-cards>
+              <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="native" aria-pressed="false"><span data-prts-conversation-sample="classic" aria-hidden="true"><i></i><i></i></span><strong>经典</strong><small>简洁正文，保留熟悉的阅读布局</small></button>
+              <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="deck-chat" aria-pressed="false"><span data-prts-conversation-sample="baker" aria-hidden="true"><i></i><i></i></span><strong>Baker</strong><small>终末地通讯风格，圆形头像与消息气泡</small></button>
+            </div>
+            ${avatarMarkup()}
           </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
@@ -207,7 +215,7 @@ export function createThemeSettingsOverlay({
   trigger,
   panel,
   backdrop,
-  customEmblemStore,
+  customEmblemStore, avatarStore,
   onOpen = () => {},
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
@@ -215,6 +223,7 @@ export function createThemeSettingsOverlay({
   onRetrySave = () => {},
 }) {
   const window = document?.defaultView
+  const avatarEditor = mountAvatarSettings({panel,window,store:avatarStore})
   const customEditor = mountCustomEmblemEditor({ panel, window, store: customEmblemStore })
   const transparencyMedia = window?.matchMedia?.('(prefers-reduced-transparency: reduce)')
   const motionMedia = window?.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -294,6 +303,7 @@ export function createThemeSettingsOverlay({
       ;(panel.querySelector('[data-prts-theme-settings-close]') ?? focusable()[0] ?? panel).focus?.()
     } else {
       customEditor.close?.()
+      avatarEditor.close?.()
       panel.removeAttribute('data-prts-settings-visible')
       hidePanel()
       setResetConfirmation(false)
@@ -678,6 +688,7 @@ export function createThemeSettingsOverlay({
 
   return {
     update(preferences, status, persistenceState = currentPersistence) {
+      panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
       currentPreferences = preferences
       currentStatus = status
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
@@ -693,6 +704,7 @@ export function createThemeSettingsOverlay({
     toggle,
     dispose() {
       customEditor.dispose()
+      avatarEditor.dispose()
       isOpen = false
       hidePanel()
       if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)

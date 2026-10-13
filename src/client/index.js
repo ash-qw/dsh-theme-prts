@@ -1,3 +1,4 @@
+import { createAvatarStore } from './custom-avatar.js'
 import { registerEmblemToolPreview } from './emblem-tool-preview.js'
 import { createCustomEmblemStore } from './custom-emblem.js'
 import { DEFAULT_PREFERENCES, isSafeMode, loadPreferences, persistPreferences, resetPreferenceGroup, updatePreferenceValue } from './preferences.js'
@@ -64,6 +65,7 @@ export function applyPrtsPlugin(ctx, environment) {
       sync()
     },
   })
+  const avatarStore = createAvatarStore({window,document})
   const customEmblemStore = createCustomEmblemStore({ window, emblems: assets.emblems, preview: entry => particleField.previewEmblem?.(entry), onChange: value => particleField.setCustomEmblemConfiguration?.(value) })
   const startup = createPrtsStartupSequence({
     document,
@@ -191,7 +193,7 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
-      document, window, assets, adapter, hostGeometry, customEmblemStore,
+      document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore,
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
       },
@@ -346,6 +348,7 @@ export function applyPrtsPlugin(ctx, environment) {
     if (typeof stopEmblemPreview === 'function') stopEmblemPreview()
     statusSource.dispose()
     customEmblemStore.dispose()
+    avatarStore.dispose()
     particleField.dispose()
     startup.dispose({ restoreFocus: false })
     stopStartupReadyWatch()
