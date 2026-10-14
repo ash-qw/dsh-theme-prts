@@ -441,7 +441,7 @@ html[data-dsh-prts] [data-prts-hero-active] [data-composer-seat] {
 }
 
 /* File presentations share one rounded material; preview hit targets stay native. */
-html[data-dsh-prts] :is([data-presented-file],[data-prts-conversation-control="file"],[data-produced-files-row] > button[type="button"]){
+html[data-dsh-prts] :is([data-presented-file],[data-changed-files],[data-prts-conversation-control="file"],[data-produced-files-row] > button[type="button"]){
   border:1px solid var(--prts-glass-border)!important;
   border-radius:10px!important;corner-shape:round!important;clip-path:none!important;
   background:var(--prts-active-glass)!important;color:var(--prts-ink);
@@ -449,8 +449,25 @@ html[data-dsh-prts] :is([data-presented-file],[data-prts-conversation-control="f
   &::before{content:none}
   &:is(:hover,:focus-within){border-color:var(--prts-yellow)!important}
 }
-/* The host change-card wrapper must not clip a smaller inner outline. */
-html[data-dsh-prts] [class$="_card"]:has(> span > [data-prts-conversation-control="file"]){
-  border:0!important;border-radius:10px!important;corner-shape:round!important;
-  background:transparent!important;box-shadow:none!important;
+/* One surface for both single-file summaries and grouped changes. */
+html[data-dsh-prts] [data-changed-files]{
+  overflow:hidden;
+  & button{background:transparent;backdrop-filter:none}
+  & button:is(:hover,:focus-visible){background:color-mix(in srgb,var(--prts-yellow) 8%,transparent)}
+  & button:focus-visible{box-shadow:inset 0 0 0 2px var(--prts-yellow)}
+}
+
+/* Inline file references need their own inset, unlike full delivery cards. */
+html[data-dsh-prts] [data-prts-conversation-control="file"]:is([class*="_fileLink"],[class*="_fileMention"]){
+  padding:4px 10px!important;max-width:100%;box-sizing:border-box;
+  white-space:normal;overflow-wrap:anywhere;
+}
+
+/* Baker user bubbles are light even when the surrounding shell is dark. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([class$="_bubble"],[data-message-role="user"]) [data-ref-chip="file"]{
+  background:color-mix(in srgb,var(--prts-cyan) 8%,var(--prts-canvas))!important;
+  border-color:color-mix(in srgb,var(--prts-cyan) 28%,transparent)!important;
+  color:var(--prts-cyan)!important;backdrop-filter:none!important;
+  padding:2px 7px!important;border-radius:6px!important;
+  &:is(:hover,:focus-visible){border-color:var(--prts-cyan)!important}
 }
