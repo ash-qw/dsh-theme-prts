@@ -84,6 +84,7 @@ test('loads and migrates a complete version-one payload without losing independe
     sessionFlowSpeed: 1,
     conversationStyle: 'native',
     bakerGroupAvatars: true,
+    conversationEmblem: true,
   })
 })
 
@@ -316,4 +317,10 @@ test('Baker avatar grouping is independently persisted and reset with conversati
   assert.equal(disabled.bakerGroupAvatars, false)
   assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(disabled))).bakerGroupAvatars, false)
   assert.equal(api.DEFAULT_PREFERENCES.bakerGroupAvatars, true)
+})
+
+test('conversation emblem preference defaults on and persists when disabled', () => {
+  assert.equal(api.normalizePreferences({}).conversationEmblem, true)
+  const preferences = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationEmblem', false)
+  assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(preferences))).conversationEmblem, false)
 })

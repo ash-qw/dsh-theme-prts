@@ -51,6 +51,8 @@ function settingButtons(key, label, options) {
         ? '<small data-prts-setting-note>立即切换会话背景、头像与消息气泡</small>'
       : key === 'sessionFlow'
         ? '<small data-prts-setting-note>仅控制当前会话卡片的三色流线</small>'
+      : key === 'conversationEmblem'
+        ? '<small data-prts-setting-note>控制经典主题正文中的粒子徽记，不影响新会话徽记</small>'
       : key === 'bakerGroupAvatars'
         ? '<small data-prts-setting-note>过程正文仅首条显示头像，最终回答独立保留；关闭后每条回复均显示</small>'
       : key === 'sessionGlow'
@@ -58,7 +60,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -167,6 +169,7 @@ export function themeSettingsMarkup() {
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="native" aria-pressed="false"><span data-prts-conversation-sample="classic" aria-hidden="true"><i></i><i></i></span><strong>经典</strong><small>简洁正文，保留熟悉的阅读布局</small></button>
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="deck-chat" aria-pressed="false"><span data-prts-conversation-sample="baker" aria-hidden="true"><i></i><i></i></span><strong>Baker</strong><small>终末地通讯风格，圆形头像与消息气泡</small></button>
             </div>
+            <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
             <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}</div>
           </section>
@@ -693,6 +696,7 @@ export function createThemeSettingsOverlay({
     update(preferences, status, persistenceState = currentPersistence) {
       const emblemNote = panel.querySelector('[data-prts-emblem-baker-note]')
       if (emblemNote) emblemNote.hidden = preferences?.conversationStyle !== 'deck-chat'
+      panel.querySelector('[data-prts-classic-options]').hidden = preferences?.conversationStyle === 'deck-chat'
       panel.querySelector('[data-prts-baker-options]').hidden = preferences?.conversationStyle !== 'deck-chat'
       panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
       currentPreferences = preferences

@@ -431,7 +431,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     : preferences.conversationParticleDensity
   const densityProfile = density => PARTICLE_DENSITY_PROFILES[density] ?? PARTICLE_DENSITY_PROFILES.standard
   const particleRadius = density => densityProfile(density ?? activeDensity()).radius
-  const fieldEnabled = () => heroActive || preferences.conversationStyle !== 'deck-chat'
+  const fieldEnabled = () => heroActive || (preferences.conversationStyle !== 'deck-chat' && preferences.conversationEmblem !== false)
   const canRenderFrame = () => fieldEnabled() && !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && !schemeTransitionPaused && !resizing
   const layoutWidth = () => width
   const layoutHeight = () => height
@@ -698,7 +698,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
 
   function scheduleTargetPrewarm() {
     cancelTargetPrewarm()
-    if (preferences.conversationStyle === 'deck-chat' || !fieldEnabled() || typeof window.requestIdleCallback !== 'function' || !particles.length) return
+    if (preferences.conversationEmblem === false || preferences.conversationStyle === 'deck-chat' || !fieldEnabled() || typeof window.requestIdleCallback !== 'function' || !particles.length) return
     targetPrewarmQueue = (customEmblemConfiguration?.conversation ?? emblemSequence).map((_, index) => index)
       .filter(index => index !== sequenceIndexForSegment(segment))
     const warmNext = () => {
@@ -1747,7 +1747,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       if (!phoneStatic()) restoreTraversalFromScroll()
       commitTransitionTargets(segment, true)
     }
-    scheduleFrame()
+    updateFrameGate()
   }
 
   function mount(nextOperation, nextScroller) {

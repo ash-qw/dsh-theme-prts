@@ -39,6 +39,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   sessionFlowSpeed: SESSION_FLOW_SPEED_DEFAULT,
   conversationStyle: 'native',
   bakerGroupAvatars: true,
+  conversationEmblem: true,
 })
 
 export const VISUAL_PRESETS = Object.freeze({
@@ -80,7 +81,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
   navigation: Object.freeze(['railDefaultHidden']),
-  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars']),
+  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'conversationEmblem']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -196,6 +197,7 @@ export function normalizePreferences(value) {
     sessionFlowColorCore: sessionFlowColors.core,
     sessionFlowColorFront: sessionFlowColors.front,
     sessionFlowSpeed: sessionFlowSpeedOr(input.sessionFlowSpeed, DEFAULT_PREFERENCES.sessionFlowSpeed),
+    conversationEmblem: booleanOr(input.conversationEmblem, DEFAULT_PREFERENCES.conversationEmblem),
     bakerGroupAvatars: booleanOr(input.bakerGroupAvatars, DEFAULT_PREFERENCES.bakerGroupAvatars),
     conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),
   }
