@@ -1362,6 +1362,9 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   }
 }
 
+/* Group process avatars without changing reply alignment or final-answer avatars. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-avatar-hidden]::before{content:none!important}
+
 /* Baker quote surfaces; classic prose retains the host styling. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind],[data-message-role],[data-prts-ai-surface],[data-submission-echo]) blockquote {
   border-radius:10px;corner-shape:round;padding:8px 14px;

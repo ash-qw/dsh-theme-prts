@@ -103,6 +103,52 @@ function cssUrl(value) {
 
 export function createAssistantGlassAdapter({ document, window, avatarImage = '' }) {
   let observer
+  let observationRoot
+  let groupAvatars = true
+  let avatarsDirty = true
+  const avatarSteps = new Set()
+  const emptySteps = new Set()
+  function refreshAvatars() {
+    if (!avatarsDirty || !observationRoot) return
+    avatarsDirty = false
+    for (const step of avatarSteps) {
+      if (!observationRoot.contains(step)) {
+        step.removeAttribute('data-prts-avatar-hidden')
+        avatarSteps.delete(step)
+      }
+    }
+    emptySteps.clear()
+    if (!groupAvatars) {
+      for (const step of avatarSteps) step.removeAttribute('data-prts-avatar-hidden')
+      avatarSteps.clear()
+      return
+    }
+    const groups = new Map()
+    for (const node of observationRoot.querySelectorAll('[data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], ' + STEP_SELECTOR)) {
+      const scope = node.closest('[data-conversation-scroll]') ?? observationRoot
+      let group = groups.get(scope)
+      if (!group) groups.set(scope, group = new Set())
+      if (node.getAttribute('data-chat-flow-kind') !== 'assistant-step') {
+        if (node.closest('[hidden], [data-turn-process-hidden="true"]')) continue
+        group.clear()
+        continue
+      }
+      const surface = stepSurfaces.get(node) ?? resolveAssistantSurface(node)
+      const hasContent = Boolean(surface?.textContent?.trim() || surface?.querySelector('img,video,audio,canvas,svg'))
+      if (!hasContent) emptySteps.add(node)
+      const eligible = hasContent && node.getAttribute('data-chat-group-part') !== 'reasoning'
+        && !node.closest('[hidden], [data-turn-process-hidden="true"]')
+      const turn = node.getAttribute('data-chat-turn') ?? 'unassigned'
+      // The compact-answer flag disappears when expanded; process membership
+      // remains stable, so final responses keep their independent avatars.
+      const process = node.hasAttribute('data-turn-process-member')
+      const show = eligible && (!process || !group.has(turn))
+      if (show && process) group.add(turn)
+      if (show) node.removeAttribute('data-prts-avatar-hidden')
+      else if (!node.hasAttribute('data-prts-avatar-hidden')) node.setAttribute('data-prts-avatar-hidden', '')
+      avatarSteps.add(node)
+    }
+  }
   let scanFrame
   const ownedSurfaces = new Set()
   const ownedSteps = new Set()
@@ -198,6 +244,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   function scan() {
+    refreshAvatars()
     const startedAt = window?.performance?.now?.() ?? Date.now()
     let processed = 0
     for (const step of pendingSteps) {
@@ -224,10 +271,16 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
 
   function onMutations(mutations) {
     for (const mutation of mutations) {
+      if (mutation.type === 'characterData') {
+        const step = mutation.target.parentElement?.closest(STEP_SELECTOR)
+        if (emptySteps.has(step)) avatarsDirty = true
+        continue
+      }
       const parentStep = mutation.target?.closest?.(STEP_SELECTOR)
       const stableContentMutation = parentStep
         && stableBodyContains(parentStep, mutation.target)
         && !(mutation.type === 'attributes' && stepSurfaces.get(parentStep) === mutation.target)
+      if (!stableContentMutation || emptySteps.has(parentStep)) avatarsDirty = true
       if (parentStep && !stableContentMutation) {
         pendingSteps.add(parentStep)
       }
@@ -239,7 +292,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         if (surface && (surface === node || node.contains?.(surface))) pendingSteps.add(parentStep)
       }
     }
-    if (pendingSteps.size) queueScan()
+    if (pendingSteps.size || avatarsDirty) queueScan()
   }
 
   function removeMarkers() {
@@ -248,13 +301,19 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   return {
-    start() {
+    start({ groupAvatars: enabled = true } = {}) {
       if (!document) return
+      if (groupAvatars !== enabled) {
+        groupAvatars = enabled
+        avatarsDirty = true
+        refreshAvatars()
+      }
       mountAvatarImage()
-      const observationRoot = document.querySelector('[data-prts-region="operation"]')
+      observationRoot = document.querySelector('[data-prts-region="operation"]')
         ?? document.querySelector('[data-slot="main.conversation"], [data-slot="conversation"]')
       if (!observationRoot) return
       if (observer) return
+      avatarsDirty = true
       collectInitialSteps(observationRoot)
       scan()
       const Observer = window?.MutationObserver
@@ -263,8 +322,9 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
       observer.observe(observationRoot, {
         subtree: true,
         childList: true,
+        characterData: true,
         attributes: true,
-        attributeFilter: ['class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot'],
+        attributeFilter: ['class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot', 'data-chat-turn', 'hidden', 'data-turn-process-hidden', 'data-turn-process-member', 'data-turn-process-answer'],
       })
     },
     dispose() {
@@ -276,6 +336,10 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
       }
       scanFrame = undefined
       removeMarkers()
+      for (const step of avatarSteps) step.removeAttribute('data-prts-avatar-hidden')
+      avatarSteps.clear()
+      emptySteps.clear()
+      observationRoot = undefined
       releaseAvatarImage()
     },
   }

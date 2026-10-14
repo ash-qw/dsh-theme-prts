@@ -83,6 +83,7 @@ test('loads and migrates a complete version-one payload without losing independe
     sessionFlowColorFront: '#6eb7f3',
     sessionFlowSpeed: 1,
     conversationStyle: 'native',
+    bakerGroupAvatars: true,
   })
 })
 
@@ -307,4 +308,12 @@ test('reports whether normalized preferences reached persistent storage', () => 
   const failure = api.persistPreferences({ setItem() { throw new Error('blocked') } }, { ...api.DEFAULT_PREFERENCES, glass: 'clear' })
   assert.equal(failure.persisted, false)
   assert.equal(failure.preferences.glass, 'clear')
+})
+
+
+test('Baker avatar grouping is independently persisted and reset with conversation settings', () => {
+  const disabled = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'bakerGroupAvatars', false)
+  assert.equal(disabled.bakerGroupAvatars, false)
+  assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(disabled))).bakerGroupAvatars, false)
+  assert.equal(api.DEFAULT_PREFERENCES.bakerGroupAvatars, true)
 })

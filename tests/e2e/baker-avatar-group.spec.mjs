@@ -1,0 +1,61 @@
+import {test,expect} from '@playwright/test'
+
+test('Baker assigns one avatar to the unfolded response without moving bubble alignment',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,conversationStyle:'deck-chat'})))
+  await page.goto('/tests/fixtures/rc2-harness.html')
+  await page.evaluate(()=>{
+    const sample=document.createElement('section');sample.id='avatar-sample'
+    const reply=(id,text)=>`<div id="${id}" data-chat-flow-kind="assistant-step" data-chat-turn="900" ${id!=='avatar-final'?'data-turn-process-member="true"':''}><div class="sample_body"><div data-markdown><p>${text}</p></div></div></div>`
+    sample.innerHTML=`<div data-chat-flow-kind="user">测试轮次</div><section id="avatar-process">${reply('avatar-first','第一段回复')}${reply('avatar-second','继续处理')}</section>${reply('avatar-final','最终总结')}`
+    document.querySelector('[data-conversation-scroll]').prepend(sample)
+  })
+  const first=page.locator('#avatar-first'),second=page.locator('#avatar-second'),final=page.locator('#avatar-final')
+  await expect(second).toHaveAttribute('data-prts-avatar-hidden','')
+  const content=e=>e.evaluate(n=>getComputedStyle(n,'::before').content)
+  expect(await content(first)).not.toBe('none')
+  expect(await content(second)).toBe('none')
+  expect(await content(final)).not.toBe('none')
+  const left=()=>final.locator('.sample_body').evaluate(e=>e.getBoundingClientRect().left)
+  const initialLeft=await left()
+  await page.locator('#avatar-process').evaluate(e=>e.setAttribute('hidden','until-found'))
+  await expect(final).not.toHaveAttribute('data-prts-avatar-hidden')
+  expect(await content(final)).not.toBe('none')
+  expect(await left()).toBe(initialLeft)
+  await page.locator('#avatar-process').evaluate(e=>e.removeAttribute('hidden'))
+  await expect(final).not.toHaveAttribute('data-prts-avatar-hidden')
+  await expect(first).not.toHaveAttribute('data-prts-avatar-hidden')
+  expect(await left()).toBe(initialLeft)
+  await page.locator('#avatar-sample').screenshot({path:'/tmp/prts-baker-avatar-group.png'})
+})
+
+
+test('Baker grouping switch persists and restores individual avatars immediately',async({page})=>{
+  await page.goto('/tests/fixtures/rc2-harness.html')
+  await page.evaluate(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,conversationStyle:'deck-chat'})))
+  await page.reload()
+  await page.evaluate(()=>{
+    const section=document.createElement('section')
+    section.innerHTML=[1,2].map(i=>`<div id="option-reply-${i}" data-chat-flow-kind="assistant-step" data-chat-turn="901" data-turn-process-member="true"><div class="sample_body"><p>过程回复 ${i}</p></div></div>`).join('')
+    document.querySelector('[data-conversation-scroll]').append(section)
+  })
+  const second=page.locator('#option-reply-2')
+  await expect(second).toHaveAttribute('data-prts-avatar-hidden','')
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="appearance"]').click()
+  const toggle=page.getByRole('switch',{name:'合并过程回复头像',exact:true})
+  await expect(toggle).toHaveAttribute('aria-checked','true')
+  expect(await page.locator('[data-prts-avatars]').evaluate(el=>Boolean(el.compareDocumentPosition(document.querySelector('[data-prts-baker-options]')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
+  await expect(page.locator('[data-prts-particle-layer]')).toBeHidden()
+  await toggle.click()
+  await expect(second).not.toHaveAttribute('data-prts-avatar-hidden')
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).bakerGroupAvatars)).toBe(false)
+  await page.reload()
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="appearance"]').click()
+  await expect(toggle).toHaveAttribute('aria-checked','false')
+  await toggle.press('Space')
+  await expect(toggle).toHaveAttribute('aria-checked','true')
+  await page.locator('[data-prts-setting-key="conversationStyle"][data-prts-setting-value="native"]').click()
+  await expect(toggle).toBeHidden()
+  await expect(page.locator('[data-prts-particle-layer]')).toBeVisible()
+})

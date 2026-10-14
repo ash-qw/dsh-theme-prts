@@ -252,7 +252,7 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     particleField.update(preferences)
     composerGlass.start()
-    if (preferences.conversationStyle === 'deck-chat') assistantGlass.start()
+    if (preferences.conversationStyle === 'deck-chat') assistantGlass.start({ groupAvatars: preferences.bakerGroupAvatars })
     else assistantGlass.dispose()
     toBottom.start()
     conversationControls.start()

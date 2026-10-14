@@ -431,7 +431,8 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     : preferences.conversationParticleDensity
   const densityProfile = density => PARTICLE_DENSITY_PROFILES[density] ?? PARTICLE_DENSITY_PROFILES.standard
   const particleRadius = density => densityProfile(density ?? activeDensity()).radius
-  const canRenderFrame = () => !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && !schemeTransitionPaused && !resizing
+  const fieldEnabled = () => heroActive || preferences.conversationStyle !== 'deck-chat'
+  const canRenderFrame = () => fieldEnabled() && !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && !schemeTransitionPaused && !resizing
   const layoutWidth = () => width
   const layoutHeight = () => height
   const layoutShiftX = () => 0
@@ -496,7 +497,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function populationSource(density = activeDensity()) {
-    return heroActive ? targetsForHero(density) : targetsForSegment(segment, density)
+    return !fieldEnabled() ? [] : heroActive ? targetsForHero(density) : targetsForSegment(segment, density)
   }
 
   function targetParticleCount(density = activeDensity()) {
@@ -697,7 +698,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
 
   function scheduleTargetPrewarm() {
     cancelTargetPrewarm()
-    if (typeof window.requestIdleCallback !== 'function' || !particles.length) return
+    if (preferences.conversationStyle === 'deck-chat' || !fieldEnabled() || typeof window.requestIdleCallback !== 'function' || !particles.length) return
     targetPrewarmQueue = (customEmblemConfiguration?.conversation ?? emblemSequence).map((_, index) => index)
       .filter(index => index !== sequenceIndexForSegment(segment))
     const warmNext = () => {
@@ -718,6 +719,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function buildParticles() {
+    if (!fieldEnabled()) { particles = []; cancelTargetPrewarm(); return false }
     if (startupPaused) return false
     const selected = populationSource()
     if (!selected.length) {
@@ -796,6 +798,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function startDensityReassembly(nextCount, force = false) {
+    if (!fieldEnabled()) return
     const baseNextTargets = populationSource()
     const targetCount = baseNextTargets.length
     if (!targetCount) {
@@ -921,6 +924,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function commitTransitionTargets(targetSegment, snap = false, density = preferences.conversationParticleDensity) {
+    if (!fieldEnabled()) return
     const selected = targetsForSegment(targetSegment, density)
     if (!selected.length) return
     segment = targetSegment
@@ -1507,7 +1511,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     heroActive = true
     scroller?.setAttribute('data-prts-hero-active', '')
     resetTraversal()
-    scheduleFrame()
+    updateFrameGate()
   }
 
   function leaveHero() {
@@ -1516,6 +1520,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     heroMarker = undefined
     heroActive = false
     scroller?.removeAttribute('data-prts-hero-active')
+    if (!fieldEnabled()) { resetTraversal(); updateFrameGate(); return }
     side = -1
     segment = 0
     traversalOffset = -currentScrollTop() * particleTraversalSpeed() / traversalViewport()
@@ -1558,7 +1563,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     if (heroActive) leaveHero()
   }
   function onScroll() {
-    if (!scroller || phoneStatic()) return
+    if (!fieldEnabled() || !scroller || phoneStatic()) return
     if (heroActive) {
       scheduleFrame()
       return
@@ -1570,7 +1575,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function onPointerMove(event) {
-    if (!operation || transition || motionReduced() || phoneStatic()) return
+    if (!fieldEnabled() || !operation || transition || motionReduced() || phoneStatic()) return
     pointerClientX = event.clientX
     pointerClientY = event.clientY
     pointerActive = true
@@ -1607,7 +1612,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function registerContentMutations(mutations) {
-    if (phoneStatic()) return
+    if (!fieldEnabled() || phoneStatic()) return
     let weight = mutations.length
     for (const mutation of mutations) {
       for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
@@ -1652,6 +1657,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function updateFrameGate() {
+    if (canvas) canvas.hidden = !fieldEnabled()
     const now = Number(window.performance?.now?.()) || 0
     if (!canRenderFrame()) {
       pauseStartedAt ??= now
@@ -1768,6 +1774,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     targetCache.clear()
     initializeFieldSize()
     syncHeroState()
+    canvas.hidden = !fieldEnabled()
     if (!heroActive) restoreTraversalFromScroll()
     if (!particles.length && maskRecords.length) buildParticles()
     if (context && particles.length) {
@@ -1880,6 +1887,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       }
 
       findMount()
+      if (!fieldEnabled()) resetTraversal()
       const previousActiveDensity = heroActive
         ? previousPreferences.heroParticleDensity
         : previousPreferences.conversationParticleDensity
@@ -1914,10 +1922,11 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
         }
       }
       if (ambient) ambient.hidden = preferences.texture === 'off' && preferences.conversationStyle !== 'deck-chat'
-      scheduleFrame()
+      updateFrameGate()
     },
     inspect() {
       return {
+        enabled: fieldEnabled(),
         mounted: Boolean(ambient?.isConnected && canvas?.isConnected),
         hero: heroActive,
         side,

@@ -312,3 +312,60 @@ test('restores the same glass surface after a virtualized final reply is removed
   assert.equal(step.getAttribute(ASSISTANT_STATE_ATTRIBUTE), 'body')
   adapter.dispose()
 })
+
+test('Baker avatars follow the first unfolded response per turn and restore after folding, paging and interleaved input', async () => {
+  const reply=(id,turn,attrs='')=>`<div id="${id}" data-chat-flow-kind="assistant-step" data-chat-turn="${turn}" ${attrs}><div class="host_body"><p>${id}</p></div></div>`
+  const dom=domWith(`<div data-conversation-scroll><div data-chat-flow-kind="user"></div>
+    ${reply('reasoning',1,'data-chat-group-part="reasoning"')}
+    <section id="process">${reply('first',1,'data-turn-process-member="true"')}${reply('second',1,'data-turn-process-member="true"')}</section>
+    ${reply('answer',1,'data-turn-process-answer="true"')}${reply('next',2)}
+    </div>`)
+  const {document}=dom.window
+  const adapter=createAssistantGlassAdapter({document,window:dom.window})
+  const shown=id=>!document.getElementById(id).hasAttribute('data-prts-avatar-hidden')
+  adapter.start()
+  assert.equal(shown('reasoning'),false)
+  assert.equal(shown('first'),true)
+  assert.equal(shown('second'),false)
+  assert.equal(shown('answer'),true)
+  assert.equal(shown('next'),true)
+  const process=document.getElementById('process')
+  process.setAttribute('hidden','until-found');await flush(dom.window)
+  assert.equal(shown('first'),false)
+  assert.equal(shown('answer'),true)
+  process.removeAttribute('hidden');await flush(dom.window)
+  assert.equal(shown('first'),true)
+  assert.equal(shown('answer'),true)
+  document.getElementById('first').setAttribute('data-turn-process-hidden','true');await flush(dom.window)
+  assert.equal(shown('second'),true)
+  const second=document.getElementById('second');second.remove();await flush(dom.window)
+  assert.equal(shown('answer'),true)
+  process.append(second);await flush(dom.window)
+  assert.equal(shown('second'),true)
+  assert.equal(shown('answer'),true)
+  document.getElementById('answer').insertAdjacentHTML('beforebegin','<div data-chat-flow-kind="steering">补充要求</div>')
+  await flush(dom.window)
+  assert.equal(shown('answer'),true)
+  adapter.start({groupAvatars:false})
+  assert.equal(shown('first'),true)
+  assert.equal(shown('second'),true)
+  adapter.start({groupAvatars:true})
+  assert.equal(shown('first'),false)
+  assert.equal(shown('second'),true)
+  adapter.dispose()
+  assert.equal(document.querySelectorAll('[data-prts-avatar-hidden]').length,0)
+  dom.window.close()
+})
+
+test('an empty streaming step does not consume the avatar before it has content', async()=>{
+  const dom=domWith('<div id="empty" data-turn-process-member="true" data-chat-flow-kind="assistant-step" data-chat-turn="1"><div class="host_body"></div></div><div id="answer" data-turn-process-member="true" data-chat-flow-kind="assistant-step" data-chat-turn="1"><div class="host_body">正文</div></div>')
+  const {document}=dom.window
+  const adapter=createAssistantGlassAdapter({document,window:dom.window});adapter.start()
+  assert.equal(document.querySelector('#answer').hasAttribute('data-prts-avatar-hidden'),false)
+  const text=document.createTextNode('')
+  document.querySelector('#empty .host_body').append(text);await flush(dom.window)
+  text.data='开始回复';await flush(dom.window)
+  assert.equal(document.querySelector('#empty').hasAttribute('data-prts-avatar-hidden'),false)
+  assert.equal(document.querySelector('#answer').hasAttribute('data-prts-avatar-hidden'),true)
+  adapter.dispose();dom.window.close()
+})

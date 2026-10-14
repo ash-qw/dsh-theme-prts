@@ -245,7 +245,7 @@ export function customEmblemMarkup() {
   return `<section data-prts-custom-emblem>
     <header><strong>徽记管理</strong><small>新会话与正文分别设置，可在任意会话中让 AI 调整，设置在当前 DSH 实例共享</small></header>
     <div data-prts-emblem-hero-panel><h4>新会话徽记</h4><div data-prts-emblem-hero-row></div></div>
-    <div><h4>正文轮换徽记</h4><small>按列表顺序随正文滚动轮换，可混合使用内置与上传的图片，最多 12 张。长按徽记选项任意位置拖动排序，松开保存。</small>
+    <div><h4>正文轮换徽记</h4><small data-prts-emblem-baker-note hidden>Baker 会话正文不显示或运行粒子徽记；下列配置保留供经典主题使用，新会话徽记不受影响。</small><small>按列表顺序随正文滚动轮换，可混合使用内置与上传的图片，最多 12 张。长按徽记选项任意位置拖动排序，松开保存。</small>
       <ol data-prts-emblem-list></ol>
       <div data-prts-emblem-actions><button type="button" data-prts-emblem-add>新增徽记</button><button type="button" data-prts-emblem-reset-list>恢复内置列表</button></div>
     </div>
