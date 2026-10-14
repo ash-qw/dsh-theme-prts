@@ -140,3 +140,28 @@ test('cleanup preserves a cursor changed by another plugin during a hand gesture
   assert.equal(button.style.cursor, 'grab')
   s.dom.window.close()
 })
+
+for (const change of ['value', 'priority', 'remove']) {
+  for (const phase of ['press', 'hold', 'release']) {
+    test(`host cursor ${change} during ${phase} stops animation without restoring stale state`, () => {
+      const s = setup()
+      const button = s.document.querySelector('button')
+      s.fire('pointerdown')
+      if (phase !== 'press') s.tick()
+      if (phase === 'release') s.fire('pointerup')
+      if (change === 'value') button.style.cursor = 'grab'
+      if (change === 'priority') button.style.setProperty('cursor', button.style.cursor, 'important')
+      if (change === 'remove') button.style.removeProperty('cursor')
+      const value = button.style.cursor
+      const priority = button.style.getPropertyPriority('cursor')
+      if (phase === 'hold') s.fire('pointermove')
+      else s.tick()
+      assert.equal(s.frame(), '')
+      assert.equal(s.timers.size, 0)
+      s.fire('pointermove'); s.fire('pointerup'); s.tick(); s.adapter.dispose()
+      assert.equal(button.style.cursor, value)
+      assert.equal(button.style.getPropertyPriority('cursor'), priority)
+      s.dom.window.close()
+    })
+  }
+}

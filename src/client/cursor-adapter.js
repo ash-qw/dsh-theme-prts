@@ -88,8 +88,18 @@ export function createCursorAdapter({ document, window, assets }) {
   let originalCursor
   let originalPriority
   let appliedCursor
+  let appliedPriority
+  function ownsHandCursor() {
+    return handTarget?.style.cursor === appliedCursor
+      && handTarget.style.getPropertyPriority('cursor') === appliedPriority
+  }
+  function stopIfHandChanged() {
+    if (!handTarget || ownsHandCursor()) return false
+    reset()
+    return true
+  }
   function restoreHandTarget() {
-    if (handTarget && handTarget.style.cursor === appliedCursor) {
+    if (handTarget && ownsHandCursor()) {
       if (originalCursor) handTarget.style.setProperty('cursor', originalCursor, originalPriority)
       else handTarget.style.removeProperty('cursor')
     }
@@ -103,6 +113,7 @@ export function createCursorAdapter({ document, window, assets }) {
     return target && target.getElementsByTagName('*').length <= maxAnimatedDescendants
   }
   function followHand(target) {
+    if (stopIfHandChanged()) return
     if (target === handTarget && target !== textTarget) return
     restoreHandTarget()
     if (!canAnimate(target) || !handCursor || target === textTarget) return
@@ -111,13 +122,16 @@ export function createCursorAdapter({ document, window, assets }) {
     handTarget = target
     originalCursor = target.style.getPropertyValue('cursor')
     originalPriority = target.style.getPropertyPriority('cursor')
+    appliedCursor = originalCursor
+    appliedPriority = originalPriority
     target.setAttribute('data-prts-hand-active', '')
     applyHandFrame()
   }
   function applyHandFrame() {
-    if (!handTarget) return
+    if (stopIfHandChanged() || !handTarget) return
     handTarget.style.setProperty('cursor', handCursor)
     appliedCursor = handTarget.style.cursor
+    appliedPriority = handTarget.style.getPropertyPriority('cursor')
   }
   function clearTimer() {
     if (timer !== undefined) window.clearTimeout(timer)
@@ -144,10 +158,12 @@ export function createCursorAdapter({ document, window, assets }) {
     let index = 0
     function next() {
       timer = undefined
+      if (stopIfHandChanged()) return
       // The source ANI ends with a 60-second hold frame. Use the static state instead.
       if (index >= frames.length - 1) { done(); return }
       const frame = frames[index++]
       show(frame.url)
+      if (!handCursor) return
       timer = window.setTimeout(next, frame.duration)
     }
     next()
@@ -179,6 +195,7 @@ export function createCursorAdapter({ document, window, assets }) {
     play(gestureAssets.release, reset)
   }
   function up(event) {
+    if (stopIfHandChanged()) return
     if (pointerId === undefined || event.pointerId !== pointerId || event.button !== 0) return
     pointerId = undefined
     if (reduced()) { reset(); return }
