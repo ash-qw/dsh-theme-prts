@@ -196,6 +196,8 @@ html[data-dsh-prts] [data-prts-composer-fallback]::after {
   position: absolute;
   z-index: 1;
   inset: 1px 1px 3px;
+  border: 0;
+  border-radius: 0;
   background: var(--prts-composer-surface, var(--prts-active-glass));
   clip-path: polygon(
     2px 0,
