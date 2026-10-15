@@ -85,6 +85,11 @@ test('loads and migrates a complete version-one payload without losing independe
     conversationStyle: 'native',
     bakerGroupAvatars: true,
     conversationEmblem: true,
+    sessionPreview: true,
+    previewOngoing: true,
+    previewWarning: true,
+    previewDone: true,
+    previewDoubleClick: true,
   })
 })
 

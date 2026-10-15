@@ -100,6 +100,8 @@ export function applyPrtsPlugin(ctx, environment) {
     workspaces: contextService(ctx, 'workspaces'),
     getSessionStatus: () => contextService(ctx, 'uiSession')?.sessionStatus,
     getUiWorkspace: () => contextService(ctx, 'uiWorkspace'),
+    getSessions: () => contextService(ctx, 'sessions'),
+    getUiConversation: () => contextService(ctx, 'uiConversation'),
   })
   const floatingGlass = createFloatingGlassAdapter({ document, window })
   const adapter = createRc7Adapter({ document })
@@ -257,7 +259,7 @@ export function applyPrtsPlugin(ctx, environment) {
     toBottom.start()
     conversationControls.start()
     layoutDiagnostics.start()
-    sidebarControls.start()
+    sidebarControls.start(preferences)
     floatingGlass.start()
   }
 

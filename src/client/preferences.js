@@ -30,6 +30,12 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
   particlePattern: 'orthogonal',
   railDefaultHidden: false,
+  sessionPreview: true,
+  previewOngoing: true,
+  previewWarning: true,
+  previewDone: true,
+  previewDoubleClick: true,
+
   sessionFlow: true,
   sessionGlow: true,
   sessionFlowPalette: 'triad',
@@ -80,7 +86,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
-  navigation: Object.freeze(['railDefaultHidden']),
+  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick']),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'conversationEmblem']),
 })
 
@@ -197,6 +203,11 @@ export function normalizePreferences(value) {
     sessionFlowColorCore: sessionFlowColors.core,
     sessionFlowColorFront: sessionFlowColors.front,
     sessionFlowSpeed: sessionFlowSpeedOr(input.sessionFlowSpeed, DEFAULT_PREFERENCES.sessionFlowSpeed),
+    sessionPreview: booleanOr(input.sessionPreview, DEFAULT_PREFERENCES.sessionPreview),
+    previewOngoing: booleanOr(input.previewOngoing, DEFAULT_PREFERENCES.previewOngoing),
+    previewWarning: booleanOr(input.previewWarning, DEFAULT_PREFERENCES.previewWarning),
+    previewDone: booleanOr(input.previewDone, DEFAULT_PREFERENCES.previewDone),
+    previewDoubleClick: booleanOr(input.previewDoubleClick, DEFAULT_PREFERENCES.previewDoubleClick),
     conversationEmblem: booleanOr(input.conversationEmblem, DEFAULT_PREFERENCES.conversationEmblem),
     bakerGroupAvatars: booleanOr(input.bakerGroupAvatars, DEFAULT_PREFERENCES.bakerGroupAvatars),
     conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),

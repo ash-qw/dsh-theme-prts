@@ -40,6 +40,10 @@ const PARTICLE_OPTIONS = [
   ['precise', '精细', 18],
 ]
 
+function previewSetting(key, label, description) {
+  return settingButtons(key, label, []).replace('</strong>', `</strong><small data-prts-preview-setting-description>${description}</small>`)
+}
+
 function settingButtons(key, label, options) {
   const note = key === 'glass'
     ? '<small data-prts-setting-note data-prts-transparency-status hidden>系统当前要求降低透明度</small>'
@@ -60,7 +64,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -132,6 +136,7 @@ export function themeSettingsMarkup() {
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子效果</button>
+          <button type="button" data-prts-settings-jump="assistance" role="tab" id="prts-tab-assistance" aria-controls="prts-page-assistance" aria-selected="false" tabindex="-1">辅助功能</button>
         </nav>
           <footer data-prts-settings-actions aria-label="全局主题设置操作">
             <div data-prts-persistence-error hidden role="alert">
@@ -142,7 +147,7 @@ export function themeSettingsMarkup() {
 
               <button type="button" data-prts-reset-visual title="恢复全部外观设置" aria-label="恢复全部外观设置">恢复默认</button>
               <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复全部外观设置">
-                <span>重置四个分类的外观参数，保留主题开关、启动动画和徽记配置。</span>
+                <span>重置全部分类的主题设置，保留主题开关、启动动画和徽记配置。</span>
                 <button type="button" data-prts-reset-confirm-action>确认恢复</button>
                 <button type="button" data-prts-reset-cancel>取消</button>
               </div>
@@ -179,6 +184,26 @@ export function themeSettingsMarkup() {
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
             </div>
+          </section>
+          <section data-prts-settings-section="assistance" role="tabpanel" id="prts-page-assistance" aria-labelledby="prts-tab-assistance" tabindex="0" hidden>
+            <header data-prts-section-heading><strong>辅助功能</strong><small>会话状态查看与快捷操作</small></header>
+            <section data-prts-preview-settings>
+              <div data-prts-preview-master>
+                ${previewSetting('sessionPreview', '会话状态预览', '在工作区右侧查看会话进度，无需切换当前会话')}
+              </div>
+              <div data-prts-preview-options>
+                <section data-prts-preview-setting-group>
+                  <header><strong>悬停预览</strong><small>选择哪些状态显示详细浮窗</small></header>
+                  ${previewSetting('previewOngoing', '运行中预览', '逐轮查看已完成的回复，最新内容置顶')}
+                  ${previewSetting('previewWarning', '待处理预览（回答与审批）', '查看问题或审批请求，并直接提交选择')}
+                  ${previewSetting('previewDone', '已完成预览', '查看本轮最终回复')}
+                </section>
+                <section data-prts-preview-setting-group>
+                  <header><strong>快捷操作</strong></header>
+                  ${previewSetting('previewDoubleClick', '双击浮窗进入会话', '双击正文或空白区域，打开对应会话')}
+                </section>
+              </div>
+            </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="flow" role="tabpanel" id="prts-page-flow" aria-labelledby="prts-tab-flow" tabindex="0" hidden>
             <header data-prts-section-heading><strong>会话流线</strong><small>当前会话的流线与辉光</small></header>
@@ -490,6 +515,8 @@ export function createThemeSettingsOverlay({
       toggle.setAttribute('aria-checked', String(enabled))
       toggle.classList.toggle('is-active', enabled)
     }
+    const previewOptions = panel.querySelector('[data-prts-preview-options]')
+    if (previewOptions) previewOptions.hidden = currentPreferences.sessionPreview === false
     for (const key of ['sessionGlow', 'sessionFlowPalette', 'sessionFlowColors', 'sessionFlowSpeed']) {
       const row = panel.querySelector(`[data-prts-setting-row="${key}"]`)
       if (row) row.hidden = currentPreferences.sessionFlow === false

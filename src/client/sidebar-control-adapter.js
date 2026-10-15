@@ -1,3 +1,4 @@
+import { createSessionSummaryPreview, scrollSummaryTitle } from './session-summary-preview.js'
 import { ensureFacilityGraphic, ensureFacilityTextureDefs, renderFacilityGraphic } from './facility-vector.js'
 import { createSessionLifelineAnimator } from './session-lifeline.js'
 
@@ -189,7 +190,8 @@ function ensureFacilitySpine(document, row, kind, next) {
 }
 
 
-export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace }) {
+export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions }) {
+  let previewPreferences = {}
   let observer
   let resizeObserver
   let resizeFrame
@@ -201,6 +203,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let statusSourcesStarted = false
   let summaryRoot
   let summarySignature = ''
+  const preview = createSessionSummaryPreview({ document, window, sessions, getUiConversation, getSessions, getSessionStatus, openSession, getPreviewPreferences: () => previewPreferences })
+  let stopTitles = []
+  function clearSummaryEffects() { preview.stop(false); for (const stop of stopTitles) stop(); stopTitles = [] }
   let owned = new Set()
   let vectorOwners = new Set()
   const dirtyVectors = new Map()
@@ -269,6 +274,19 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     hint.textContent = '选择会话'
     heading.append(headingLabel, hint)
     popover.append(heading)
+    const reply = document.createElement('section')
+    reply.setAttribute('data-prts-summary-reply', '')
+    reply.setAttribute('role', 'note')
+    reply.setAttribute('popover', 'manual')
+    reply.hidden = true
+    reply.append(document.createElement('strong'), document.createElement('p'))
+    group.addEventListener('pointerleave', () => preview.leave())
+    group.addEventListener('focusout', event => {
+      if (!group.contains(event.relatedTarget)) preview.leave()
+    })
+    const list = document.createElement('span')
+    list.setAttribute('data-prts-summary-list', '')
+    popover.append(list)
     for (const item of items) {
       const button = document.createElement('button')
       button.type = 'button'
@@ -276,8 +294,21 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       button.setAttribute('data-prts-session-summary-item', item.id)
       button.append(statusSignal(document, state))
       const title = document.createElement('span')
-      title.textContent = item.title
+      title.setAttribute('data-prts-summary-title', '')
+      const text = document.createElement('span')
+      text.textContent = item.title
+      title.append(text)
       button.append(title)
+      button.setAttribute('aria-label', item.title)
+      stopTitles.push(scrollSummaryTitle(button, title, text, window))
+      const showReply = () => {
+        const key = {ongoing:'previewOngoing',warning:'previewWarning',done:'previewDone'}[state]
+        if (previewPreferences[key] === false) { preview.stop(); return }
+        preview.show(item.id, reply, item.title, button)
+      }
+      button.addEventListener('pointerenter', showReply)
+      button.addEventListener('pointerleave', () => preview.leave())
+      button.addEventListener('focus', showReply)
       if (item.statusLabel) {
         const detail = document.createElement('small')
         detail.setAttribute('data-prts-session-summary-item-status', '')
@@ -287,17 +318,21 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       }
       button.addEventListener('click', event => {
         event.stopPropagation()
+        preview.stop()
         openSession(item.id)
       })
-      popover.append(button)
+      list.append(button)
     }
+    popover.append(reply)
     group.append(trigger, popover)
     return group
   }
 
   function syncSummary(root, next) {
     const { header, label } = resolveSectionHeader(root)
-    if (!header || !label) {
+    if (previewPreferences.sessionPreview === false || !header || !label) {
+      preview.stop()
+      clearSummaryEffects()
       summaryRoot?.remove()
       summaryRoot = undefined
       summarySignature = ''
@@ -349,10 +384,12 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     summaryRoot.hidden = warning.length === 0 && ongoing.length === 0 && done.length === 0
     if (signature === summarySignature) return
     summarySignature = signature
+    clearSummaryEffects()
     summaryRoot.replaceChildren()
     if (warning.length) summaryRoot.append(buildSummaryGroup('warning', '等待处理的会话', warning))
     if (ongoing.length) summaryRoot.append(buildSummaryGroup('ongoing', '运行中的会话', ongoing))
     if (done.length) summaryRoot.append(buildSummaryGroup('done', '完成未查看', done))
+    preview.reanchor(summaryRoot)
   }
 
   function scheduleVectors() {
@@ -487,6 +524,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       }
       syncSummary(root, next)
     } else {
+      preview.stop()
+      clearSummaryEffects()
       summaryRoot?.remove()
       summaryRoot = undefined
       summarySignature = ''
@@ -508,6 +547,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function clear() {
+    preview.stop()
+    clearSummaryEffects()
     lifelineAnimator.setTarget(undefined, undefined)
     for (const node of document?.querySelectorAll?.('[data-prts-owned-projection], [data-prts-owned-facility], [data-prts-owned-facility-spine], [data-prts-owned-facility-vector], [data-prts-owned-facility-defs]') ?? []) node.remove()
     for (const node of owned) {
@@ -525,7 +566,10 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   return {
-    start() {
+    start(preferences = {}) {
+      const keys = ['sessionPreview','previewOngoing','previewWarning','previewDone','previewDoubleClick']
+      if (keys.some(key => previewPreferences[key] !== preferences[key])) preview.stop()
+      previewPreferences = Object.fromEntries(keys.map(key => [key, preferences[key]]))
       if (!document) return
       lifelineAnimator.start()
       ensureFacilityTextureDefs(document)
@@ -550,7 +594,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (observer || !window?.MutationObserver) return
       const observationRoot = document.querySelector('[data-prts-region="sessions"]')
       if (!observationRoot) return
-      observer = new window.MutationObserver(queueScan)
+      observer = new window.MutationObserver(mutations => {
+        if (mutations.some(mutation => !mutation.target.closest?.('[data-prts-owned-session-summary]'))) queueScan()
+      })
       observer.observe(observationRoot, {
         subtree: true,
         childList: true,

@@ -45,3 +45,11 @@ After receiving a verifiable request, the project maintainer will review it prom
 - Upstream Credits.txt describes an unofficial personal derivative tool and attributes Arknights character/interface assets to their original rights holders. No explicit redistribution license for this artwork was found in the inspected package. This artwork is excluded from this project's MIT license; inclusion does not grant rights to the underlying artwork.
 
 - Grab and unavailable assets added on 2026-10-12 from the same release: `grab_enter_0011.cur` and `grab_loop_0000.cur` provide static grab/grabbing states, cropped to (18, 40, 86, 96) and resized to 45×37 with a web hotspot at the hand center (22, 19). `unavail1_static.cur` provides the unavailable state, cropped to (18, 10, 96, 96) and resized to 51×56 with hotspot (7, 7). The installer was not executed; loop animations are not played.
+
+## Markdown preview rendering
+
+Session hover previews use [markdown-it](https://github.com/markdown-it/markdown-it) 14.3.2 (MIT).
+The browser build includes entities, linkify-it, mdurl, punycode.js, and uc.micro.
+Their copyright and license notices are retained in the generated lib/client.js.
+This is a build-time dependency; DSH does not need to install it separately at runtime.
+Raw HTML and remote image loading are disabled in previews.

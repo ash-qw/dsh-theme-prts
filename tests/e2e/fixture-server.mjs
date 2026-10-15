@@ -246,8 +246,16 @@ const fixtureBootstrap = `
   const hostDescription = observable('fixture-host')
   const connectionState = observable('connected')
   const openedSessionIds = []
+  const previewReferences = new Set()
+  const previewChat = observable({order:['reply'],nodes:new Map([['reply',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'正在检查会话状态，当前进度正常。'}]}}]])})
+  const uiConversation = { binding() { return { target() { return previewChat } } } }
   const sessions = {
     list: sessionList,
+    retain(sessionId) {
+      const reference = {ready:Promise.resolve({sessionId}),release(){previewReferences.delete(reference)}}
+      previewReferences.add(reference)
+      return reference
+    },
     open(sessionId) {
       openedSessionIds.push(sessionId)
     },
@@ -272,6 +280,8 @@ const fixtureBootstrap = `
     hostDescription,
     connectionState,
     openedSessionIds,
+    previewChat,
+    previewReferences,
   }
 
   const contextEvents = new Map()
@@ -295,6 +305,7 @@ const fixtureBootstrap = `
     },
     sessions,
     uiSession: { sessionStatus },
+    uiConversation,
     connection,
     modelDirectories,
     get(name) { return this[name] },

@@ -13,7 +13,7 @@ for(const width of [1280,390])test(`sidebar reset stays outside scrolling pages 
   expect(await footer.evaluate(e=>!!e.closest('[data-prts-theme-settings-scroll]'))).toBe(false)
   await page.waitForTimeout(350) // Let the dialog entrance animation finish before measuring.
   const original=await footer.boundingBox()
-  for(const key of ['appearance','interaction','flow','particles']){
+  for(const key of ['appearance','interaction','flow','particles','assistance']){
     await page.locator(`[data-prts-settings-jump="${key}"]`).click()
     await scroll.evaluate(e=>e.scrollTop=e.scrollHeight)
     await expect(reset).toBeInViewport()

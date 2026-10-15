@@ -143,6 +143,8 @@ const clientModulePaths = [
   'src/client/facility-geometry.js',
   'src/client/session-lifeline.js',
   'src/client/facility-vector.js',
+  'src/client/preview-markdown.js',
+  'src/client/session-summary-preview.js',
   'src/client/sidebar-control-adapter.js',
   'src/client/rc7-adapter.js',
   'src/client/cursor-adapter.js',
@@ -168,6 +170,21 @@ function bundleModule(source) {
     .replace(/^[ \t]*\r?\n/gm, '')
 }
 
+const markdownSource = await readFile(resolve(root, 'node_modules/markdown-it/dist/markdown-it.min.js'), 'utf8')
+const markdownLicense = (await Promise.all([
+  'markdown-it/LICENSE', 'entities/LICENSE', 'linkify-it/LICENSE',
+  'mdurl/LICENSE', 'punycode.js/LICENSE-MIT.txt', 'uc.micro/LICENSE.txt',
+].map(async path => path + '\n' + await readFile(resolve(root, 'node_modules', path), 'utf8')))).join('\n\n')
+const markdownBundle = `/*
+${markdownLicense}
+*/
+const MarkdownIt = (() => {
+  const module = {exports:{}};
+  const exports = module.exports;
+  ${markdownSource.replace(/\/\/# sourceMappingURL=.*$/m, '')}
+  return module.exports;
+})();`
+
 const bundledSource = moduleSources.map(bundleModule).join('\n')
 
 const host = `export { PACKAGE_ID, THEME_PLUGIN_ID, inject, apply } from '../src/index.js'\n`
@@ -186,6 +203,7 @@ const client = `window.__ModuleLoader__.load({
       emblemMasks: ${JSON.stringify(factionEmblemMasks)},
       heroEmblemMask: ${JSON.stringify(heroEmblemMask)}
     });
+    ${markdownBundle}
     ${bundledSource}
     exports.cssText = PRTS_CSS;
     exports.assets = PRTS_ASSETS;
