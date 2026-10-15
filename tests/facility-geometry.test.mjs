@@ -7,7 +7,7 @@ test('facility geometry keeps the confirmed fixed-pixel specification', () => {
   assert.deepEqual(FACILITY_GEOMETRY, {
     stroke: 1,
     corner: 1,
-    sideDepth: 2,
+    sideDepth: 14 / 17,
     sideOpening: 10,
     sideInner: 6,
     topOpening: 50,
@@ -24,8 +24,8 @@ test('facility face is one closed path with a centered top notch and symmetric s
   assert.ok(path.startsWith('M 1.5 0.5'))
   assert.ok(path.endsWith(' Z'))
   assert.match(path, /75 0\.5 L 80 3\.833 L 120 3\.833 L 125 0\.5/)
-  assert.match(path, /199\.5 14 L 197\.5 16 L 197\.5 22 L 199\.5 24/)
-  assert.match(path, /0\.5 24 L 2\.5 22 L 2\.5 16 L 0\.5 14/)
+  assert.match(path, /199\.5 14 L 198\.676 16 L 198\.676 22 L 199\.5 24/)
+  assert.match(path, /0\.5 24 L 1\.324 22 L 1\.324 16 L 0\.5 14/)
 })
 
 test('session cards use a slightly deeper centered notch with the same opening width', () => {
@@ -36,11 +36,11 @@ test('session cards use a slightly deeper centered notch with the same opening w
 test('button and spine geometry omit the top notch without changing the shared side cuts', () => {
   const button = createFacilityPath({ width: 33, height: 38 })
   const compactTopNotch = createFacilityPath({ width: 33, height: 38, topNotch: true })
-  const spine = createFacilityPath({ width: 8, height: 38 })
+  const spine = createFacilityPath({ width: 8, height: 38, spine: true })
   assert.equal(compactTopNotch, button, 'top notch must wait until the shared 53px width threshold')
   assert.doesNotMatch(button, /8\.5 0\.5 L 13\.5 3\.833/)
-  assert.match(button, /32\.5 14 L 30\.5 16 L 30\.5 22 L 32\.5 24/)
-  assert.match(spine, /7\.5 14 L 5\.5 16 L 5\.5 22 L 7\.5 24/)
+  assert.match(button, /32\.5 14 L 31\.676 16 L 31\.676 22 L 32\.5 24/)
+  assert.match(spine, /7\.5 14 L 6\.676 16 L 6\.676 22 L 7\.5 24/)
   assert.ok(button.endsWith(' Z'))
   assert.ok(spine.endsWith(' Z'))
 })

@@ -279,7 +279,7 @@ export function renderFacilityGraphic(owner, { width, height } = {}) {
     renderStates.set(graphic, state)
   }
   const { statusUnderlay, idleIndicator, silhouette, pickup, lifeline } = state
-  const path = createFacilityPath({ width, height, topNotch, sessionNotch })
+  const path = createFacilityPath({ width, height, topNotch, sessionNotch, spine: graphic.getAttribute('data-prts-facility-svg') === 'spine' })
   graphic.setAttribute('viewBox', `0 0 ${Number(width.toFixed(3))} ${Number(height.toFixed(3))}`)
   for (const layer of state.layers) layer.setAttribute('d', path)
   statusUnderlay?.setAttribute('d', createFacilityPath({ width, height }))

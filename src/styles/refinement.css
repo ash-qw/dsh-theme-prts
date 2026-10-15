@@ -55,9 +55,9 @@ html[data-dsh-prts] [data-prts-workspace-row]::before,
 html[data-dsh-prts] [data-prts-session-row]::before {
   clip-path: polygon(
     1px 0, calc(100% - 1px) 0, 100% 1px,
-    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(50% - 5px), 88.235% calc(50% - 3px), 88.235% calc(50% + 3px), 100% calc(50% + 5px),
     100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
-    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+    0 calc(50% + 5px), 11.765% calc(50% + 3px), 11.765% calc(50% - 3px), 0 calc(50% - 5px), 0 1px
   ) !important;
 }
 
@@ -72,9 +72,9 @@ html[data-dsh-prts] [data-prts-facility-face] {
     1px 0,
     calc(50% - 25px) 0, calc(50% - 20px) 3.333px, calc(50% + 20px) 3.333px, calc(50% + 25px) 0,
     calc(100% - 1px) 0, 100% 1px,
-    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(50% - 5px), calc(100% - .824px) calc(50% - 3px), calc(100% - .824px) calc(50% + 3px), 100% calc(50% + 5px),
     100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
-    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+    0 calc(50% + 5px), .824px calc(50% + 3px), .824px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
   ) !important;
 }
 
@@ -87,9 +87,9 @@ html[data-dsh-prts] [data-prts-facility-face]::after {
     0 0,
     calc(50% - 24px) 0, calc(50% - 19px) 3.333px, calc(50% + 19px) 3.333px, calc(50% + 24px) 0,
     100% 0,
-    100% calc(50% - 4px), calc(100% - 2px) calc(50% - 2px), calc(100% - 2px) calc(50% + 2px), 100% calc(50% + 4px),
+    100% calc(50% - 4px), calc(100% - .824px) calc(50% - 2px), calc(100% - .824px) calc(50% + 2px), 100% calc(50% + 4px),
     100% 100%, 0 100%,
-    0 calc(50% + 4px), 2px calc(50% + 2px), 2px calc(50% - 2px), 0 calc(50% - 4px)
+    0 calc(50% + 4px), .824px calc(50% + 2px), .824px calc(50% - 2px), 0 calc(50% - 4px)
   );
 }
 
@@ -113,9 +113,9 @@ html[data-dsh-prts] [data-prts-session-actions] button {
   background: var(--prts-line) !important;
   clip-path: polygon(
     1px 0, calc(100% - 1px) 0, 100% 1px,
-    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(50% - 5px), calc(100% - .824px) calc(50% - 3px), calc(100% - .824px) calc(50% + 3px), 100% calc(50% + 5px),
     100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px),
-    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
+    0 calc(50% + 5px), .824px calc(50% + 3px), .824px calc(50% - 3px), 0 calc(50% - 5px), 0 1px
   ) !important;
 }
 
@@ -128,9 +128,9 @@ html[data-dsh-prts] [data-prts-session-actions] button::before {
   background: var(--prts-panel-raised);
   clip-path: polygon(
     0 0, 100% 0,
-    100% calc(50% - 4px), calc(100% - 2px) calc(50% - 2px), calc(100% - 2px) calc(50% + 2px), 100% calc(50% + 4px),
+    100% calc(50% - 4px), calc(100% - .824px) calc(50% - 2px), calc(100% - .824px) calc(50% + 2px), 100% calc(50% + 4px),
     100% 100%, 0 100%,
-    0 calc(50% + 4px), 2px calc(50% + 2px), 2px calc(50% - 2px), 0 calc(50% - 4px)
+    0 calc(50% + 4px), .824px calc(50% + 2px), .824px calc(50% - 2px), 0 calc(50% - 4px)
   );
   pointer-events: none;
 }

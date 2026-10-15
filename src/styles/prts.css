@@ -904,12 +904,6 @@ html[data-dsh-prts] [data-prts-session-row]::before {
   inset: 0 auto 0 0;
   width: var(--prts-spine-width);
   background: var(--prts-line-strong);
-  clip-path: polygon(
-    3px 0, calc(100% - 3px) 0, 100% 3px,
-    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
-    100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px),
-    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 3px
-  );
   transform: scaleX(var(--prts-spine-rest));
   transform-origin: left center;
   transition: transform 220ms var(--prts-ease-spring), background-color 160ms ease;
@@ -935,9 +929,9 @@ html[data-dsh-prts] [data-prts-facility-face] {
     3px 0,
     calc(50% - 25px) 0, calc(50% - 20px) 3.333px, calc(50% + 20px) 3.333px, calc(50% + 25px) 0,
     calc(100% - 3px) 0, 100% 3px,
-    100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px),
+    100% calc(50% - 5px), calc(100% - .824px) calc(50% - 3px), calc(100% - .824px) calc(50% + 3px), 100% calc(50% + 5px),
     100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px),
-    0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 3px
+    0 calc(50% + 5px), .824px calc(50% + 3px), .824px calc(50% - 3px), 0 calc(50% - 5px), 0 3px
   );
   transform: translate3d(var(--prts-row-shift), 0, 0);
   transition: transform 220ms var(--prts-ease-spring), border-color 160ms ease, background-color 160ms ease;
@@ -1036,7 +1030,7 @@ html[data-dsh-prts] [data-prts-session-actions] button {
   border-radius: 0 !important;
   background: var(--prts-panel-raised) !important;
   color: var(--prts-muted) !important;
-  clip-path: polygon(3px 0, calc(100% - 3px) 0, 100% 3px, 100% calc(50% - 5px), calc(100% - 2px) calc(50% - 3px), calc(100% - 2px) calc(50% + 3px), 100% calc(50% + 5px), 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px), 0 calc(50% + 5px), 2px calc(50% + 3px), 2px calc(50% - 3px), 0 calc(50% - 5px), 0 3px);
+  clip-path: polygon(3px 0, calc(100% - 3px) 0, 100% 3px, 100% calc(50% - 5px), calc(100% - .824px) calc(50% - 3px), calc(100% - .824px) calc(50% + 3px), 100% calc(50% + 5px), 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px), 0 calc(50% + 5px), .824px calc(50% + 3px), .824px calc(50% - 3px), 0 calc(50% - 5px), 0 3px);
   cursor: pointer;
 }
 
