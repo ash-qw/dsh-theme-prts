@@ -11,18 +11,10 @@ const SETTINGS_FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
-const PRESET_OPTIONS = [
-  ['standard-tactical', '标准战术', '完整底纹 / 标准玻璃 / 系统动效'],
-  ['clear-glass', '清晰玻璃', '克制底纹 / 清晰玻璃 / 系统动效'],
-  ['quiet-reading', '静谧阅读', '克制底纹 / 柔和玻璃 / 减少动效'],
-]
-
 const COMMON_CONTROLS = [
   ['cursor', 'PRTS 光标', [['system', '关闭'], ['prts', '开启']]],
   ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
-  ['texture', '环境底纹', [['off', '关闭'], ['restrained', '克制'], ['full', '完整']]],
-  ['glass', '玻璃材质', [['off', '关闭'], ['soft', '柔和'], ['standard', '标准'], ['clear', '清晰']]],
-  ['motion', '动态效果', [['system', '跟随系统'], ['reduced', '减少']]],
+  ['motion', '动态效果', []],
   ['sessionFlow', '当前会话流线', [['false', '关闭'], ['true', '开启']]],
   ['sessionGlow', '流线光效', [['false', '关闭'], ['true', '开启']]],
   ['sessionFlowPalette', '流线色调', [['triad', '三色'], ['rhodes', '青蓝'], ['amber', '金黄'], ['alert', '赤红'], ['custom', '自定义']]],
@@ -45,10 +37,8 @@ function previewSetting(key, label, description) {
 }
 
 function settingButtons(key, label, options) {
-  const note = key === 'glass'
-    ? '<small data-prts-setting-note data-prts-transparency-status hidden>系统当前要求降低透明度</small>'
-    : key === 'motion'
-      ? '<small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
+  const note = key === 'motion'
+      ? '<small data-prts-setting-note>关闭后减少装饰动效，保留运行状态等必要反馈</small><small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
       : key === 'railDefaultHidden'
         ? '<small data-prts-setting-note>在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开</small>'
       : key === 'conversationStyle'
@@ -64,11 +54,11 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
-  const sample = value => key === 'texture' || key === 'glass' || key === 'sessionFlowPalette'
+  const sample = value => key === 'sessionFlowPalette'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`
     : ''
   return `<div data-prts-setting-row="${key}">
@@ -77,11 +67,6 @@ function settingButtons(key, label, options) {
   </div>`
 }
 
-function presetMarkup() {
-  return PRESET_OPTIONS.map(([value, title, description]) => `<button type="button" data-prts-setting-key="preset" data-prts-setting-value="${value}" data-prts-preset-card>
-    <strong>${title}</strong><span>${description}</span>
-  </button>`).join('')
-}
 
 function particleMarkup() {
   return PARTICLE_OPTIONS.map(([value, label, count]) => `<button type="button" role="radio" data-prts-setting-key="particleDetail" data-prts-setting-value="${value}">
@@ -121,9 +106,8 @@ export function themeSettingsMarkup() {
     <dialog id="prts-theme-settings" data-prts-theme-settings aria-label="P.R.T.S. 主题设置" aria-hidden="true">
       <div data-prts-settings-frame>
         <header data-prts-theme-settings-header>
-          <span><small>P.R.T.S. / 外观</small><strong>主题设置</strong></span>
+          <span><small>P.R.T.S. / 设置</small><strong>主题设置</strong></span>
           <div data-prts-settings-summary aria-live="polite">
-            <span data-prts-settings-preset-status>标准战术</span>
             <span data-prts-persistence-status hidden></span>
           </div>
           <button type="button" data-prts-theme-settings-close aria-label="关闭主题设置">×</button>
@@ -132,10 +116,10 @@ export function themeSettingsMarkup() {
         <div data-prts-settings-body>
         <div data-prts-settings-sidebar>
         <nav data-prts-settings-nav role="tablist" aria-label="设置分区">
-          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">外观</button>
+          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话外观</button>
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
-          <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子效果</button>
+          <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子徽记</button>
           <button type="button" data-prts-settings-jump="assistance" role="tab" id="prts-tab-assistance" aria-controls="prts-page-assistance" aria-selected="false" tabindex="-1">辅助功能</button>
         </nav>
           <footer data-prts-settings-actions aria-label="全局主题设置操作">
@@ -145,8 +129,8 @@ export function themeSettingsMarkup() {
             </div>
             <div data-prts-reset-zone>
 
-              <button type="button" data-prts-reset-visual title="恢复全部外观设置" aria-label="恢复全部外观设置">恢复默认</button>
-              <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复全部外观设置">
+              <button type="button" data-prts-reset-visual title="恢复全部主题设置" aria-label="恢复全部主题设置">恢复默认</button>
+              <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复全部主题设置">
                 <span>重置全部分类的主题设置，保留主题开关、启动动画和徽记配置。</span>
                 <button type="button" data-prts-reset-confirm-action>确认恢复</button>
                 <button type="button" data-prts-reset-cancel>取消</button>
@@ -156,18 +140,6 @@ export function themeSettingsMarkup() {
         </div>
         <div data-prts-theme-settings-scroll>
           <section data-prts-settings-section="appearance" role="tabpanel" id="prts-page-appearance" aria-labelledby="prts-tab-appearance" tabindex="0">
-            <header data-prts-section-heading><strong>外观</strong><small>预设、界面材质与会话样式</small></header>
-          <section data-prts-settings-presets>
-            <header><span><strong>视觉预设</strong></span></header>
-            <div>${presetMarkup()}</div>
-          </section>
-
-          <section data-prts-settings-common>
-            <header><span><strong>界面外观</strong></span></header>
-            <div data-prts-settings-common-grid>
-              ${COMMON_CONTROLS.filter(([key]) => ['texture', 'glass'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
-            </div>
-          </section>
           <section data-prts-conversation-settings>
             <header><strong>会话主题</strong><small>选择消息的呈现方式</small></header>
             <div data-prts-conversation-cards>
@@ -180,13 +152,11 @@ export function themeSettingsMarkup() {
           </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
-            <header data-prts-section-heading><strong>交互</strong><small>光标、导航栏与动态反馈</small></header>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
             </div>
           </section>
           <section data-prts-settings-section="assistance" role="tabpanel" id="prts-page-assistance" aria-labelledby="prts-tab-assistance" tabindex="0" hidden>
-            <header data-prts-section-heading><strong>辅助功能</strong><small>会话状态查看与快捷操作</small></header>
             <section data-prts-preview-settings>
               <div data-prts-preview-master>
                 ${previewSetting('sessionPreview', '会话状态预览', '在工作区右侧查看会话进度，无需切换当前会话')}
@@ -214,7 +184,6 @@ export function themeSettingsMarkup() {
             </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="flow" role="tabpanel" id="prts-page-flow" aria-labelledby="prts-tab-flow" tabindex="0" hidden>
-            <header data-prts-section-heading><strong>会话流线</strong><small>当前会话的流线与辉光</small></header>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['sessionFlow', 'sessionGlow', 'sessionFlowPalette'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               ${sessionFlowColorMarkup()}
@@ -227,11 +196,10 @@ export function themeSettingsMarkup() {
           </section>
 
           <section data-prts-settings-advanced data-prts-settings-section="particles" role="tabpanel" id="prts-page-particles" aria-labelledby="prts-tab-particles" tabindex="0" hidden>
-            <header data-prts-section-heading><span><strong>粒子效果</strong><small>徽记精度与跟随移动速度</small></span><output data-prts-advanced-summary>标准 / 1×</output></header>
             <div data-prts-settings-advanced-content>
               ${customEmblemMarkup()}
               <section data-prts-particle-detail>
-                <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span></header>
+                <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span><output data-prts-advanced-summary>标准</output></header>
                 <div role="radiogroup" aria-label="粒子精度">${particleMarkup()}</div>
                 <label data-prts-setting-row="particleTraversalSpeed" data-prts-setting-range-row data-prts-particle-traversal>
                   <span><strong>跟随移动速度</strong><small>控制普通会话徽记移动及破碎重组的滚动距离</small></span>
@@ -519,6 +487,7 @@ export function createThemeSettingsOverlay({
     for (const toggle of panel.querySelectorAll('[data-prts-setting-switch]')) {
       const key = toggle.dataset.prtsSettingSwitch
       const enabled = key === 'cursor' ? currentPreferences.cursor === 'prts'
+        : key === 'motion' ? currentPreferences.motion !== 'reduced'
         : key === 'railDefaultHidden' ? currentPreferences[key] === true : currentPreferences[key] !== false
       toggle.setAttribute('aria-checked', String(enabled))
       toggle.classList.toggle('is-active', enabled)
@@ -536,6 +505,8 @@ export function createThemeSettingsOverlay({
         || (key === 'sessionFlowColors' && activeSessionFlowPalette() !== 'custom')
     }
     const particleDetail = resolveParticleDetail(currentPreferences)
+    const detailSummary = panel.querySelector('[data-prts-advanced-summary]')
+    if (detailSummary) detailSummary.textContent = PARTICLE_OPTIONS.find(([value]) => value === particleDetail)?.[1] ?? '标准'
     for (const button of panel.querySelectorAll('button[data-prts-setting-key]')) {
       const key = button.dataset.prtsSettingKey
       const actual = key === 'particleDetail'
@@ -550,10 +521,6 @@ export function createThemeSettingsOverlay({
       button.setAttribute('aria-pressed', String(selected))
       if (button.getAttribute('role') === 'radio') button.setAttribute('aria-checked', String(selected))
     }
-    const presetLabels = { 'standard-tactical': '标准战术', 'clear-glass': '清晰玻璃', 'quiet-reading': '静谧阅读', custom: '自定义' }
-    const preset = presetLabels[currentPreferences.preset] || '自定义'
-    const presetStatus = panel.querySelector('[data-prts-settings-preset-status]')
-    if (presetStatus) presetStatus.textContent = preset
     const motionStatus = panel.querySelector('[data-prts-effective-motion]')
     if (motionStatus) motionStatus.hidden = !(currentPreferences.motion === 'system' && motionMedia?.matches)
     const transparency = panel.querySelector('[data-prts-transparency-status]')
@@ -619,7 +586,7 @@ export function createThemeSettingsOverlay({
     if (target.hasAttribute('data-prts-setting-switch')) {
       const key = target.dataset.prtsSettingSwitch
       const enabled = target.getAttribute('aria-checked') === 'true'
-      onPreferenceChange(key, key === 'cursor' ? (enabled ? 'system' : 'prts') : !enabled)
+      onPreferenceChange(key, key === 'cursor' ? (enabled ? 'system' : 'prts') : key === 'motion' ? (enabled ? 'reduced' : 'system') : !enabled)
       return
     }
     if (target.hasAttribute('data-prts-setting-key')) {
