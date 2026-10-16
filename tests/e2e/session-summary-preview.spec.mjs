@@ -35,7 +35,7 @@ test('summary hover scrolls long titles and streams replies without opening the 
   await item.focus()
   await expect(reply).toContainText('已经完成')
   await item.click()
-  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
   expect(errors).toEqual([])
 })
 
@@ -175,7 +175,7 @@ test('clicking the preview session still opens the session and closes its answer
   await expect(page.locator('[data-prts-preview-editing]')).toBeVisible()
   await item.click()
   await expect(page.locator('[data-prts-preview-editing]')).toHaveCount(0)
-  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
 })
 
 for (const [label,outcome] of [['仅允许本次','allowed-once'],['拒绝','rejected']]) {
@@ -275,7 +275,7 @@ test('double clicking noninteractive preview content opens its session once',asy
   const reply=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
   await expect(reply).toContainText('当前进度正常')
   await reply.locator(':scope > strong').dblclick()
-  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
   await expect(reply).toHaveCount(0)
 })
 test('double clicking an answer option does not open the session',async({page})=>{
@@ -293,7 +293,7 @@ test('double clicking an answer option does not open the session',async({page})=
   await expect(reply).toBeVisible()
   expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual([])
   await reply.locator(':scope > strong').dblclick()
-  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
 })
 
 for (const [state,key] of [['ongoing','previewOngoing'],['warning','previewWarning'],['done','previewDone']]) {
@@ -312,7 +312,7 @@ for (const [state,key] of [['ongoing','previewOngoing'],['warning','previewWarni
     await expect(page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')).toHaveCount(0)
     expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(0)
     await item.click()
-    expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+    await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
   })
 }
 test('double click navigation can be disabled while keeping the preview',async({page})=>{
@@ -818,7 +818,7 @@ for(const navigation of ['row','button','double-click'])test('navigation dismiss
   await expect(page.locator('[data-prts-summary-reply]:visible')).toHaveCount(0)
   await page.waitForTimeout(350)
   await expect(menu).toBeHidden()
-  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
   await page.mouse.move(900,700)
   await trigger.hover()
   await expect(menu).toBeVisible()
