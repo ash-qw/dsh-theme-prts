@@ -127,22 +127,11 @@ html[data-dsh-prts] [data-prts-session-summary-signal] {
   color: inherit;
 }
 
-html[data-dsh-prts] [data-prts-session-summary-signal="ongoing"]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 2px;
-  height: 2px;
-  background: currentColor;
-  box-shadow:
-    3.5px 0 currentColor,
-    7px 0 currentColor,
-    7px 3.5px currentColor,
-    7px 7px currentColor,
-    3.5px 7px currentColor,
-    0 7px currentColor,
-    0 3.5px currentColor;
+html[data-dsh-prts] [data-prts-session-summary-signal="ongoing"] {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+  color: var(--dsw-static-deepseek-450, var(--prts-cyan));
 }
 
 html[data-dsh-prts] [data-prts-session-summary-signal="done"]::before {
@@ -826,3 +815,37 @@ html[data-dsh-prts] [data-prts-session-summary-popover] > [data-prts-preview-spa
 html[data-dsh-prts] [data-prts-session-summary-popover]:has(> [data-prts-preview-space-notice]) > [data-prts-session-summary-heading] {
   visibility: hidden;
 }
+
+/* Keep different-sized state markers centered on the same axis. */
+html[data-dsh-prts] [data-prts-session-row] [data-state]:is([data-state="ongoing"], [data-state="done"], [data-state="warning"], [data-state="error"]) {
+  flex-shrink: 0;
+  margin-left: 20px;
+}
+
+/* Running-room marker inside the host SVG; native children remain restorable. */
+html[data-dsh-prts] [data-prts-session-row] svg[data-state="ongoing"]:has(> [data-prts-running-marker]) {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--prts-session-status-color, var(--dsw-static-deepseek-450, var(--prts-cyan)));
+  animation: none;
+}
+html[data-dsh-prts] svg[data-state="ongoing"]:has(> [data-prts-running-marker]) > :not([data-prts-running-marker]) { display: none; }
+html[data-dsh-prts] [data-prts-running-marker] text {
+  fill: currentColor;
+  stroke: none;
+  text-anchor: middle;
+  font: 700 12px Arial, sans-serif;
+}
+html[data-dsh-prts] [data-prts-running-marker] circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  transform-origin: 12px 12px;
+  animation: prts-running-room-orbit 2.4s linear infinite;
+}
+@keyframes prts-running-room-orbit { to { transform: rotate(360deg); } }
+/* Preserve this small status animation under reduced motion: it signals ongoing work. */

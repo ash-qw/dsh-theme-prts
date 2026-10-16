@@ -190,6 +190,20 @@ function ensureFacilitySpine(document, row, kind, next) {
 }
 
 
+function createRunningMarker(document) {
+  const svgNode = name => document.createElementNS('http://www.w3.org/2000/svg', name)
+  const marker = svgNode('g')
+  marker.setAttribute('data-prts-running-marker', '')
+  const letter = svgNode('text')
+  letter.setAttribute('x', '12')
+  letter.setAttribute('y', '16')
+  letter.textContent = 'A'
+  const ring = svgNode('circle')
+  for (const [key, value] of Object.entries({cx:12, cy:12, r:10, 'stroke-dasharray':'4.5 11.208'})) ring.setAttribute(key, value)
+  marker.append(letter, ring)
+  return marker
+}
+
 export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions }) {
   let previewPreferences = {}
   let observer
@@ -272,7 +286,13 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function statusSignal(document, state) {
-    const signal = document.createElement('span')
+    const signal = state === 'ongoing'
+      ? document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      : document.createElement('span')
+    if (state === 'ongoing') {
+      signal.setAttribute('viewBox', '0 0 24 24')
+      signal.append(createRunningMarker(document))
+    }
     signal.setAttribute('data-prts-session-summary-signal', state)
     signal.setAttribute('aria-hidden', 'true')
     return signal
@@ -666,6 +686,16 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         const sessionIndex = String(++sessionOrdinal).padStart(2, '0')
         const controls = resolveRowControls(row, 'session')
         const state = nativeSessionState(row)
+        const spinner = state === 'ongoing' ? row.querySelector('svg[data-state="ongoing"]') : undefined
+        if (spinner) {
+          let marker = spinner.querySelector('[data-prts-running-marker]')
+          if (!marker) {
+            marker = createRunningMarker(document)
+            spinner.append(marker)
+          }
+          next.add(marker)
+        }
+
         const face = ensureFacilityFace(document, row, 'session', next)
         const spine = ensureFacilitySpine(document, row, 'session', next)
         registerVector(face, { kind: 'face', topNotch: true, sessionNotch: true, texture: 'pickup' }, next, nextVectorOwners)
@@ -705,7 +735,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     lifelineAnimator.setTarget(activeLifelineRow, activeLifeline)
     for (const node of owned) {
       if (next.has(node)) continue
-      if (node.hasAttribute?.('data-prts-owned-projection')
+      if (node.hasAttribute?.('data-prts-running-marker')
+        || node.hasAttribute?.('data-prts-owned-projection')
         || node.hasAttribute?.('data-prts-owned-facility')
         || node.hasAttribute?.('data-prts-owned-facility-spine')
         || node.hasAttribute?.('data-prts-owned-facility-vector')) {
@@ -722,7 +753,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     preview.stop()
     clearSummaryEffects()
     lifelineAnimator.setTarget(undefined, undefined)
-    for (const node of document?.querySelectorAll?.('[data-prts-owned-projection], [data-prts-owned-facility], [data-prts-owned-facility-spine], [data-prts-owned-facility-vector], [data-prts-owned-facility-defs]') ?? []) node.remove()
+    for (const node of document?.querySelectorAll?.('[data-prts-running-marker], [data-prts-owned-projection], [data-prts-owned-facility], [data-prts-owned-facility-spine], [data-prts-owned-facility-vector], [data-prts-owned-facility-defs]') ?? []) node.remove()
     for (const node of owned) {
       for (const attribute of OWNED_ATTRIBUTES) node.removeAttribute?.(attribute)
     }

@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test'
+
+test('running room marker renders inside the native SVG and restores it when the state changes',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const icon=page.locator('[data-session-id="fixture-session"] svg[data-state]').first()
+  const marker=icon.locator('[data-prts-running-marker]')
+  await expect(marker.locator('text')).toHaveText('A')
+  await expect(marker.locator('circle')).toHaveCSS('animation-name','prts-running-room-orbit')
+  await expect(icon.locator(':scope > g:not([data-prts-running-marker])')).toBeHidden()
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await expect(marker.locator('circle')).toHaveCSS('animation-name','prts-running-room-orbit')
+  await expect(marker.locator('circle')).toHaveCSS('animation-duration','2.4s')
+  await expect(page.locator('[data-prts-session-summary-trigger="ongoing"] [data-prts-running-marker] circle')).toHaveCSS('animation-name','prts-running-room-orbit')
+  await icon.evaluate(el=>el.setAttribute('data-state','warning'))
+  await expect(marker).toHaveCount(0)
+  await expect(icon.locator(':scope > g')).toBeVisible()
+  await icon.evaluate(el=>el.setAttribute('data-state','ongoing'))
+  await expect(marker).toHaveCount(1)
+})
