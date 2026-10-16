@@ -826,28 +826,3 @@ html[data-dsh-prts] [data-prts-session-summary-popover] > [data-prts-preview-spa
 html[data-dsh-prts] [data-prts-session-summary-popover]:has(> [data-prts-preview-space-notice]) > [data-prts-session-summary-heading] {
   visibility: hidden;
 }
-
-
-html[data-dsh-prts] [data-prts-summary-reply][data-prts-preview-tail] {
-  overflow: visible;
-  isolation: isolate;
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
-html[data-dsh-prts] [data-prts-preview-outline] {
-  display: none;
-  position: absolute;
-  left: -7px;
-  top: -1px;
-  z-index: -1;
-  pointer-events: none;
-  overflow: visible;
-  filter: drop-shadow(0 5px 12px rgb(0 0 0 / 18%));
-}
-html[data-dsh-prts] [data-prts-preview-tail] > [data-prts-preview-outline] { display: block; }
-html[data-dsh-prts] [data-prts-preview-outline] path {
-  fill: color-mix(in srgb, var(--prts-panel) 85%, transparent);
-  stroke: var(--prts-line);
-  stroke-width: 1;
-}

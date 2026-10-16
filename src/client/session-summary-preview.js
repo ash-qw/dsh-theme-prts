@@ -269,40 +269,6 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       const reference = menu?.getBoundingClientRect()
       const row = current.anchor?.getBoundingClientRect()
       const visible = place(panel, reference, row?.top ?? (parseFloat(panel.style.top) || top), menu, row?.bottom)
-      panel.toggleAttribute('data-prts-preview-tail', Boolean(visible && row))
-      if (visible && row) {
-        const bounds = panel.getBoundingClientRect()
-        const tail = Math.abs(bounds.top - row.top) <= 3 ? 'top'
-          : Math.abs(bounds.bottom - row.bottom) <= 3 ? 'bottom' : 'middle'
-        panel.setAttribute('data-prts-preview-tail', tail)
-        const center = (row.top + row.bottom) / 2 - bounds.top
-        const cy = Math.max(8, Math.min(bounds.height - 8, center))
-        const spread = Math.min(10, cy - 8, bounds.height - 8 - cy)
-        let outline = panel.querySelector('[data-prts-preview-outline]')
-        if (!outline) {
-          outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-          outline.setAttribute('data-prts-preview-outline', '')
-          outline.setAttribute('aria-hidden', 'true')
-          outline.append(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
-          panel.prepend(outline)
-        }
-        const w = bounds.width + 6, h = bounds.height
-        outline.setAttribute('viewBox', `0 0 ${w} ${h}`)
-        outline.style.width = w + 'px'
-        outline.style.height = h + 'px'
-        // One filled contour keeps the translucent tail and body free of seams.
-        const right = `H${w-8.5} Q${w-.5} .5 ${w-.5} 8.5 V${h-8.5} Q${w-.5} ${h-.5} ${w-8.5} ${h-.5}`
-        let contour
-        if (tail === 'top') {
-          contour = `M.5 .5 ${right} H14.5 Q6.5 ${h-.5} 6.5 ${h-8.5} V12.5 L.5 .5 Z`
-        } else if (tail === 'bottom') {
-          contour = `M14.5 .5 ${right} H.5 L6.5 ${h-12.5} V8.5 Q6.5 .5 14.5 .5 Z`
-        } else {
-          contour = `M14.5 .5 ${right} H14.5 Q6.5 ${h-.5} 6.5 ${h-8.5} V${cy+spread} C6.5 ${cy+spread*.45} 2.5 ${cy+2} .5 ${cy} C2.5 ${cy-2} 6.5 ${cy-spread*.45} 6.5 ${cy-spread} V8.5 Q6.5 .5 14.5 .5 Z`
-        }
-        // Only update the SVG when its geometry changes.
-        if (outline.firstElementChild.getAttribute('d') !== contour) outline.firstElementChild.setAttribute('d', contour)
-      }
       if (current.detail && !current.detail.hidden) {
         if (visible) place(current.detail, panel.getBoundingClientRect(), panel.getBoundingClientRect().top, panel, panel.getBoundingClientRect().bottom)
         else current.detail.setAttribute('data-prts-preview-no-space', '')
@@ -323,8 +289,6 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       current.spaceNotice?.remove()
       current.detailSpaceNotice?.remove()
       panel.removeAttribute('data-prts-preview-no-space')
-      panel.removeAttribute('data-prts-preview-tail')
-      panel.querySelector('[data-prts-preview-outline]')?.remove()
       positionObserver?.disconnect()
       window.cancelAnimationFrame(positionFrame)
       window.removeEventListener('resize', schedulePosition)
