@@ -91,7 +91,25 @@ function previewStatusFields(status) {
   const pending = status?.pendingInteraction
   return [status?.running, status?.completionUnread, pending, pending?.answer,
     JSON.stringify([pending?.kind, pending?.answerable, pending?.getSnapshot?.().closed,
-      pending?.questions, pending?.toolName, pending?.reason, pending?.displayReason])]
+      pending?.questions, pending?.callId, pending?.toolName, pending?.reason, pending?.displayReason])]
+}
+
+export function approvalCallDetails(snapshot, pending) {
+  if (!pending?.callId) return undefined
+  for (const node of snapshot?.nodes?.values?.() ?? []) {
+    const root = node.kind === 'tool-call' ? node.data?.root : undefined
+    if (!root || root.callId !== pending.callId || 'kind' in root || root.phase !== 'start') continue
+    const raw = root.argsRaw
+    if (typeof raw !== 'string') return undefined
+    try {
+      const args = JSON.parse(raw)
+      if (args && typeof args === 'object' && !Array.isArray(args) && typeof args.command === 'string') {
+        const {command, ...rest} = args
+        return {command, parameters: Object.keys(rest).length ? JSON.stringify(rest, null, 2) : ''}
+      }
+      return {parameters: JSON.stringify(args, null, 2)}
+    } catch { return {parameters: raw} }
+  }
 }
 
 export function createSessionSummaryPreview({ document, window, sessions, getSessions, getUiConversation, getSessionStatus, openSession, getPreviewPreferences, onPreviewClosed, onAnswerSubmitted }) {
@@ -211,6 +229,109 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     panel.ownerDocument.body.append(panel)
     current.detached = true
     panel.showPopover?.()
+    let positionFrame
+    const positionPanels = () => {
+      positionFrame = undefined
+      if (active !== current) return
+      const viewport = window.visualViewport
+      const left = (viewport?.offsetLeft ?? 0) + 8, top = (viewport?.offsetTop ?? 0) + 8
+      const width = Math.max(1, (viewport?.width ?? window.innerWidth) - 16)
+      const height = Math.max(1, (viewport?.height ?? window.innerHeight) - 16)
+      const place = (surface, reference, preferredTop, noticeOwner, anchorBottom = preferredTop) => {
+        surface.style.maxWidth = 'none'
+        surface.style.maxHeight = 'none'
+        const bounds = surface.getBoundingClientRect()
+        const x = reference ? reference.right + 10 : left
+        const fitsVertically = y => y >= top && y + bounds.height <= top + height
+        const above = anchorBottom - bounds.height
+        const y = !fitsVertically(preferredTop) && fitsVertically(above) ? above : preferredTop
+        const insufficient = Boolean(reference) && (x < left || x + bounds.width > left + width || !fitsVertically(y))
+        surface.toggleAttribute('data-prts-preview-no-space', insufficient)
+        const noticeKey = surface === panel ? 'spaceNotice' : 'detailSpaceNotice'
+        if (insufficient && noticeOwner) {
+          let notice = current[noticeKey]
+          if (!notice) {
+            notice = panel.ownerDocument.createElement('div')
+            notice.setAttribute('data-prts-preview-space-notice', '')
+            notice.setAttribute('role', 'status')
+            const guidance = '空间不足，无法展开预览。可点击会话进入；建议扩大窗口，或在辅助功能中关闭对应预览。'
+            notice.textContent = surface === panel ? '空间不足，无法展开正文预览' : guidance
+            notice.title = guidance
+            current[noticeKey] = notice
+          }
+          if (notice.parentElement !== noticeOwner) noticeOwner.append(notice)
+        } else { current[noticeKey]?.remove(); current[noticeKey] = undefined }
+        surface.style.left = x + 'px'
+        surface.style.top = y + 'px'
+        return !insufficient
+      }
+      const menu = current.anchor?.closest('[data-prts-session-summary-popover]')
+      const reference = menu?.getBoundingClientRect()
+      const row = current.anchor?.getBoundingClientRect()
+      const visible = place(panel, reference, row?.top ?? (parseFloat(panel.style.top) || top), menu, row?.bottom)
+      panel.toggleAttribute('data-prts-preview-tail', Boolean(visible && row))
+      if (visible && row) {
+        const bounds = panel.getBoundingClientRect()
+        const tail = Math.abs(bounds.top - row.top) <= 3 ? 'top'
+          : Math.abs(bounds.bottom - row.bottom) <= 3 ? 'bottom' : 'middle'
+        panel.setAttribute('data-prts-preview-tail', tail)
+        const center = (row.top + row.bottom) / 2 - bounds.top
+        const cy = Math.max(8, Math.min(bounds.height - 8, center))
+        const spread = Math.min(10, cy - 8, bounds.height - 8 - cy)
+        let outline = panel.querySelector('[data-prts-preview-outline]')
+        if (!outline) {
+          outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+          outline.setAttribute('data-prts-preview-outline', '')
+          outline.setAttribute('aria-hidden', 'true')
+          outline.append(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
+          panel.prepend(outline)
+        }
+        const w = bounds.width + 6, h = bounds.height
+        outline.setAttribute('viewBox', `0 0 ${w} ${h}`)
+        outline.style.width = w + 'px'
+        outline.style.height = h + 'px'
+        // One filled contour keeps the translucent tail and body free of seams.
+        const right = `H${w-8.5} Q${w-.5} .5 ${w-.5} 8.5 V${h-8.5} Q${w-.5} ${h-.5} ${w-8.5} ${h-.5}`
+        let contour
+        if (tail === 'top') {
+          contour = `M.5 .5 ${right} H14.5 Q6.5 ${h-.5} 6.5 ${h-8.5} V12.5 L.5 .5 Z`
+        } else if (tail === 'bottom') {
+          contour = `M14.5 .5 ${right} H.5 L6.5 ${h-12.5} V8.5 Q6.5 .5 14.5 .5 Z`
+        } else {
+          contour = `M14.5 .5 ${right} H14.5 Q6.5 ${h-.5} 6.5 ${h-8.5} V${cy+spread} C6.5 ${cy+spread*.45} 2.5 ${cy+2} .5 ${cy} C2.5 ${cy-2} 6.5 ${cy-spread*.45} 6.5 ${cy-spread} V8.5 Q6.5 .5 14.5 .5 Z`
+        }
+        // Only update the SVG when its geometry changes.
+        if (outline.firstElementChild.getAttribute('d') !== contour) outline.firstElementChild.setAttribute('d', contour)
+      }
+      if (current.detail && !current.detail.hidden) {
+        if (visible) place(current.detail, panel.getBoundingClientRect(), panel.getBoundingClientRect().top, panel, panel.getBoundingClientRect().bottom)
+        else current.detail.setAttribute('data-prts-preview-no-space', '')
+      }
+
+    }
+    const schedulePosition = () => {
+      if (positionFrame === undefined) positionFrame = window.requestAnimationFrame(positionPanels)
+    }
+    const positionObserver = window.ResizeObserver ? new window.ResizeObserver(schedulePosition) : undefined
+    positionObserver?.observe(panel)
+    window.addEventListener('resize', schedulePosition)
+    window.visualViewport?.addEventListener('resize', schedulePosition)
+    window.visualViewport?.addEventListener('scroll', schedulePosition)
+    const cleanupHover = current.cleanupHover
+    current.cleanupHover = () => {
+      cleanupHover()
+      current.spaceNotice?.remove()
+      current.detailSpaceNotice?.remove()
+      panel.removeAttribute('data-prts-preview-no-space')
+      panel.removeAttribute('data-prts-preview-tail')
+      panel.querySelector('[data-prts-preview-outline]')?.remove()
+      positionObserver?.disconnect()
+      window.cancelAnimationFrame(positionFrame)
+      window.removeEventListener('resize', schedulePosition)
+      window.visualViewport?.removeEventListener('resize', schedulePosition)
+      window.visualViewport?.removeEventListener('scroll', schedulePosition)
+    }
+    schedulePosition()
     const label = panel.querySelector('strong')
     let sessionTitle = panel.querySelector('[data-prts-preview-session-title]')
     if (!sessionTitle) {
@@ -248,6 +369,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       const pending = pendingNow()
       if (!canAnswerPreview(pending)) return
       current.editor = true
+      current.editingPending = pending
       // Detach from the hover menu before promoting again to the top layer.
       panel.setAttribute('data-prts-preview-editing', '')
       panel.setAttribute('role', 'dialog')
@@ -358,6 +480,8 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     const hideDetail = () => {
       current.detail?.hidePopover?.()
       if (current.detail) current.detail.hidden = true
+      current.detailSpaceNotice?.remove()
+      current.detailSpaceNotice = undefined
       detailKey = undefined
       detailEntry?.removeAttribute('data-prts-reply-active')
       detailEntry = undefined
@@ -377,6 +501,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         detail.append(heading, content)
         panel.append(detail)
         current.detail = detail
+        positionObserver?.observe(detail)
       }
       const detail = current.detail
       detailKey = reply.key
@@ -395,14 +520,38 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       detail.style.left = (beside ? rect.right + 10 : Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))) + 'px'
       detail.style.top = Math.max(8, Math.min(beside ? rect.top : rect.bottom + 8, window.innerHeight - 240)) + 'px'
       detail.showPopover?.()
+      schedulePosition()
+    }
+    const renderApprovalDetails = pending => {
+      if (pending?.kind !== 'approval') return
+      const details = approvalCallDetails(source?.getSnapshot(), pending)
+      let section = body.querySelector('[data-prts-approval-details]')
+      const signature = JSON.stringify(details ?? null)
+      if (section?.dataset.signature === signature) return
+      if (!section) { section = document.createElement('div'); section.setAttribute('data-prts-approval-details', ''); body.append(section) }
+      section.dataset.signature = signature
+      section.replaceChildren()
+      if (!details) {
+        section.textContent = source ? '暂无可用的操作参数，请进入会话核对详情。' : '正在读取操作详情…'
+        return
+      }
+      for (const [name, value] of [['命令', details.command], ['参数', details.parameters]]) {
+        if (!value) continue
+        const heading = document.createElement('div')
+        heading.textContent = name
+        const code = document.createElement('pre')
+        code.textContent = value
+        section.append(heading, code)
+      }
     }
     const render = () => {
       if (active !== current) return
-      if (current.editor) { current.validate?.(); return }
+      if (current.editor) { current.validate?.(); if (pendingNow() === current.editingPending) renderApprovalDetails(current.editingPending); return }
       const status = getSessionStatus?.()?.getSnapshot().get(id)
       const pending = status?.pendingInteraction === current.answeredPending
         ? undefined : status?.pendingInteraction
       const approval = pending?.kind === 'approval'
+      panel.toggleAttribute('data-prts-preview-approval', approval)
       const question = approval || pending?.kind === 'question' || pending?.kind === 'plan-review'
       const state = question ? 'warning' : status?.running || (current.answeredPending && status?.pendingInteraction === current.answeredPending) ? 'ongoing'
         : status?.completionUnread || status?.running === false ? 'done' : current.group?.getAttribute('data-prts-session-summary-group') || ''
@@ -506,6 +655,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         previousQuestion = question
         if (!extendsReply) body.scrollTop = 0
       }
+      if (approval) renderApprovalDetails(pending)
       if (canAnswerPreview(pending)) enableAnswer()
     }
     let statusFields = previewStatusFields(getSessionStatus?.()?.getSnapshot().get(id))

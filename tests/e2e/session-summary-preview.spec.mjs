@@ -585,3 +585,186 @@ test('repeated multi-session list updates preserve untouched row nodes',async({p
   expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBeLessThanOrEqual(5)
   await page.mouse.click(1200,850)
 })
+
+test('approval displays correlated command and parameters even when details arrive after the editor',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.sessionStatus.set(new Map([['fixture-session',{pendingInteraction:{kind:'approval',callId:'approved-call',toolName:'终端',reason:'需要运行命令',answerable:true,answer:async()=>{}}}]])))
+  await page.locator('[data-prts-session-summary-trigger="warning"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-preview-editing]')
+  await panel.hover()
+  await expect(panel).toContainText('操作')
+  await page.evaluate(()=>{
+    const nodes=new Map([
+      ['wrong',{kind:'tool-call',data:{root:{callId:'other',phase:'start',argsRaw:'{"command":"不得展示的其它命令"}'}}}],
+      ['right',{kind:'tool-call',data:{root:{callId:'approved-call',phase:'start',argsRaw:JSON.stringify({command:'echo "<script>不执行</script>"\n'+'echo line\n'.repeat(50),cwd:'/workspace/example',timeout:30000})}}}]
+    ])
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['wrong','right'],nodes})
+  })
+  await expect(panel).toContainText('echo "<script>不执行</script>"')
+  await expect(panel).toContainText('/workspace/example')
+  await expect(panel).not.toContainText('不得展示的其它命令')
+  await expect(panel.locator('script')).toHaveCount(0)
+  const body=panel.locator(':scope > [data-prts-preview-body]')
+  expect(await body.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true)
+  await body.evaluate(el=>el.scrollTop=el.scrollHeight)
+  await expect(panel.getByRole('button',{name:'提交审批',exact:true})).toBeVisible()
+  expect((await body.boundingBox()).height).toBeLessThanOrEqual(133)
+  await page.setViewportSize({width:480,height:420})
+  await expect(page.locator('[data-prts-preview-space-notice]')).toContainText('空间不足')
+  await expect(panel).toBeHidden()
+  await page.setViewportSize({width:1280,height:900})
+  await expect(panel).toBeVisible()
+  await expect(page.locator('[data-prts-preview-space-notice]')).toHaveCount(0)
+})
+
+test('crossing the gap between status triggers keeps the list visible until the next list takes over',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.sessionList.getSnapshot()
+    r.sessionList.set({...old,byId:{...old.byId,'completed':{id:'completed',displayTitle:'完成任务',completed:true}}})
+    r.sessionStatus.set(new Map([['fixture-session',{running:true}],['completed',{running:false,completionUnread:true}]]))
+  })
+  const running=page.locator('[data-prts-session-summary-trigger="ongoing"]'),done=page.locator('[data-prts-session-summary-trigger="done"]')
+  await running.hover()
+  const oldList=page.locator('[data-prts-session-summary-popover="ongoing"]')
+  await expect(oldList).toBeVisible()
+  const a=await running.boundingBox(),b=await done.boundingBox()
+  await page.mouse.move((a.x+a.width+b.x)/2,a.y+a.height/2)
+  await page.waitForTimeout(70)
+  expect(await oldList.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
+  await done.hover()
+  await expect(page.locator('[data-prts-session-summary-popover="done"]')).toBeVisible()
+  await expect(oldList).toBeHidden()
+  await page.mouse.move(1200,850)
+  await page.waitForTimeout(350)
+  await expect(page.locator('[data-prts-session-summary-popover="done"]')).toBeHidden()
+})
+
+test('status session list replaces overflowing rows with a space notice',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.sessionList.getSnapshot(),byId={...old.byId}
+    for(let i=0;i<20;i++)byId['overflow-'+i]={id:'overflow-'+i,displayTitle:'运行任务 '+i,running:true}
+    r.sessionList.set({...old,byId})
+  })
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  const menu=page.locator('[data-prts-session-summary-popover="ongoing"]')
+  await trigger.evaluate(el=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    header.style.position='fixed'
+    header.style.top='800px'
+    header.style.width='280px'
+  })
+  await trigger.hover()
+  await expect(menu).toHaveAttribute('data-prts-summary-above','')
+  await expect(menu).not.toHaveAttribute('data-prts-summary-no-space','')
+  const bounds=await menu.boundingBox()
+  await page.mouse.move(bounds.x+30,bounds.y+bounds.height-5,{steps:10})
+  await expect(menu).toBeVisible()
+  await page.setViewportSize({width:1440,height:240})
+  await trigger.evaluate(el=>el.closest('[data-prts-session-summary-header]').style.top='100px')
+  await trigger.hover()
+  await expect(menu).toHaveAttribute('data-prts-summary-no-space','')
+  await expect(menu.locator('[data-prts-summary-space-notice]')).toBeVisible()
+  await expect(menu.locator('[data-prts-summary-list]')).toBeHidden()
+  expect(await menu.evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight-8)).toBe(true)
+  await page.setViewportSize({width:1440,height:1000})
+  await expect(menu).not.toHaveAttribute('data-prts-summary-no-space','')
+  await expect(menu).not.toHaveAttribute('data-prts-summary-above','')
+})
+
+test('status trigger alone synchronously chooses list placement on every entry',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  await expect(trigger).toBeVisible()
+  const result=await trigger.evaluate(el=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    const menu=el.parentElement.querySelector('[data-prts-session-summary-popover]')
+    header.style.position='fixed'
+    header.style.width='280px'
+    header.style.top='930px'
+    el.dispatchEvent(new PointerEvent('pointerenter',{bubbles:false}))
+    const above=menu.hasAttribute('data-prts-summary-above')
+    header.style.top='100px'
+    el.dispatchEvent(new PointerEvent('pointerenter',{bubbles:false}))
+    return {above,below:!menu.hasAttribute('data-prts-summary-above'),fits:!menu.hasAttribute('data-prts-summary-no-space')}
+  })
+  expect(result).toEqual({above:true,below:true,fits:true})
+})
+
+test('reply space warning never changes status list height or direction',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  await expect(trigger).toBeVisible()
+  await trigger.evaluate(el=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    const menu=el.parentElement.querySelector('[data-prts-session-summary-popover]')
+    header.style.position='fixed'
+    header.style.width='280px'
+    header.style.left=(innerWidth-300)+'px'
+    header.style.top=(innerHeight-menu.offsetHeight-header.offsetHeight-22)+'px'
+  })
+  await trigger.hover()
+  const menu=page.locator('[data-prts-session-summary-popover="ongoing"]')
+  await expect(menu).not.toHaveAttribute('data-prts-summary-above','')
+  const height=await menu.evaluate(el=>el.offsetHeight)
+  await menu.locator('[data-prts-session-summary-item]').first().hover()
+  await expect(menu.locator('[data-prts-preview-space-notice]')).toBeVisible()
+  await page.waitForTimeout(300)
+  await expect(menu).not.toHaveAttribute('data-prts-summary-above','')
+  expect(await menu.evaluate(el=>el.offsetHeight)).toBe(height)
+})
+
+test('status list escapes clipped sidebar and stays above footer buttons',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  await expect(trigger).toBeVisible()
+  await trigger.evaluate(el=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    header.style.overflow='hidden'
+    const rect=header.getBoundingClientRect()
+    const blocker=document.createElement('button')
+    blocker.textContent='模拟知识库入口'
+    Object.assign(blocker.style,{position:'fixed',left:rect.left+'px',top:(rect.bottom+6)+'px',width:rect.width+'px',height:'200px',zIndex:'999999'})
+    document.body.append(blocker)
+  })
+  await trigger.hover()
+  const menu=page.locator('[data-prts-session-summary-popover="ongoing"]')
+  expect(await menu.evaluate(el=>el.matches(':popover-open'))).toBe(true)
+  const row=menu.locator('[data-prts-session-summary-item]').first()
+  await row.hover()
+  expect(await row.evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))
+  })).toBe(true)
+})
+
+
+test('reply preview fits above a low session row when the right side has space',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  await expect(trigger).toBeVisible()
+  await trigger.evaluate(el=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    const menu=el.parentElement.querySelector('[data-prts-session-summary-popover]')
+    Object.assign(header.style,{position:'fixed',width:'280px',top:(innerHeight-menu.offsetHeight-header.offsetHeight-22)+'px'})
+  })
+  await trigger.hover()
+  const row=page.locator('[data-prts-session-summary-item="fixture-session"]')
+  await row.hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await expect(panel).toBeVisible()
+  await expect(panel).not.toHaveAttribute('data-prts-preview-no-space','')
+  await expect.poll(async()=>{
+    const p=await panel.boundingBox(),r=await row.boundingBox()
+    return !!p && p.y>=8 && p.y<r.y && p.y+p.height<=1000-8
+  }).toBe(true)
+})

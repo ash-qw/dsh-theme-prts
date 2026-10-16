@@ -204,6 +204,24 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let summaryRoot
   let summarySignature = ''
   let heldPreviewState
+  let hoveredSummary, summaryLeaveTimer
+  function clearSummaryHover() {
+    window.clearTimeout(summaryLeaveTimer)
+    hoveredSummary?.removeAttribute('data-prts-summary-hover-open')
+    hoveredSummary?.removeAttribute('data-prts-summary-instant')
+    hoveredSummary = undefined
+  }
+  function keepSummaryHover(group) {
+    window.clearTimeout(summaryLeaveTimer)
+    if (!hoveredSummary) group.removeAttribute('data-prts-summary-instant')
+    if (hoveredSummary && hoveredSummary !== group) {
+      hoveredSummary.setAttribute('data-prts-summary-instant', '')
+      hoveredSummary.removeAttribute('data-prts-summary-hover-open')
+      group.setAttribute('data-prts-summary-instant', '')
+    }
+    hoveredSummary = group
+    group.setAttribute('data-prts-summary-hover-open', '')
+  }
   function dismissHeldPreview(event) {
     if (!heldPreviewState || (event?.type === 'keydown' && event.key !== 'Escape')) return
     if (event?.type === 'pointerdown' && (summaryRoot?.contains(event.target) || event.target.closest?.('[data-prts-summary-reply]'))) return
@@ -217,7 +235,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   const preview = createSessionSummaryPreview({ document, window, sessions, getUiConversation, getSessions, getSessionStatus, openSession, getPreviewPreferences: () => previewPreferences, onPreviewClosed: () => { if (statusSourcesStarted) queueScan() }, onAnswerSubmitted: state => { heldPreviewState = state; queueScan() } })
   const stopTitles = new Map()
   const summaryGroups = new Map()
-  function clearSummaryEffects() { preview.stop(false); for (const stop of stopTitles.values()) stop(); stopTitles.clear(); summaryGroups.clear() }
+  function clearSummaryEffects() { clearSummaryHover(); preview.stop(false); for (const entry of summaryGroups.values()) entry.dispose(); for (const stop of stopTitles.values()) stop(); stopTitles.clear(); summaryGroups.clear() }
   let owned = new Set()
   let vectorOwners = new Set()
   const dirtyVectors = new Map()
@@ -263,6 +281,11 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function buildSummaryGroup(state, label, items) {
     const group = document.createElement('span')
     group.setAttribute('data-prts-session-summary-group', state)
+    group.addEventListener('pointerenter', () => keepSummaryHover(group))
+    group.addEventListener('pointerleave', () => {
+      window.clearTimeout(summaryLeaveTimer)
+      summaryLeaveTimer = window.setTimeout(() => { if (hoveredSummary === group) clearSummaryHover() }, 180)
+    })
 
     const trigger = document.createElement('button')
     trigger.type = 'button'
@@ -280,6 +303,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     const popover = document.createElement('span')
     popover.setAttribute('data-prts-session-summary-popover', state)
     popover.setAttribute('role', 'menu')
+    popover.setAttribute('popover', 'manual')
     popover.setAttribute('aria-label', label)
     const heading = document.createElement('span')
     heading.setAttribute('data-prts-session-summary-heading', '')
@@ -302,8 +326,65 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     const list = document.createElement('span')
     list.setAttribute('data-prts-summary-list', '')
     popover.append(list)
+    const spaceNotice = document.createElement('div')
+    spaceNotice.setAttribute('data-prts-summary-space-notice', '')
+    spaceNotice.textContent = '空间不足，无法显示会话预览。建议扩大窗口，或在辅助功能中关闭预览。'
+    popover.append(spaceNotice)
+    let boundsFrame
+    const checkBounds = () => {
+      window.cancelAnimationFrame(boundsFrame)
+      boundsFrame = undefined
+      if (!group.isConnected) return
+      // Escape the host sidebar's clipped region without changing its layout.
+      if (typeof popover.showPopover === 'function' && !popover.matches(':popover-open')) popover.showPopover()
+      const header = group.closest('[data-prts-session-summary-header]')?.getBoundingClientRect()
+      if (!header) return
+      Object.assign(popover.style, {position:'fixed', boxSizing:'border-box', margin:'0', left:header.left+'px',
+        width:header.width+'px', right:'auto', bottom:'auto'})
+      popover.removeAttribute('data-prts-summary-no-space')
+      popover.removeAttribute('data-prts-summary-no-room')
+      const viewport = window.visualViewport
+      const left = viewport?.offsetLeft ?? 0, top = viewport?.offsetTop ?? 0
+      const right = left + (viewport?.width ?? window.innerWidth) - 8
+      const bottom = top + (viewport?.height ?? window.innerHeight) - 8
+      const fits = rect => rect.left >= left + 8 && rect.top >= top + 8 && rect.right <= right && rect.bottom <= bottom
+      // Measure the final layout, independent of the opening transform animation.
+      const place = () => {
+        popover.removeAttribute('data-prts-summary-above')
+        const parent = header
+        const rect = popover.getBoundingClientRect()
+        const height = popover.offsetHeight
+        const below = parent.bottom + 6
+        const above = parent.top - 6 - height
+        const candidate = y => ({left: rect.left, right: rect.right, top: y, bottom: y + height})
+        popover.style.top = below + 'px'
+        if (fits(candidate(below))) return true
+        popover.setAttribute('data-prts-summary-above', '')
+        if (fits(candidate(above))) { popover.style.top = above + 'px'; return true }
+        popover.removeAttribute('data-prts-summary-above')
+        return false
+      }
+      if (place()) { trigger.removeAttribute('title'); return }
+      popover.setAttribute('data-prts-summary-no-space', '')
+      trigger.title = spaceNotice.textContent
+      if (!place()) popover.setAttribute('data-prts-summary-no-room', '')
+    }
+    const scheduleBounds = () => {
+      if (boundsFrame === undefined) boundsFrame = window.requestAnimationFrame(checkBounds)
+    }
+    const boundsObserver = window.ResizeObserver ? new window.ResizeObserver(scheduleBounds) : undefined
+    boundsObserver?.observe(popover)
+    // Re-entering the trigger need not re-enter its group (the list is a descendant).
+    // Run after enterPreviewState so measurement sees the current status list.
+    trigger.addEventListener('pointerenter', checkBounds)
+    trigger.addEventListener('focus', checkBounds)
+    window.addEventListener('resize', scheduleBounds)
+    document.addEventListener('scroll', scheduleBounds, true)
+    window.visualViewport?.addEventListener('resize', scheduleBounds)
+    window.visualViewport?.addEventListener('scroll', scheduleBounds)
     const entries = new Map()
     const update = items => {
+      scheduleBounds()
       count.textContent = String(items.length)
       trigger.setAttribute('aria-label', `${label} ${items.length}`)
       const ids = new Set(items.map(item => item.id))
@@ -374,7 +455,14 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     }
     update(items)
     summaryGroups.set(state, {group, update, dispose: () => {
+      boundsObserver?.disconnect()
+      window.cancelAnimationFrame(boundsFrame)
+      window.removeEventListener('resize', scheduleBounds)
+      document.removeEventListener('scroll', scheduleBounds, true)
+      window.visualViewport?.removeEventListener('resize', scheduleBounds)
+      window.visualViewport?.removeEventListener('scroll', scheduleBounds)
       for (const {button} of entries.values()) { stopTitles.get(button)?.(); stopTitles.delete(button) }
+      if (hoveredSummary === group) clearSummaryHover()
       group.remove()
     }})
     popover.append(reply)
