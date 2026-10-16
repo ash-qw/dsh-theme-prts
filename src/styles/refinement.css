@@ -154,7 +154,7 @@ html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-session-time] {
   opacity: 0;
 }
 
-html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-session-time] {
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-time] {
   opacity: 0;
 }
 

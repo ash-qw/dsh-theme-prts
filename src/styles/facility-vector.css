@@ -513,11 +513,11 @@ html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data
   stroke-width: .52;
 }
 
-html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] [data-prts-session-lifeline] {
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline] {
   opacity: .98;
 }
 
-html[data-dsh-prts] [data-prts-session-row][aria-selected="true"]:hover [data-prts-session-lifeline] {
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):hover [data-prts-session-lifeline] {
   opacity: 0;
 }
 
@@ -602,7 +602,7 @@ html[data-dsh-prts][data-prts-scheme="light"] [data-prts-session-row] {
   --prts-session-pickup-fill: #3f4d56;
 }
 
-html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] {
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) {
   --prts-facility-texture-color: var(--prts-yellow);
 }
 
@@ -627,7 +627,7 @@ html[data-dsh-prts] [data-prts-workspace-row] > [data-prts-facility-spine] {
   --prts-facility-surface: var(--prts-cyan);
 }
 
-html[data-dsh-prts] [data-prts-session-row][aria-selected="true"] > [data-prts-facility-spine] {
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) > [data-prts-facility-spine] {
   --prts-facility-surface: var(--prts-yellow);
 }
 
@@ -639,6 +639,13 @@ html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"] > [data-prts
 html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) > [data-prts-facility-spine],
 html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) > [data-prts-facility-spine] {
   transform: scaleX(1) !important;
+}
+
+/* Expansion is state feedback: do not trail the newly visible session rows.
+   Collapsed-row hover keeps the normal spring transition. */
+html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"] > [data-prts-facility-spine],
+html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"]::before {
+  transition: none;
 }
 
 /* Switch each legacy fallback off only after its own valid vector path exists. */
@@ -849,3 +856,11 @@ html[data-dsh-prts] [data-prts-running-marker] circle {
 }
 @keyframes prts-running-room-orbit { to { transform: rotate(360deg); } }
 /* Preserve this small status animation under reduced motion: it signals ongoing work. */
+
+
+html[data-dsh-prts] [data-prts-summary-dismissed] [data-prts-session-summary-popover] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: none;
+}

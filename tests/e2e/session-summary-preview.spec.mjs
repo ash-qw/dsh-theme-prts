@@ -344,6 +344,12 @@ test('master preview switch removes the whole feature and hides details without 
   await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewDone:false})))
   await page.goto('/tests/fixtures/rc7-harness.html')
   await expect(page.locator('[data-prts-session-summary-trigger="ongoing"]')).toBeVisible()
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(1)
+  await page.mouse.move(1000,800)
+  await expect(page.locator('[data-prts-summary-reply]:visible')).toHaveCount(0)
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(1)
   await page.locator('[data-prts-rail-brand]').click()
   await page.locator('[data-prts-settings-jump="assistance"]').click()
   await page.locator('[data-prts-settings-section="assistance"]').screenshot({path:'/tmp/prts-preview-settings-hierarchy.png'})
@@ -767,4 +773,123 @@ test('reply preview fits above a low session row when the right side has space',
     const p=await panel.boundingBox(),r=await row.boundingBox()
     return !!p && p.y>=8 && p.y<r.y && p.y+p.height<=1000-8
   }).toBe(true)
+})
+
+test('opening a preview scrolls the corresponding session card into its list viewport',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const row=page.locator('[data-session-id="fixture-session"]')
+  await expect(row).toBeVisible()
+  await row.evaluate(el=>{
+    const tree=el.closest('[role="tree"]')
+    Object.assign(tree.style,{height:'240px',overflowY:'auto'})
+    const spacer=document.createElement('div')
+    spacer.style.height='700px'
+    spacer.style.flexShrink='0'
+    tree.insertBefore(spacer,el)
+    tree.scrollTop=0
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').click()
+  await expect.poll(()=>row.evaluate(el=>{
+    const r=el.getBoundingClientRect(),p=el.closest('[role="tree"]').getBoundingClientRect()
+    return r.top>=p.top && r.bottom<=p.bottom+1
+  })).toBe(true)
+})
+
+for(const navigation of ['row','button','double-click'])test('navigation dismisses the whole preview until re-entry: '+navigation,async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  if(navigation==='button')await page.evaluate(()=>{
+    window.__PRTS_FIXTURE_RUNTIME__.sessionStatus.set(new Map([['fixture-session',{running:true,pendingInteraction:{kind:'question',questions:[{id:'q',question:'选择方案',options:['继续']}],answerable:false}}]]))
+  })
+  const state=navigation==='button'?'warning':'ongoing'
+  const trigger=page.locator('[data-prts-session-summary-trigger="'+state+'"]')
+  const menu=page.locator('[data-prts-session-summary-popover="'+state+'"]')
+  const row=page.locator('[data-prts-session-summary-item="fixture-session"]')
+  await trigger.hover()
+  await row.hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await expect(panel).toBeVisible()
+  if(navigation==='row')await row.click()
+  else if(navigation==='button')await panel.getByRole('button',{name:'进入会话',exact:true}).click()
+  else await panel.locator(':scope > strong').dblclick()
+  await expect(menu).toBeHidden()
+  await expect(page.locator('[data-prts-summary-reply]:visible')).toHaveCount(0)
+  await page.waitForTimeout(350)
+  await expect(menu).toBeHidden()
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  await page.mouse.move(900,700)
+  await trigger.hover()
+  await expect(menu).toBeVisible()
+})
+
+test('newly expanded session cards have themed geometry before their first rendered frame',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await expect(page.locator('[data-prts-session-row]').first()).toBeVisible()
+  const result=await page.evaluate(()=>new Promise(resolve=>{
+    requestAnimationFrame(()=>{
+      const row=document.createElement('div')
+      row.setAttribute('role','treeitem')
+      row.setAttribute('aria-selected','false')
+      row.setAttribute('data-row-key','session:first-paint')
+      row.className='sessionRow'
+      row.innerHTML='<span></span><span class="title">新展开的会话</span><span class="sessionTime">刚刚</span>'
+      document.querySelector('[role="tree"]').append(row)
+      requestAnimationFrame(()=>{
+        const path=row.querySelector('[data-prts-facility-layer="surface"]')
+        resolve({marked:row.hasAttribute('data-prts-session-row'),outline:!!path?.getAttribute('d')})
+      })
+    })
+  }))
+  expect(result).toEqual({marked:true,outline:true})
+})
+
+test('collapsed workspace begins rendering before another conversation navigation runs',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await expect(page.locator('[data-prts-session-row]').first()).toBeVisible()
+  await page.evaluate(()=>{
+    const row=document.querySelector('[data-session-id="fixture-session"]')
+    const group=document.querySelector('[data-prts-workspace-row]')
+    const parent=row.parentElement
+    row.remove()
+    row.setAttribute('aria-selected','false')
+    group.setAttribute('data-row-key','workspace:')
+    group.setAttribute('aria-expanded','false')
+    window.__revealOrder=[]
+    group.addEventListener('click',()=>{
+      window.__revealOrder.push('expand')
+      group.setAttribute('aria-expanded','true')
+      queueMicrotask(()=>{
+        parent.append(row)
+        requestAnimationFrame(()=>{
+          window.__revealOrder.push('frame')
+          window.__flowBeforeNavigation = row.getAttribute('data-prts-selection-target')
+          window.__selectionBeforeNavigation = {
+            weight: getComputedStyle(row.querySelector('[data-prts-row-title]')).fontWeight,
+            spine: getComputedStyle(row.querySelector('[data-prts-facility-spine]')).getPropertyValue('--prts-facility-surface').trim(),
+            yellow: getComputedStyle(row).getPropertyValue('--prts-yellow').trim(),
+            native: row.getAttribute('aria-selected'),
+          }
+        })
+      })
+    })
+    const opened=window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds
+    opened.push=function(...ids){window.__revealOrder.push('navigate');return Array.prototype.push.apply(this,ids)}
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').click()
+  await expect.poll(()=>page.evaluate(()=>window.__revealOrder)).toEqual(['expand','frame','navigate'])
+  expect(await page.evaluate(()=>window.__flowBeforeNavigation)).toBe('true')
+  const selection = await page.evaluate(()=>window.__selectionBeforeNavigation)
+  expect(selection.weight).toBe('700')
+  expect(selection.spine).toBe(selection.yellow)
+  expect(selection.native).toBe('false')
+  const target=page.locator('[data-session-id="fixture-session"]')
+  await target.evaluate(el=>el.setAttribute('aria-selected','true'))
+  await expect(target).not.toHaveAttribute('data-prts-selection-target')
+  await page.mouse.move(900, 700)
+  await expect(target.locator('[data-prts-session-lifeline]')).toHaveCSS('opacity','0.98')
 })

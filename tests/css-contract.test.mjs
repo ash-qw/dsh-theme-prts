@@ -60,7 +60,7 @@ test('models the facility card as one notched face and one notched side spine', 
     'transform: translate3d(var(--prts-row-shift), 0, 0)',
   ])
   assert.match(css, /\[data-prts-workspace-row\]::before\s*\{[^}]*background:\s*var\(--prts-cyan\)/s)
-  assert.match(css, /\[data-prts-session-row\]\[aria-selected="true"\]::before\s*\{[^}]*background:\s*var\(--prts-yellow\)/s)
+  assert.match(css, /\[data-prts-session-row\]:is\(\[data-prts-selection-target="true"\], \[aria-selected="true"\]:not\(\[data-prts-selection-target="false"\]\)\)::before\s*\{[^}]*background:\s*var\(--prts-yellow\)/s)
   assert.doesNotMatch(css, /\[aria-selected="true"\][^{]*\[data-prts-facility-face\][^{]*\{[^}]*yellow/s)
   assert.doesNotMatch(css, /\b(?:chassis|shoulder|bracket|foot|feet)\b/i)
 })
@@ -142,7 +142,7 @@ test('pairs the active-session filament with a hover-only pickup and keeps the n
     '[data-prts-session-lifeline-layer="halo"]',
     '[data-prts-session-lifeline-layer="body"]',
     '[data-prts-session-lifeline-layer="core"]',
-    '[aria-selected="true"] [data-prts-session-lifeline]',
+    ':is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline]',
     '[data-prts-session-flow="off"]',
     '[data-prts-session-glow="on"]',
     '[data-prts-session-glow="off"]',

@@ -96,11 +96,10 @@ export function applyPrtsPlugin(ctx, environment) {
   const sidebarControls = createSidebarControlAdapter({
     document,
     window,
-    sessions: contextService(ctx, 'sessions'),
-    workspaces: contextService(ctx, 'workspaces'),
     getSessionStatus: () => contextService(ctx, 'uiSession')?.sessionStatus,
     getUiWorkspace: () => contextService(ctx, 'uiWorkspace'),
     getSessions: () => contextService(ctx, 'sessions'),
+    getWorkspaces: () => contextService(ctx, 'workspaces'),
     getUiConversation: () => contextService(ctx, 'uiConversation'),
   })
   const floatingGlass = createFloatingGlassAdapter({ document, window })

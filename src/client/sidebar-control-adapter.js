@@ -20,6 +20,7 @@ const OWNED_ATTRIBUTES = [
   'data-prts-session-time',
   'data-prts-session-index',
   'data-prts-session-state',
+  'data-prts-selection-target',
   'data-prts-session-summary-header',
   'data-prts-session-summary-label',
   'data-prts-facility-face',
@@ -204,8 +205,9 @@ function createRunningMarker(document) {
   return marker
 }
 
-export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions }) {
+export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions, getWorkspaces }) {
   let previewPreferences = {}
+  let adapterActive = false, sourceRetryTimer
   let observer
   let resizeObserver
   let resizeFrame
@@ -219,6 +221,27 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let summarySignature = ''
   let heldPreviewState
   let hoveredSummary, summaryLeaveTimer
+  let summaryDismissed = false, pointerLeftSummary = false
+  function resumeSummaryHover(event) {
+    if (!summaryDismissed) return
+    const trigger = event.target.closest?.('[data-prts-session-summary-trigger]')
+    if (!trigger || !summaryRoot?.contains(trigger)) { pointerLeftSummary = true; return }
+    if (!pointerLeftSummary) return
+    summaryDismissed = false
+    summaryRoot.removeAttribute('data-prts-summary-dismissed')
+    document.removeEventListener('pointermove', resumeSummaryHover)
+    keepSummaryHover(trigger.closest('[data-prts-session-summary-group]'))
+  }
+  function closeNavigationPreview() {
+    heldPreviewState = undefined
+    preview.stop()
+    clearSummaryHover()
+    summaryDismissed = true
+    pointerLeftSummary = false
+    summaryRoot?.setAttribute('data-prts-summary-dismissed', '')
+    for (const group of summaryRoot?.querySelectorAll('[data-prts-session-summary-group]') ?? []) group.removeAttribute('data-prts-preview-open')
+    document.addEventListener('pointermove', resumeSummaryHover)
+  }
   function clearSummaryHover() {
     window.clearTimeout(summaryLeaveTimer)
     hoveredSummary?.removeAttribute('data-prts-summary-hover-open')
@@ -226,6 +249,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     hoveredSummary = undefined
   }
   function keepSummaryHover(group) {
+    if (summaryDismissed) return
     window.clearTimeout(summaryLeaveTimer)
     if (!hoveredSummary) group.removeAttribute('data-prts-summary-instant')
     if (hoveredSummary && hoveredSummary !== group) {
@@ -256,6 +280,63 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   const vectorSizes = new WeakMap()
   const lifelineAnimator = createSessionLifelineAnimator({ document, window })
 
+  let subscribedSessions, subscribedWorkspaces
+  function disconnectSummarySources() {
+    statusSourcesStarted = false
+    window.clearTimeout(sourceRetryTimer)
+    sourceRetryTimer = undefined
+    stopSessionList()
+    stopWorkspaceList()
+    stopSessionStatus()
+    stopSessionList = stopWorkspaceList = stopSessionStatus = () => {}
+    subscribedSessions = subscribedWorkspaces = sessionStatus = undefined
+    if (getSessions) sessions = undefined
+    if (getWorkspaces) workspaces = undefined
+    cancelReveal()
+    cancelPendingNavigation()
+    clearSelectionTarget()
+    heldPreviewState = undefined
+    summaryDismissed = false
+    document?.removeEventListener('pointermove', resumeSummaryHover)
+    document?.removeEventListener('pointerdown', dismissHeldPreview)
+    document?.removeEventListener('keydown', dismissHeldPreview)
+    preview.stop()
+  }
+  function syncSummarySources() {
+    if (previewPreferences.sessionPreview === false) {
+      if (statusSourcesStarted) disconnectSummarySources()
+      return
+    }
+    if (!statusSourcesStarted) {
+      statusSourcesStarted = true
+      document.addEventListener('pointerdown', dismissHeldPreview)
+      document.addEventListener('keydown', dismissHeldPreview)
+    }
+    connectSummarySources()
+    connectSessionStatus()
+    const waiting = (getSessions && !subscribedSessions) || (getWorkspaces && !subscribedWorkspaces)
+      || (getSessionStatus && !sessionStatus)
+    if (waiting && sourceRetryTimer === undefined) {
+      sourceRetryTimer = window.setTimeout(() => { sourceRetryTimer = undefined; queueScan() }, 250)
+    } else if (!waiting) {
+      window.clearTimeout(sourceRetryTimer)
+      sourceRetryTimer = undefined
+    }
+  }
+  function connectSummarySources() {
+    if (getSessions) sessions = getSessions()
+    if (getWorkspaces) workspaces = getWorkspaces()
+    if (subscribedSessions !== sessions?.list) {
+      stopSessionList()
+      subscribedSessions = sessions?.list
+      stopSessionList = subscribedSessions?.subscribe?.(queueScan) ?? (() => {})
+    }
+    if (subscribedWorkspaces !== workspaces?.list) {
+      stopWorkspaceList()
+      subscribedWorkspaces = workspaces?.list
+      stopWorkspaceList = subscribedWorkspaces?.subscribe?.(queueScan) ?? (() => {})
+    }
+  }
   function connectSessionStatus() {
     const source = getSessionStatus?.()
     if (source === sessionStatus) return
@@ -264,25 +345,129 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     stopSessionStatus = source?.subscribe?.(queueScan) ?? (() => {})
   }
 
+  let selectionTarget, selectionTargetTimer
+  function clearSelectionTarget() {
+    selectionTarget = undefined
+    window.clearTimeout(selectionTargetTimer)
+    document?.removeEventListener('pointerdown', interruptSelectionTarget, true)
+    queueScan()
+  }
+  function interruptSelectionTarget(event) {
+    if (event.target.closest?.('[data-prts-session-row]')) clearSelectionTarget()
+  }
+  function setSelectionTarget(id) {
+    clearSelectionTarget()
+    selectionTarget = id
+    selectionTargetTimer = window.setTimeout(clearSelectionTarget, 4000)
+    document.addEventListener('pointerdown', interruptSelectionTarget, true)
+  }
+
+  let pendingReveal, revealTimer, revealFrame, revealSettleTimer
+  let navigationFrame, navigationGeneration = 0
+  function cancelPendingNavigation() {
+    navigationGeneration++
+    window.cancelAnimationFrame?.(navigationFrame)
+  }
+  function cancelReveal() {
+    pendingReveal = undefined
+    window.clearTimeout(revealTimer)
+    window.clearTimeout(revealSettleTimer)
+    window.cancelAnimationFrame?.(revealFrame)
+  }
+  function revealSessionCard(sessionId) {
+    cancelReveal()
+    pendingReveal = {sessionId, attempts: 0}
+    revealTimer = window.setTimeout(cancelReveal, 4000)
+    const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
+    syncSessionReveal(root)
+    queueScan()
+    return Boolean(pendingReveal?.expanding)
+  }
+  function syncSessionReveal(root) {
+    if (!pendingReveal || !root) return
+    const {sessionId} = pendingReveal
+    const rows = Array.from(root.querySelectorAll('[data-row-key], [data-session-id]'))
+    const row = rows.find(el => el.getAttribute('data-row-key') === `session:${sessionId}`
+      || el.getAttribute('data-session-id') === sessionId)
+    if (row) {
+      if (pendingReveal.scrolling) return
+      const request = pendingReveal
+      request.scrolling = true
+      // Let React finish mounting and let the host's row glide settle before scrolling.
+      revealFrame = window.requestAnimationFrame(async () => {
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        const animations = []
+        if (!reduced) for (let node = row; node && node !== root; node = node.parentElement) {
+          for (const animation of node.getAnimations?.() ?? []) {
+            const timing = animation.effect?.getComputedTiming?.()
+            if (animation.playState === 'running' && Number.isFinite(timing?.endTime)) animations.push(animation.finished)
+          }
+        }
+        if (animations.length) await Promise.race([
+          Promise.allSettled(animations),
+          new Promise(resolve => { revealSettleTimer = window.setTimeout(resolve, 300) }),
+        ])
+        if (pendingReveal !== request || !row.isConnected) return
+        row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:reduced ? 'instant' : 'smooth'})
+        cancelReveal()
+      })
+      return
+    }
+    if (++pendingReveal.attempts > 40) { cancelReveal(); return }
+    const items = snapshotOf(workspaces?.list)?.items ?? []
+    const owner = items.find(item => item.sessionIds?.includes(sessionId))
+    const key = owner?.workspaceId ?? ''
+    const keyed = key => rows.find(el => el.getAttribute('data-row-key') === key)
+    const group = keyed(`workspace:${key}`)
+    if (group?.getAttribute('aria-expanded') === 'false') { pendingReveal.expanding = true; group.click(); return }
+    if (!group && owner?.path) {
+      // Nested workspaces may not mount until their visible ancestor is expanded.
+      const path = value => value?.replace(/\\/g, '/').replace(/\/$/, '')
+      const target = path(owner.path)
+      const ancestors = items.filter(item => item !== owner && item.path && target.startsWith(path(item.path) + '/'))
+        .sort((a,b) => b.path.length - a.path.length)
+      for (const ancestor of ancestors) {
+        const parent = keyed(`workspace:${ancestor.workspaceId}`)
+        if (parent?.getAttribute('aria-expanded') === 'false') { pendingReveal.expanding = true; parent.click(); return }
+      }
+    }
+    const overflow = keyed(`overflow:${key}`)
+    if (overflow?.getAttribute('aria-expanded') === 'false') { pendingReveal.expanding = true; overflow.click() }
+  }
+
   function openSession(sessionId) {
-    dismissHeldPreview()
-    try {
-      const uiWorkspace = getUiWorkspace?.()
-      if (typeof uiWorkspace?.openSession === 'function') {
-        uiWorkspace.openSession(sessionId)
-        return
-      }
-      if (typeof sessions?.open === 'function') {
-        sessions.open(sessionId)
-        return
-      }
-    } catch {}
-    const row = Array.from(document.querySelectorAll('[data-prts-session-row]')).find(candidate => (
-      candidate.getAttribute('data-row-key') === `session:${sessionId}`
-      || candidate.getAttribute('data-session-id') === sessionId
-      || candidate.querySelector('[data-prts-row-title]')?.textContent.trim() === sessionId
-    ))
-    row?.click?.()
+    closeNavigationPreview()
+    cancelPendingNavigation()
+    setSelectionTarget(sessionId)
+    revealSessionCard(sessionId)
+    const generation = navigationGeneration
+    const navigate = () => {
+      if (generation !== navigationGeneration || !adapterActive) return
+      try {
+        const uiWorkspace = getUiWorkspace?.()
+        if (typeof uiWorkspace?.openSession === 'function') {
+          uiWorkspace.openSession(sessionId)
+          return
+        }
+        if (typeof sessions?.open === 'function') {
+          sessions.open(sessionId)
+          return
+        }
+      } catch {}
+      const row = Array.from(document.querySelectorAll('[data-prts-session-row]')).find(candidate => (
+        candidate.getAttribute('data-row-key') === `session:${sessionId}`
+        || candidate.getAttribute('data-session-id') === sessionId
+        || candidate.querySelector('[data-prts-row-title]')?.textContent.trim() === sessionId
+      ))
+      if (row) row.click?.()
+      else clearSelectionTarget()
+    }
+    // Paint selection and expansion before the host synchronously mounts another conversation.
+    // Already-expanded workspaces need this too: queueScan has not applied selection yet.
+    navigationFrame = window.requestAnimationFrame(() => {
+      if (generation !== navigationGeneration) return
+      navigationFrame = window.requestAnimationFrame(navigate)
+    })
   }
 
   function statusSignal(document, state) {
@@ -318,7 +503,14 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     count.textContent = String(items.length)
     trigger.append(count)
     trigger.addEventListener('pointerenter', () => enterPreviewState(state))
-    trigger.addEventListener('focus', () => enterPreviewState(state))
+    trigger.addEventListener('focus', () => {
+      if (trigger.matches(':focus-visible')) {
+        summaryDismissed = false
+        summaryRoot?.removeAttribute('data-prts-summary-dismissed')
+        document.removeEventListener('pointermove', resumeSummaryHover)
+      }
+      enterPreviewState(state)
+    })
 
     const popover = document.createElement('span')
     popover.setAttribute('data-prts-session-summary-popover', state)
@@ -450,6 +642,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       button.setAttribute('aria-label', item.title)
       stopTitles.set(button, scrollSummaryTitle(button, title, text, window))
       const showReply = () => {
+        if (summaryDismissed) return
         const key = {ongoing:'previewOngoing',warning:'previewWarning',done:'previewDone'}[state]
         if (previewPreferences[key] === false) { preview.stop(); return }
         preview.show(item.id, reply, item.title, button)
@@ -565,6 +758,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     }
     const labelHidden = Array.from(label.classList).some(name => /hidden/i.test(name))
     summaryRoot.toggleAttribute('data-prts-summary-search-hidden', labelHidden)
+    summaryRoot.toggleAttribute('data-prts-summary-dismissed', summaryDismissed)
     summaryRoot.hidden = warning.length === 0 && ongoing.length === 0 && done.length === 0
     if (signature === summarySignature) return
     summarySignature = signature
@@ -643,7 +837,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
 
   function queueScan() {
-    if (scanFrame !== undefined) return
+    if (!adapterActive || scanFrame !== undefined) return
     const requestFrame = window?.requestAnimationFrame?.bind(window) ?? (callback => window?.setTimeout?.(callback, 0))
     scanFrame = requestFrame(() => {
       scanFrame = undefined
@@ -652,7 +846,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function scan() {
-    connectSessionStatus()
+    if (!adapterActive) return
+    syncSummarySources()
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     const next = new Set()
     const nextVectorOwners = new Set()
@@ -681,6 +876,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         registerVector(controls.menu, { kind: 'button' }, next, nextVectorOwners)
         registerVector(controls.create, { kind: 'button' }, next, nextVectorOwners)
       }
+      const rowSessionId = row => row.getAttribute('data-session-id') || row.getAttribute('data-row-key')?.replace(/^session:/, '')
+      if (selectionTarget && Array.from(root.querySelectorAll('[role="treeitem"][aria-selected="true"]')).some(row => rowSessionId(row) === selectionTarget)) clearSelectionTarget()
       let sessionOrdinal = 0
       for (const row of root.querySelectorAll('div[role="treeitem"][aria-selected]')) {
         const sessionIndex = String(++sessionOrdinal).padStart(2, '0')
@@ -700,7 +897,10 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         const spine = ensureFacilitySpine(document, row, 'session', next)
         registerVector(face, { kind: 'face', topNotch: true, sessionNotch: true, texture: 'pickup' }, next, nextVectorOwners)
         registerVector(spine, { kind: 'spine' }, next, nextVectorOwners)
-        if (!activeLifelineRow && row.getAttribute('aria-selected') === 'true') {
+        const selected = selectionTarget ? rowSessionId(row) === selectionTarget : row.getAttribute('aria-selected') === 'true'
+        if (selectionTarget) row.setAttribute('data-prts-selection-target', String(selected))
+        else row.removeAttribute('data-prts-selection-target')
+        if (!activeLifelineRow && selected) {
           activeLifelineRow = row
           activeLifeline = face.querySelector('[data-prts-session-lifeline]')
         }
@@ -747,6 +947,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     }
     syncVectorOwners(nextVectorOwners)
     owned = next
+    syncSessionReveal(root)
   }
 
   function clear() {
@@ -774,6 +975,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (keys.some(key => previewPreferences[key] !== preferences[key])) preview.stop()
       previewPreferences = Object.fromEntries(keys.map(key => [key, preferences[key]]))
       if (!document) return
+      adapterActive = true
       lifelineAnimator.start()
       ensureFacilityTextureDefs(document)
       const ResizeObserver = window?.ResizeObserver
@@ -788,19 +990,23 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
           flushVectors()
         })
       }
-      document.addEventListener('pointerdown', dismissHeldPreview)
-      document.addEventListener('keydown', dismissHeldPreview)
       scan()
-      if (!statusSourcesStarted) {
-        statusSourcesStarted = true
-        stopSessionList = sessions?.list?.subscribe?.(queueScan) ?? (() => {})
-        stopWorkspaceList = workspaces?.list?.subscribe?.(queueScan) ?? (() => {})
-      }
       if (observer || !window?.MutationObserver) return
       const observationRoot = document.querySelector('[data-prts-region="sessions"]')
       if (!observationRoot) return
       observer = new window.MutationObserver(mutations => {
-        if (mutations.some(mutation => !mutation.target.closest?.('[data-prts-owned-session-summary]'))) queueScan()
+        const relevant = mutations.filter(mutation => !mutation.target.closest?.('[data-prts-owned-session-summary]'))
+        const freshRow = 'div[role="treeitem"]:not([data-prts-session-row]):not([data-prts-workspace-row])'
+        const mountsRows = relevant.some(mutation => mutation.type === 'childList'
+          && Array.from(mutation.addedNodes).some(node => node.nodeType === 1
+            && (node.matches(freshRow) || node.querySelector(freshRow))))
+        if (mountsRows) {
+          // React has mounted expanded rows. Finish theme geometry before their first paint.
+          window.cancelAnimationFrame?.(scanFrame)
+          scanFrame = undefined
+          scan()
+          flushVectors()
+        } else if (relevant.length) queueScan()
       })
       observer.observe(observationRoot, {
         subtree: true,
@@ -810,19 +1016,16 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       })
     },
     dispose() {
+      adapterActive = false
+      disconnectSummarySources()
+      cancelReveal()
+      document.removeEventListener('pointermove', resumeSummaryHover)
+      summaryDismissed = false
       heldPreviewState = undefined
       document?.removeEventListener('pointerdown', dismissHeldPreview)
       document?.removeEventListener('keydown', dismissHeldPreview)
       observer?.disconnect()
       observer = undefined
-      stopSessionList()
-      stopSessionList = () => {}
-      stopWorkspaceList()
-      stopWorkspaceList = () => {}
-      stopSessionStatus()
-      stopSessionStatus = () => {}
-      sessionStatus = undefined
-      statusSourcesStarted = false
       if (scanFrame !== undefined) {
         if (window?.cancelAnimationFrame) window.cancelAnimationFrame(scanFrame)
         else window?.clearTimeout?.(scanFrame)

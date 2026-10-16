@@ -198,6 +198,8 @@ test('summarizes service-backed session states and opens the selected session', 
   assert.equal(document.querySelector('[data-prts-session-summary-item="done-1"] span:last-child').textContent, '尚未查看')
 
   document.querySelector('[data-prts-session-summary-item="done-1"]').click()
+  await flush(dom.window)
+  await flush(dom.window)
   assert.deepEqual(opened, ['done-1'])
 
   document.querySelector('[data-session-id="run-1"] [data-state]').setAttribute('data-state', 'done')
@@ -276,6 +278,8 @@ test('shows pending questions before running and completion states', async () =>
   assert.equal(document.querySelector('[data-prts-session-summary-item="plan"] [data-prts-session-summary-item-status]').textContent, '待审阅')
   assert.equal(document.querySelector('[data-prts-session-summary-item="archived"]'), null)
   document.querySelector('[data-prts-session-summary-item="question"]').click()
+  await flush(dom.window)
+  await flush(dom.window)
   assert.deepEqual(opened, ['question'])
 
   sessionStatus.update(new Map([
@@ -389,6 +393,144 @@ test('keeps the workspace warning shortcut when the service list omits a visible
   assert.equal(document.querySelector('[data-prts-session-summary-trigger="warning"] [data-prts-session-summary-count]').textContent, '1')
   assert.equal(document.querySelector('[data-prts-session-summary-trigger="ongoing"]'), null)
   document.querySelector('[data-prts-session-summary-item="question"]').click()
+  await flush(dom.window)
+  await flush(dom.window)
   assert.deepEqual(opened, ['question'])
   adapter.dispose()
+})
+
+test('preview navigation reveals its nested workspace and hidden session card', async () => {
+  const dom = new JSDOM('<html><body><aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div><span>工作区</span><button>搜索</button></div><div role="tree"><div role="treeitem" data-row-key="workspace:parent" aria-expanded="false"><span>Parent</span></div></div></div></aside></body></html>', {pretendToBeVisual:true})
+  const {document} = dom.window
+  const tree = document.querySelector('[role="tree"]')
+  const opened = [], scrolled = [], expanded = []
+  const parent = tree.firstElementChild
+  parent.addEventListener('click', () => {
+    expanded.push('parent')
+    parent.setAttribute('aria-expanded', 'true')
+    const owner = document.createElement('div')
+    owner.setAttribute('role','treeitem')
+    owner.setAttribute('data-row-key','workspace:owner')
+    owner.setAttribute('aria-expanded','false')
+    owner.innerHTML='<span>Owner</span>'
+    owner.addEventListener('click',()=>{
+      expanded.push('owner')
+      owner.setAttribute('aria-expanded','true')
+      const more=document.createElement('button')
+      more.setAttribute('data-row-key','overflow:owner')
+      more.setAttribute('aria-expanded','false')
+      more.addEventListener('click',()=>{
+        expanded.push('overflow')
+        more.setAttribute('aria-expanded','true')
+        const row=document.createElement('div')
+        row.setAttribute('role','treeitem')
+        row.setAttribute('aria-selected','true')
+        row.setAttribute('data-row-key','session:target')
+        row.innerHTML='<span data-state="ongoing"></span><span>Target</span>'
+        row.scrollIntoView=options=>scrolled.push(options)
+        tree.append(row)
+      })
+      tree.append(more)
+    })
+    tree.append(owner)
+  })
+  const adapter=createSidebarControlAdapter({
+    document,window:dom.window,
+    sessions:{list:createStore({ids:['target'],byId:{target:{id:'target',displayTitle:'Target',running:true}}})},
+    workspaces:{list:createStore({items:[
+      {workspaceId:'parent',path:'/root',sessionIds:[]},
+      {workspaceId:'owner',path:'/root/project',sessionIds:['target']},
+    ]})},
+    getUiWorkspace:()=>({openSession:id=>{ assert.ok(expanded.includes('parent'), 'start sidebar expansion before navigating'); opened.push(id) }}),
+  })
+  adapter.start()
+  document.querySelector('[data-prts-session-summary-item="target"]').click()
+  for(let i=0;i<8 && (!scrolled.length || !opened.length);i++)await flush(dom.window)
+  assert.deepEqual(opened,['target'])
+  assert.deepEqual(expanded,['parent','owner','overflow'])
+  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'smooth'}])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('late services keep summary states alive after workspace cards are unmounted',async()=>{
+  const dom=new JSDOM('<html><body><aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div><span>工作区</span><button>搜索</button></div><div role="tree"><div role="treeitem" aria-selected="false" data-row-key="session:late"><span data-state="warning"></span><span>Late session</span></div></div></div></aside></body></html>',{pretendToBeVisual:true})
+  const {document}=dom.window
+  let sessions,workspaces,status
+  const adapter=createSidebarControlAdapter({document,window:dom.window,getSessions:()=>sessions,getWorkspaces:()=>workspaces,getSessionStatus:()=>status})
+  adapter.start()
+  assert.ok(document.querySelector('[data-prts-session-summary-trigger="warning"]'))
+  sessions={list:createStore({ids:['late'],byId:{late:{id:'late',displayTitle:'Late session',running:true}}})}
+  workspaces={list:createStore({items:[],archivedSessionIds:[]})}
+  status=createStore(new Map([['late',{running:true,pendingInteraction:{kind:'question'}}]]))
+  document.querySelector('[data-row-key="session:late"]').remove()
+  await flush(dom.window)
+  assert.equal(document.querySelector('[data-prts-session-summary-count]').textContent,'1')
+  assert.ok(document.querySelector('[data-prts-session-summary-trigger="warning"]'))
+  workspaces.list.update({items:[],archivedSessionIds:['late']})
+  await flush(dom.window)
+  assert.equal(document.querySelector('[data-prts-session-summary-trigger="warning"]'),null)
+  workspaces.list.update({items:[],archivedSessionIds:[]})
+  await flush(dom.window)
+  assert.ok(document.querySelector('[data-prts-session-summary-trigger="warning"]'))
+  sessions.list.update({ids:[],byId:{}})
+  await flush(dom.window)
+  assert.equal(document.querySelector('[data-prts-session-summary-trigger="warning"]'),null)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('preview subscriptions follow its own switch and reacquire services after restarting',async()=>{
+  const dom=new JSDOM('<html><body><aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div><span>工作区</span><button>搜索</button></div><div role="tree"><div role="treeitem" aria-selected="false" data-row-key="session:x"><span data-state="ongoing"></span><span>Card</span></div></div></div></aside></body></html>',{pretendToBeVisual:true})
+  const tracked=snapshot=>{
+    const store=createStore(snapshot)
+    const subscribe=store.subscribe
+    store.count=0
+    store.subscribe=fn=>{store.count++;const stop=subscribe(fn);return()=>{store.count--;stop()}}
+    return store
+  }
+  let getters=0
+  let sessions={list:tracked({ids:['x'],byId:{x:{id:'x',running:true,displayTitle:'Card'}}})}
+  const workspaces={list:tracked({items:[]})}
+  const status=tracked(new Map([['x',{running:true}]]))
+  const adapter=createSidebarControlAdapter({document:dom.window.document,window:dom.window,
+    getSessions:()=>{getters++;return sessions},getWorkspaces:()=>{getters++;return workspaces},getSessionStatus:()=>{getters++;return status}})
+  const counts=()=>[sessions.list.count,workspaces.list.count,status.count]
+  adapter.start({sessionPreview:false})
+  await flush(dom.window)
+  assert.equal(getters,0)
+  assert.ok(dom.window.document.querySelector('[data-prts-session-state="ongoing"]'))
+  adapter.start({sessionPreview:true})
+  assert.deepEqual(counts(),[1,1,1])
+  adapter.start({sessionPreview:true})
+  assert.deepEqual(counts(),[1,1,1])
+  adapter.start({sessionPreview:false})
+  assert.deepEqual(counts(),[0,0,0])
+  const before=getters
+  await flush(dom.window)
+  assert.equal(getters,before)
+  const old=sessions.list
+  sessions={list:tracked({ids:['x'],byId:{x:{id:'x',running:true,displayTitle:'Updated'}}})}
+  adapter.start({sessionPreview:true})
+  assert.equal(old.count,0)
+  assert.deepEqual(counts(),[1,1,1])
+  adapter.dispose()
+  assert.deepEqual(counts(),[0,0,0])
+  adapter.start({sessionPreview:true})
+  assert.deepEqual(counts(),[1,1,1])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('preview waits for missing services without needing a sidebar DOM mutation',async()=>{
+  const dom=new JSDOM('<html><body><aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div><span>工作区</span><button>搜索</button></div><div role="tree"></div></div></aside></body></html>',{pretendToBeVisual:true})
+  let sessions
+  const adapter=createSidebarControlAdapter({document:dom.window.document,window:dom.window,getSessions:()=>sessions})
+  adapter.start({sessionPreview:true})
+  await flush(dom.window)
+  sessions={list:createStore({ids:['late'],byId:{late:{id:'late',running:true,displayTitle:'Late'}}})}
+  await new Promise(resolve=>dom.window.setTimeout(resolve,300))
+  assert.ok(dom.window.document.querySelector('[data-prts-session-summary-item="late"]'))
+  adapter.dispose()
+  dom.window.close()
 })
