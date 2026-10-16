@@ -16,3 +16,29 @@ export function renderPreviewMarkdown(text) {
   }
   return previewMarkdownParser.render(text)
 }
+
+// Bounded per retained session; oversized replies are rendered without caching.
+export function createPreviewContentCache(document, render = renderPreviewMarkdown) {
+  const entries = new Map()
+  let size = 0
+  return text => {
+    const hit = entries.get(text)
+    if (hit) { entries.delete(text); entries.set(text, hit); return hit }
+    const html = render(text)
+    const plain = document.createElement('div')
+    plain.innerHTML = html
+    const summary = plain.textContent.replace(/\s+/g, ' ').trim().slice(0, 100)
+    const cost = text.length + html.length + summary.length
+    const value = {html, summary, cost}
+    if (cost <= 262144) {
+      while (entries.size && (entries.size >= 32 || size + cost > 262144)) {
+        const key = entries.keys().next().value
+        size -= entries.get(key).cost
+        entries.delete(key)
+      }
+      entries.set(text, value)
+      size += cost
+    }
+    return value
+  }
+}

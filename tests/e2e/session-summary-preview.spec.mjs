@@ -29,7 +29,8 @@ test('summary hover scrolls long titles and streams replies without opening the 
   expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual([])
   await page.screenshot({path:'/tmp/prts-summary-preview-fixture.png'})
   await page.mouse.move(1000,800)
-  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(0)
+  await expect(reply).toBeHidden()
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(1)
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').focus()
   await item.focus()
   await expect(reply).toContainText('已经完成')
@@ -116,7 +117,7 @@ test('direct answer rejects a question withdrawn while editing',async({page})=>{
 })
 
 test('direct answer prevents duplicate submission and allows retry after failure',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewFollowWarning:true})))
   await page.goto('/tests/fixtures/rc7-harness.html')
   await page.evaluate(()=>{
     const r=window.__PRTS_FIXTURE_RUNTIME__
@@ -437,3 +438,150 @@ for(const next of ['done','question','approval']){
     await expect(panel).toHaveCount(0)
   })
 }
+
+for(const limit of [5,10,0]) test(`running preview retains latest replies with limit ${limit}`,async({page})=>{
+  await page.addInitScript(limit=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewReplyLimit:limit})),limit)
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const nodes=Array.from({length:12},(_,i)=>[String(i),{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'正文 '+(i+1)}]}}])
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:nodes.map(([key])=>key),nodes:new Map(nodes)})
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  const entries=panel.locator('[data-prts-reply-entry]')
+  await expect(entries).toHaveCount(limit||12)
+  await expect(entries.first()).toContainText('回复 12')
+  await entries.first().hover()
+  await expect(page.locator('[data-prts-reply-detail]:visible')).toContainText('正文 12')
+  await page.evaluate(()=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__,s=r.previewChat.getSnapshot()
+    r.previewChat.set({...s,order:[...s.order,'new'],nodes:new Map([...s.nodes,['new',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'新增正文'}]}}]])})
+  })
+  await expect(entries).toHaveCount(limit||13)
+  await expect(entries.first()).toContainText('回复 13')
+  await expect(page.locator('[data-prts-reply-detail]:visible')).toContainText('正文 12')
+})
+
+test('reply limit setting persists and follows the running preview switch',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="assistance"]').click()
+  const row=page.locator('[data-prts-setting-row="previewReplyLimit"]')
+  await expect(row.locator('select')).toHaveValue('5')
+  await row.locator('select').selectOption('5')
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).previewReplyLimit)).toBe(5)
+  await page.locator('[data-prts-setting-switch="previewOngoing"]').click()
+  await expect(row).toBeHidden()
+  await page.locator('[data-prts-setting-switch="previewOngoing"]').click()
+  await expect(row.locator('select')).toHaveValue('5')
+})
+
+test('new sessions inserted under a stationary pointer do not steal the active preview',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await expect(panel).toContainText('当前进度正常')
+  await panel.evaluate(el=>el.dataset.identity='original')
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').evaluate(el=>window.__previewOriginalRow=el)
+  await page.evaluate(()=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.sessionList.getSnapshot()
+    r.sessionList.set({...old,ids:['new-session','fixture-session'],byId:{...old.byId,'new-session':{id:'new-session',displayTitle:'新加入的会话',running:true}}})
+  })
+  await expect(page.locator('[data-prts-session-summary-item="new-session"]')).toBeVisible()
+  expect(await page.locator('[data-prts-session-summary-group="ongoing"] [data-prts-session-summary-item]').evaluateAll(rows=>rows.map(row=>row.getAttribute('data-prts-session-summary-item')))).toEqual(['fixture-session','new-session'])
+  await page.waitForTimeout(700)
+  await expect(panel).toHaveAttribute('data-identity','original')
+  expect(await page.locator('[data-prts-session-summary-item="fixture-session"]').evaluate(el=>el===window.__previewOriginalRow)).toBe(true)
+  await expect(page.locator('[data-prts-session-summary-item="fixture-session"]')).toHaveAttribute('data-prts-preview-active','')
+  await page.locator('[data-prts-session-summary-item="new-session"]').hover()
+  await expect(panel).toHaveAttribute('aria-label',/^新加入的会话：/)
+})
+
+test('state following can be disabled while reopening uses the latest state',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewFollowState:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await expect(panel).toHaveAttribute('data-prts-preview-state','ongoing')
+  await page.evaluate(()=>{
+    for(const el of document.querySelectorAll('[data-state="ongoing"]')) el.removeAttribute('data-state')
+    window.__PRTS_FIXTURE_RUNTIME__.sessionStatus.set(new Map([['fixture-session',{running:false,completionUnread:true}]]))
+  })
+  await page.waitForTimeout(200)
+  await expect(panel).toHaveAttribute('data-prts-preview-state','ongoing')
+  await page.mouse.move(1200,850)
+  await expect(panel).toHaveCount(0)
+  await page.locator('[data-prts-session-summary-trigger="done"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  await expect(panel).toHaveAttribute('data-prts-preview-state','done')
+  await page.mouse.move(1200,850)
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="assistance"]').click()
+  const toggle=page.locator('[data-prts-setting-switch="previewFollowOngoing"]')
+  await expect(toggle).toHaveAttribute('aria-checked','false')
+  await toggle.click()
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).previewFollowOngoing)).toBe(true)
+})
+
+for(const next of ['ongoing','question','other']) test(`answer submission with following off does not advance to ${next}`,async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewFollowState:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(next=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__
+    const later={kind:'question',questions:[{id:'next',question:'第二个问题',options:[{label:'下一步'}]}],answer:async()=>{}}
+    if(next==='other') { const old=r.sessionList.getSnapshot();r.sessionList.set({...old,byId:{...old.byId,'other':{id:'other',displayTitle:'另一个待处理会话'}}}) }
+    r.sessionStatus.set(new Map([['fixture-session',{pendingInteraction:{kind:'question',questions:[{id:'q',question:'第一个问题',options:[{label:'确认'}]}],answer:async()=>{
+      r.sessionStatus.set(new Map([['fixture-session',{running:true,pendingInteraction:next==='question'?later:undefined}],...(next==='other'?[['other',{pendingInteraction:later}]]:[])]))
+    }}}]]))
+  },next)
+  await page.locator('[data-prts-session-summary-trigger="warning"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await panel.getByRole('button',{name:'确认',exact:true}).click()
+  await panel.getByRole('button',{name:'提交回答',exact:true}).click()
+  await expect(panel).toHaveCount(0)
+  const waiting=page.locator('[data-prts-session-summary-popover="warning"]')
+  if(next!=='ongoing') {
+    await expect(waiting).toBeVisible()
+    await page.mouse.move(1200,850)
+    await expect(waiting).toBeVisible()
+    await page.locator(`[data-prts-session-summary-item="${next==='other'?'other':'fixture-session'}"]`).hover()
+    await expect(panel).toContainText('第二个问题')
+  } else {
+    await expect(waiting).toHaveCount(0)
+  }
+})
+
+test('repeated multi-session list updates preserve untouched row nodes',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.sessionList.getSnapshot()
+    const byId={...old.byId}
+    for(let i=0;i<5;i++)byId['task-'+i]={id:'task-'+i,displayTitle:'并行任务 '+i,running:true}
+    r.sessionList.set({...old,byId})
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="task-0"]').hover()
+  const first=page.locator('[data-prts-session-summary-item="task-0"]')
+  await first.evaluate(el=>window.__stableRow=el)
+  for(let i=0;i<20;i++) {
+    await page.evaluate(i=>{
+      const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.sessionList.getSnapshot()
+      r.sessionList.set({...old,byId:{...old.byId,'task-4':{...old.byId['task-4'],displayTitle:'进度 '+i}}})
+    },i)
+    await expect(page.locator('[data-prts-session-summary-item="task-4"]')).toContainText('进度 '+i)
+    expect(await first.evaluate(el=>el===window.__stableRow)).toBe(true)
+  }
+  for(let i=0;i<10;i++) {
+    await page.locator(`[data-prts-session-summary-item="task-${i%5}"]`).hover()
+    await page.waitForTimeout(100)
+  }
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBeLessThanOrEqual(5)
+  await page.mouse.click(1200,850)
+})

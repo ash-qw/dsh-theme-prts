@@ -79,7 +79,7 @@ test('pending questions take precedence over old prose and revert when answered'
   const {dom,panel}=fixture();let statusListener,pending={kind:'question',questions:[{question:'选择部署方式',options:[{label:'本地'},{label:'容器'}]}]}
   assert.equal(pendingQuestionPreview(pending),'选择部署方式：本地 / 容器')
   const status={getSnapshot:()=>new Map([['test',{pendingInteraction:pending}]]),subscribe:fn=>{statusListener=fn;return()=>{statusListener=undefined}}}
-  const preview=createSessionSummaryPreview({window:dom.window,getSessionStatus:()=>status,
+  const preview=createSessionSummaryPreview({window:dom.window,getSessionStatus:()=>status,getPreviewPreferences:()=>({previewFollowWarning:true}),
     sessions:{retain:()=>({ready:Promise.resolve({}),release(){}})},
     getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>chat(['旧回复']),subscribe:()=>()=>{}})})})})
   preview.show('test',panel,'test');await wait(dom.window)
@@ -123,4 +123,149 @@ test('running history includes only completed prose of the current turn in order
   snapshot.order.push('next-input')
   snapshot.nodes.set('next-input',{kind:'user'})
   assert.deepEqual(completedPreviewReplies(snapshot),[])
+})
+
+test('reply selector skips streaming prose, bounds the latest replies and detects replacements', async () => {
+  const {createPreviewReplySelector} = await import('../src/client/session-summary-preview.js')
+  const select = createPreviewReplySelector()
+  const snapshot = chat(Array.from({length:12},(_,i)=>'正文 '+i))
+  for (const node of snapshot.nodes.values()) node.data.status='settled'
+  let reads=0
+  snapshot.order.push('stream')
+  snapshot.nodes.set('stream',{kind:'assistant-step',data:{status:'running',get blocks(){reads++;throw Error('stream text must not be read')}}})
+  const first=select(snapshot,5)
+  assert.deepEqual(first.map(r=>r.ordinal),[8,9,10,11,12])
+  assert.equal(select(snapshot,5),first)
+  assert.equal(reads,0)
+  assert.equal(select(snapshot,0).length,12)
+  snapshot.nodes.get('11').data.blocks[0].text='已修订'
+  assert.equal(select(snapshot,5).at(-1).text,'已修订')
+  snapshot.nodes.get('11').visibility='hidden'
+  assert.equal(select(snapshot,5).at(-1).key,'10')
+  snapshot.order.push('user')
+  snapshot.nodes.set('user',{kind:'user'})
+  assert.deepEqual(select(snapshot,5),[])
+})
+
+test('unrelated status notifications and streaming updates do not rewrite the preview',async()=>{
+  const {dom,panel}=fixture();let notifyChat,notifyStatus
+  const snapshot=chat(['完成'])
+  snapshot.nodes.get('0').data.status='settled'
+  snapshot.order.push('stream')
+  snapshot.nodes.set('stream',{kind:'assistant-step',data:{status:'running',blocks:[{kind:'text',text:'生成中'}]}})
+  const status={running:true}
+  const statuses=new Map([['test',status]])
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:()=>({ready:Promise.resolve({}),release(){}})},
+    getSessionStatus:()=>({getSnapshot:()=>statuses,subscribe:fn=>{notifyStatus=fn;return()=>{}}}),
+    getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>snapshot,subscribe:fn=>{notifyChat=fn;return()=>{}}})})})})
+  preview.show('test',panel,'test');await wait(dom.window)
+  let mutations=0
+  const observer=new dom.window.MutationObserver(records=>mutations+=records.length)
+  observer.observe(panel,{subtree:true,childList:true,attributes:true,characterData:true})
+  statuses.set('other',{running:false});notifyStatus()
+  snapshot.nodes.get('stream').data.blocks[0].text+='更多';notifyChat()
+  await wait(dom.window,160)
+  assert.equal(mutations,0)
+  snapshot.nodes.get('stream').data.status='settled';notifyChat()
+  await wait(dom.window,160)
+  assert.equal(panel.querySelectorAll('[data-prts-reply-entry]').length,2)
+  status.running=false;notifyStatus()
+  assert.equal(panel.getAttribute('data-prts-preview-state'),'done')
+  observer.disconnect();preview.stop();dom.window.close()
+})
+
+test('brief hover gaps reuse one live binding and expiry releases it',async()=>{
+  const {dom,panel}=fixture();let retained=0,released=0,expiry,snapshot=chat(['之前'])
+  const originalTimer=dom.window.setTimeout.bind(dom.window)
+  dom.window.setTimeout=(fn,ms)=>{if(ms===30000){expiry=fn;return originalTimer(()=>{},30000)}return originalTimer(fn,ms)}
+  const source={getSnapshot:()=>snapshot,subscribe:()=>()=>{}}
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:()=>{retained++;return{ready:Promise.resolve({}),release:()=>released++}}},
+    getUiConversation:()=>({binding:()=>({target:()=>source})})})
+  preview.show('a',panel,'a');await wait(dom.window,100)
+  preview.leave();await wait(dom.window,350)
+  assert.equal(released,0)
+  preview.stop(false) // Rebuilding the status list must not flush idle cache.
+  snapshot=chat(['间隔期间更新'])
+  preview.show('a',panel,'a')
+  assert.match(panel.textContent,/间隔期间更新/)
+  await wait(dom.window,20)
+  assert.equal(retained,1)
+  preview.leave();await wait(dom.window,350)
+  expiry();assert.equal(released,1)
+  preview.show('a',panel,'a');await wait(dom.window,100)
+  assert.equal(retained,2)
+  preview.stop();assert.equal(released,2)
+  dom.window.close()
+})
+
+test('five shared cache slots evict least recently viewed sessions and keep active ownership',async()=>{
+  const {dom,panel}=fixture();const live=new Set(),reads=new Map(),timers=new Map()
+  let subscriptions=0,peak=0,status={running:true}
+  const originalTimer=dom.window.setTimeout.bind(dom.window)
+  dom.window.setTimeout=(fn,ms)=>{const token=originalTimer(ms===30000?()=>{}:fn,ms);if(ms===30000)timers.set(token,fn);return token}
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:id=>{assert.ok(!live.has(id));live.add(id);peak=Math.max(peak,live.size);reads.set(id,(reads.get(id)||0)+1);return{ready:Promise.resolve({id}),release:()=>live.delete(id)}}},
+    getSessionStatus:()=>({getSnapshot:()=>new Map([...live].map(id=>[id,status])),subscribe:()=>()=>{}}),
+    getUiConversation:()=>({binding:binding=>({target:()=>({getSnapshot:()=>chat([binding.id]),subscribe:()=>{subscriptions++;return()=>subscriptions--}})})})})
+  for(const id of ['a','b','c','d','e']) {preview.show(id,panel,id);await wait(dom.window,100)}
+  assert.equal(live.size,5);assert.equal(subscriptions,1)
+  // Revisiting in a different status uses the same session cache slot.
+  status={running:false,completionUnread:true}
+  preview.show('a',panel,'a');await wait(dom.window,20)
+  assert.equal(reads.get('a'),1)
+  preview.show('f',panel,'f');await wait(dom.window,100)
+  assert.equal(peak,5);assert.equal(live.has('b'),false);assert.equal(live.has('a'),true)
+  // Even a queued expiry callback from before reuse cannot evict active data.
+  for(const expire of timers.values()) expire()
+  assert.deepEqual([...live],['f']);assert.equal(subscriptions,1)
+  preview.stop();assert.equal(live.size,0);assert.equal(subscriptions,0)
+  dom.window.close()
+})
+
+test('hovering another session replaces a sticky transition preview without carrying its sticky state',async()=>{
+  const {dom,panel}=fixture();let notifyStatus
+  const statuses=new Map([['a',{running:true}],['b',{running:true}]])
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:id=>({ready:Promise.resolve({id}),release(){}})},
+    getSessionStatus:()=>({getSnapshot:()=>statuses,subscribe:fn=>{notifyStatus=fn;return()=>{}}}),
+    getUiConversation:()=>({binding:binding=>({target:()=>({getSnapshot:()=>chat([binding.id]),subscribe:()=>()=>{}})})})})
+  preview.show('a',panel,'a');await wait(dom.window,100)
+  statuses.set('a',{running:false,completionUnread:true});notifyStatus()
+  preview.leave();await wait(dom.window,350)
+  assert.equal(panel.hidden,false)
+  preview.show('b',panel,'b');await wait(dom.window,100)
+  assert.match(panel.getAttribute('aria-label'),/^b：/)
+  assert.equal(panel.getAttribute('data-prts-preview-state'),'ongoing')
+  preview.leave();await wait(dom.window,350)
+  assert.equal(panel.hidden,true)
+  preview.stop();dom.window.close()
+})
+
+ test('entering a different status dismisses a sticky preview but retains its cached data',async()=>{
+  const {dom,panel}=fixture();let notify,status={running:true},released=0
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:()=>({ready:Promise.resolve({}),release:()=>released++})},
+    getSessionStatus:()=>({getSnapshot:()=>new Map([['a',status]]),subscribe:fn=>{notify=fn;return()=>{}}}),
+    getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>chat(['完成']),subscribe:()=>()=>{}})})})})
+  preview.show('a',panel,'a');await wait(dom.window,100)
+  status={running:false,completionUnread:true};notify()
+  preview.enterState('done');assert.equal(panel.hidden,false)
+  preview.enterState('warning');assert.equal(panel.hidden,true)
+  assert.equal(released,0)
+  preview.stop();assert.equal(released,1);dom.window.close()
+})
+
+for (const [running,waiting] of [[true,false],[false,true]]) test(`follow switches use the departing state: running=${running}, waiting=${waiting}`,async()=>{
+  const {dom,panel}=fixture();let notify,status={running:true}
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    getPreviewPreferences:()=>({previewFollowOngoing:running,previewFollowWarning:waiting}),
+    getSessionStatus:()=>({getSnapshot:()=>new Map([['a',status]]),subscribe:fn=>{notify=fn;return()=>{}}})})
+  preview.show('a',panel,'a')
+  status={pendingInteraction:{kind:'approval',answerable:false,reason:'审批'}};notify()
+  assert.equal(panel.getAttribute('data-prts-preview-state'),running?'warning':'ongoing')
+  status={running:false,completionUnread:true};notify()
+  assert.equal(panel.getAttribute('data-prts-preview-state'),running?'warning':'ongoing')
+  preview.stop();dom.window.close()
 })

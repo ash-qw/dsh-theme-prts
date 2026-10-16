@@ -89,7 +89,7 @@ test('loads and migrates a complete version-one payload without losing independe
     previewOngoing: true,
     previewWarning: true,
     previewDone: true,
-    previewDoubleClick: true,
+    previewDoubleClick: true, previewFollowOngoing: true, previewFollowWarning: false, previewReplyLimit: 5,
   })
 })
 
@@ -328,4 +328,10 @@ test('conversation emblem preference defaults on and persists when disabled', ()
   assert.equal(api.normalizePreferences({}).conversationEmblem, true)
   const preferences = api.updatePreferenceValue(api.DEFAULT_PREFERENCES, 'conversationEmblem', false)
   assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(preferences))).conversationEmblem, false)
+})
+
+test('preview reply limits default to five and accept finite presets or unlimited',()=>{
+  for(const [input,expected] of [[undefined,5],[null,5],['5',5],[10,10],[0,0],['0',0],[-1,5],[500,5]]) {
+    assert.equal(api.normalizePreferences({previewReplyLimit:input}).previewReplyLimit,expected)
+  }
 })

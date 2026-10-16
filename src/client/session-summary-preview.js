@@ -1,4 +1,4 @@
-import { renderPreviewMarkdown } from './preview-markdown.js'
+import { createPreviewContentCache } from './preview-markdown.js'
 export function canAnswerPreview(pending) {
   if (pending?.kind === 'approval') return pending.answerable === true && typeof pending.answer === 'function'
   const question = pending?.questions?.[0]
@@ -42,7 +42,9 @@ export function latestAssistantReply(snapshot) {
 export function completedPreviewReplies(snapshot) {
   const replies = []
   const latestTurn = snapshot?.timeline?.turnOrder?.at(-1)
-  for (const key of [...(snapshot?.order ?? [])].reverse()) {
+  const order = snapshot?.order ?? []
+  for (let i = order.length - 1; i >= 0; i--) {
+    const key = order[i]
     const node = snapshot.nodes?.get?.(key)
     if (['user', 'steering', 'turn-trigger'].includes(node?.kind)) break
     if (latestTurn !== undefined && node?.location?.turn?.turn !== latestTurn) continue
@@ -53,10 +55,71 @@ export function completedPreviewReplies(snapshot) {
   return replies.reverse()
 }
 
-export function createSessionSummaryPreview({ document, window, sessions, getSessions, getUiConversation, getSessionStatus, openSession, getPreviewPreferences }) {
+// Ignore streaming text: only settled prose and turn boundaries affect this list.
+// Cache immutable host data; mutable test/older-host data is read on each check.
+export function createPreviewReplySelector() {
+  const textCache = new WeakMap()
+  let previous = [], previousTurn, previousBoundary
+  return (snapshot, limit = 5) => {
+    const order = snapshot?.order ?? []
+    const turn = snapshot?.timeline?.turnOrder?.at(-1)
+    const replies = []
+    let boundary
+    for (let i = order.length - 1; i >= 0; i--) {
+      const key = order[i], node = snapshot.nodes?.get?.(key)
+      if (['user', 'steering', 'turn-trigger'].includes(node?.kind)) { boundary = key; break }
+      if (turn !== undefined && node?.location?.turn?.turn !== turn) continue
+      if (node?.kind !== 'assistant-step' || node.visibility === 'hidden' || node.data?.status !== 'settled') continue
+      let text = textCache.get(node.data)
+      if (text === undefined) {
+        text = (node.data.blocks ?? []).filter(block => block.kind === 'text').map(block => block.text ?? '').join('').trim()
+        if (Object.isFrozen(node.data)) textCache.set(node.data, text)
+      }
+      if (text) replies.push({key, text})
+    }
+    replies.reverse()
+    const selected = (limit > 0 ? replies.slice(-limit) : replies)
+      .map((reply, index) => ({...reply, ordinal: replies.length - (limit > 0 ? Math.min(limit, replies.length) : replies.length) + index + 1}))
+    if (turn === previousTurn && boundary === previousBoundary && selected.length === previous.length && selected.every((reply, i) => reply.key === previous[i].key && reply.text === previous[i].text && reply.ordinal === previous[i].ordinal)) return previous
+    previousTurn = turn
+    previousBoundary = boundary
+    return previous = selected
+  }
+}
+
+function previewStatusFields(status) {
+  const pending = status?.pendingInteraction
+  return [status?.running, status?.completionUnread, pending, pending?.answer,
+    JSON.stringify([pending?.kind, pending?.answerable, pending?.getSnapshot?.().closed,
+      pending?.questions, pending?.toolName, pending?.reason, pending?.displayReason])]
+}
+
+export function createSessionSummaryPreview({ document, window, sessions, getSessions, getUiConversation, getSessionStatus, openSession, getPreviewPreferences, onPreviewClosed, onAnswerSubmitted }) {
   let active
-  function stop(force = true) {
-    if (!force && active) return
+  function follows(state) {
+    const preferences = getPreviewPreferences?.() ?? {}
+    return state === 'warning' ? preferences.previewFollowWarning === true : preferences.previewFollowOngoing !== false
+  }
+  // Shared across running, pending and completed previews. Active ownership is
+  // outside the LRU so it can never be evicted by an idle timeout.
+  const warm = new Map()
+  const cacheLimit = 5
+  function releaseWarm(id) {
+    const entry = warm.get(id)
+    if (!entry) return
+    warm.delete(id)
+    window.clearTimeout(entry.timer)
+    entry.reference.release()
+  }
+  function clearWarm() {
+    for (const id of warm.keys()) releaseWarm(id)
+  }
+  function trimWarm(limit) {
+    while (warm.size > limit) releaseWarm(warm.keys().next().value)
+  }
+  function stop(force = true, keepWarm = false) {
+    if (!force) return
+    if (!keepWarm) clearWarm()
     const old = active
     active = undefined
     if (!old) return
@@ -65,7 +128,15 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     window.clearTimeout(old.refresh)
     old.unsubscribe?.()
     old.unsubscribeStatus?.()
-    old.reference?.release()
+    if (keepWarm && old.reference && old.source) {
+      releaseWarm(old.id)
+      const entry = { reference: old.reference, source: old.source, contentCache: old.contentCache }
+      entry.timer = window.setTimeout(() => {
+        if (warm.get(old.id) === entry) releaseWarm(old.id)
+      }, 30000)
+      warm.set(old.id, entry)
+      trimWarm(cacheLimit)
+    } else old.reference?.release()
     old.panel.hidePopover?.()
     old.panel.hidden = true
     old.panel.removeAttribute('data-prts-preview-editing')
@@ -80,19 +151,25 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       old.panel.remove()
       if (old.originalParent?.isConnected) old.originalParent.append(old.panel)
     }
+    onPreviewClosed?.()
   }
   function show(id, panel, title, anchor) {
-    if (active?.sticky && active.id !== id) return
     if (active?.id === id) {
       window.clearTimeout(active.leaveTimer)
       return
     }
-    stop()
+    stop(true, true)
+    const cached = warm.get(id)
+    if (cached) { window.clearTimeout(cached.timer); warm.delete(id) }
+    // Reserve one slot for the active preview, including a pending acquisition.
+    trimWarm(cacheLimit - 1)
     const current = { id, panel, anchor, originalParent: panel.parentElement,
       group: anchor?.closest('[data-prts-session-summary-group]') }
     current.group?.setAttribute('data-prts-preview-open', '')
     anchor?.setAttribute('data-prts-preview-active', '')
     active = current
+    current.contentCache = cached?.contentCache ?? createPreviewContentCache(panel.ownerDocument)
+    if (cached) { current.reference = cached.reference; current.source = cached.source }
     const keep = () => window.clearTimeout(current.leaveTimer)
     const onDoubleClick = event => {
       if (active !== current || event.button !== 0 || getPreviewPreferences?.().previewDoubleClick === false) return
@@ -135,6 +212,14 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     current.detached = true
     panel.showPopover?.()
     const label = panel.querySelector('strong')
+    let sessionTitle = panel.querySelector('[data-prts-preview-session-title]')
+    if (!sessionTitle) {
+      sessionTitle = panel.ownerDocument.createElement('div')
+      sessionTitle.setAttribute('data-prts-preview-session-title', '')
+      panel.prepend(sessionTitle)
+    }
+    sessionTitle.textContent = title
+    sessionTitle.title = title
     let body = panel.querySelector('[data-prts-preview-body]')
     if (!body) {
       body = panel.ownerDocument.createElement('div')
@@ -191,7 +276,10 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
           await pending.answer(approval
             ? selected.has('仅允许本次') ? 'allowed-once' : 'rejected'
             : {answers:[{id:question.id,selected:question.options.map(o=>o.label).filter(value=>selected.has(value))}]})
-          if (active === current) {
+          if (active === current && !follows('warning')) {
+            stop(true, true)
+            onAnswerSubmitted?.('warning')
+          } else if (active === current) {
             current.sticky = true
             keep()
             current.answeredPending = pending
@@ -259,10 +347,12 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       }
     }
     let lastChoices = ''
-    let source
+    let source = cached?.source
     let previousText
     let previousQuestion
     let historyKeys = []
+    const selectReplies = createPreviewReplySelector()
+    const replyLimit = () => getPreviewPreferences?.().previewReplyLimit ?? 5
     let detailKey
     let detailEntry
     const hideDetail = () => {
@@ -293,9 +383,9 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       detailEntry?.removeAttribute('data-prts-reply-active')
       detailEntry = item
       item?.setAttribute('data-prts-reply-active', '')
-      detail.querySelector('strong').textContent = '回复 ' + (index + 1)
+      detail.querySelector('strong').textContent = '回复 ' + (reply.ordinal ?? index + 1)
       const content = detail.querySelector('[data-prts-preview-body]')
-      content.innerHTML = renderPreviewMarkdown(reply.text)
+      content.innerHTML = current.contentCache(reply.text).html
       content.scrollTop = 0
       detail.hidden = false
       const rect = panel.getBoundingClientRect()
@@ -316,6 +406,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       const question = approval || pending?.kind === 'question' || pending?.kind === 'plan-review'
       const state = question ? 'warning' : status?.running || (current.answeredPending && status?.pendingInteraction === current.answeredPending) ? 'ongoing'
         : status?.completionUnread || status?.running === false ? 'done' : current.group?.getAttribute('data-prts-session-summary-group') || ''
+      if (current.state && current.state !== state && !follows(current.state)) return
       if (current.state && current.state !== state) {
         current.sticky = true
         keep()
@@ -346,39 +437,53 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       choices.hidden = !labels.length
       panel.setAttribute('aria-label', title + '：' + label.textContent)
       if (state === 'ongoing' && source) {
-        const replies = completedPreviewReplies(source.getSnapshot())
+        const replies = selectReplies(source.getSnapshot(), replyLimit())
+        if (replies === historyKeys) return
         panel.toggleAttribute('data-prts-preview-empty', !replies.length)
-        const extendsHistory = historyKeys.length > 0 && historyKeys.every((entry,index) => replies[index]?.key === entry.key && replies[index]?.text === entry.text)
-        if (!extendsHistory) {
-          hideDetail()
-          body.replaceChildren()
-          body.scrollTop = 0
-          historyKeys = []
-        }
-        if (!replies.length) body.textContent = '正在处理，等待本轮正文输出完成…'
-        const previousHeight = body.scrollHeight
         const previousTop = body.scrollTop
-        for (let index = historyKeys.length; index < replies.length; index++) {
+        const scrollAnchor = previousTop > 0 ? [...body.children].find(entry => entry.getBoundingClientRect().bottom > body.getBoundingClientRect().top) : undefined
+        const anchorTop = scrollAnchor?.getBoundingClientRect().top
+        const retained = new Map(historyKeys.map(reply => [reply.key, reply]))
+        for (const old of historyKeys) {
+          const replacement = replies.find(reply => reply.key === old.key)
+          if (!replacement || replacement.text !== old.text || replacement.ordinal !== old.ordinal) {
+            body.querySelectorAll('[data-prts-preview-message]').forEach(entry => {
+              if (entry.dataset.replyKey === old.key) entry.remove()
+            })
+            retained.delete(old.key)
+            if (detailKey === old.key) hideDetail()
+          }
+        }
+        if (!historyKeys.length) body.replaceChildren()
+        if (!replies.length) body.textContent = '正在处理，等待本轮正文输出完成…'
+        for (let index = 0; index < replies.length; index++) {
+          const reply = replies[index]
+          if (retained.has(reply.key)) continue
           const entry = panel.ownerDocument.createElement('article')
           entry.setAttribute('data-prts-preview-message', '')
+          entry.dataset.replyKey = reply.key
           const item = panel.ownerDocument.createElement('button')
           item.type = 'button'
           item.setAttribute('data-prts-reply-entry', '')
           const heading = panel.ownerDocument.createElement('small')
-          heading.textContent = '回复 ' + (index + 1)
+          heading.textContent = '回复 ' + reply.ordinal
           const summary = panel.ownerDocument.createElement('span')
-          const plain = panel.ownerDocument.createElement('div')
-          plain.innerHTML = renderPreviewMarkdown(replies[index].text)
-          summary.textContent = plain.textContent.replace(/\s+/g, ' ').trim().slice(0, 100)
+          summary.textContent = current.contentCache(reply.text).summary
           item.append(heading, summary)
-          item.addEventListener('pointermove', () => showDetail(replies[index], index, item))
-          item.addEventListener('focus', () => showDetail(replies[index], index, item))
-          item.addEventListener('click', () => showDetail(replies[index], index, item))
+          item.addEventListener('pointermove', () => showDetail(reply, index, item))
+          item.addEventListener('focus', () => showDetail(reply, index, item))
+          item.addEventListener('click', () => showDetail(reply, index, item))
           entry.append(item)
           body.prepend(entry)
         }
-        if (previousTop > 0) body.scrollTop = previousTop + body.scrollHeight - previousHeight
-        else body.scrollTop = 0
+        // Reorder only when necessary, preserving retained DOM and open details.
+        const entries = new Map([...body.children].map(entry => [entry.dataset.replyKey, entry]))
+        for (let i = replies.length - 1, position = 0; i >= 0; i--, position++) {
+          const entry = entries.get(replies[i].key)
+          if (body.children[position] !== entry) body.insertBefore(entry, body.children[position] ?? null)
+        }
+        if (scrollAnchor?.isConnected) body.scrollTop += scrollAnchor.getBoundingClientRect().top - anchorTop
+        else if (previousTop === 0) body.scrollTop = 0
         historyKeys = replies
         previousText = undefined
         previousQuestion = undefined
@@ -396,14 +501,20 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       if (previousText !== text || previousQuestion !== question) {
         const extendsReply = previousQuestion === question && previousText && text.startsWith(previousText)
         if (question) body.textContent = text
-        else body.innerHTML = renderPreviewMarkdown(text)
+        else body.innerHTML = current.contentCache(text).html
         previousText = text
         previousQuestion = question
         if (!extendsReply) body.scrollTop = 0
       }
       if (canAnswerPreview(pending)) enableAnswer()
     }
-    current.unsubscribeStatus = getSessionStatus?.()?.subscribe(render)
+    let statusFields = previewStatusFields(getSessionStatus?.()?.getSnapshot().get(id))
+    current.unsubscribeStatus = getSessionStatus?.()?.subscribe(() => {
+      const next = previewStatusFields(getSessionStatus?.()?.getSnapshot().get(id))
+      if (next.every((value, index) => value === statusFields[index])) return
+      statusFields = next
+      render()
+    })
     render()
     body.scrollTop = 0
     current.delay = window.setTimeout(async () => {
@@ -411,14 +522,16 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         const service = getUiConversation?.()
         const controller = getSessions?.() ?? sessions
         if (!controller?.retain || !service?.binding) throw new Error('unavailable')
-        current.reference = controller.retain(id, { source: 'prtsSummaryPreview' })
+        if (!current.reference) current.reference = controller.retain(id, { source: 'prtsSummaryPreview' })
         const binding = await current.reference.ready
         if (active !== current) return
-        source = service.binding(binding).target('chat')
+        source ??= service.binding(binding).target('chat')
+        current.source = source
         current.unsubscribe = source.subscribe(() => {
           if (active !== current || current.refresh !== undefined) return
           current.refresh = window.setTimeout(() => {
             current.refresh = undefined
+            if (current.state === 'ongoing' && !current.editor && selectReplies(source.getSnapshot(), replyLimit()) === historyKeys) return
             render()
           }, 120)
         })
@@ -432,14 +545,14 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         render()
         if (body.textContent.trim() === '正在读取…') body.textContent = '暂时无法读取回复，可点击会话查看'
       }
-    }, 80)
+    }, cached ? 0 : 80)
   }
   function leave() {
     if (!active || active.sticky) return
     const current = active
     window.clearTimeout(current.leaveTimer)
     current.leaveTimer = window.setTimeout(() => {
-      if (active === current && !current.panel.matches(':hover')) stop()
+      if (active === current && !current.panel.matches(':hover')) stop(true, true)
     }, 300)
   }
   function reanchor(root) {
@@ -455,7 +568,14 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     anchor?.setAttribute('data-prts-preview-active', '')
     window.clearTimeout(active.leaveTimer)
   }
-  return { show, stop, leave, reanchor }
+  function enterState(state) {
+    if (active && active.state !== state) stop(true, true)
+  }
+  function pinnedState() {
+    return active && !follows(active.state)
+      ? { id: active.id, state: active.state } : undefined
+  }
+  return { show, stop, leave, reanchor, enterState, pinnedState, isOpen: () => Boolean(active) }
 }
 
 export function scrollSummaryTitle(button, viewport, text, window) {

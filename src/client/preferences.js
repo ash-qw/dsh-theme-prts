@@ -34,7 +34,10 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   previewOngoing: true,
   previewWarning: true,
   previewDone: true,
+  previewFollowOngoing: true,
+  previewFollowWarning: false,
   previewDoubleClick: true,
+  previewReplyLimit: 5,
 
   sessionFlow: true,
   sessionGlow: true,
@@ -86,7 +89,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
-  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick']),
+  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'conversationEmblem']),
 })
 
@@ -207,6 +210,9 @@ export function normalizePreferences(value) {
     previewOngoing: booleanOr(input.previewOngoing, DEFAULT_PREFERENCES.previewOngoing),
     previewWarning: booleanOr(input.previewWarning, DEFAULT_PREFERENCES.previewWarning),
     previewDone: booleanOr(input.previewDone, DEFAULT_PREFERENCES.previewDone),
+    previewReplyLimit: [0, 5, 10, '0', '5', '10'].includes(input.previewReplyLimit) ? Number(input.previewReplyLimit) : 5,
+    previewFollowOngoing: booleanOr(input.previewFollowOngoing, booleanOr(input.previewFollowState, true)),
+    previewFollowWarning: booleanOr(input.previewFollowWarning, booleanOr(input.previewFollowState, false)),
     previewDoubleClick: booleanOr(input.previewDoubleClick, DEFAULT_PREFERENCES.previewDoubleClick),
     conversationEmblem: booleanOr(input.conversationEmblem, DEFAULT_PREFERENCES.conversationEmblem),
     bakerGroupAvatars: booleanOr(input.bakerGroupAvatars, DEFAULT_PREFERENCES.bakerGroupAvatars),

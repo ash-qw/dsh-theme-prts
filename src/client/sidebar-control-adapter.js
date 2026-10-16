@@ -203,9 +203,21 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let statusSourcesStarted = false
   let summaryRoot
   let summarySignature = ''
-  const preview = createSessionSummaryPreview({ document, window, sessions, getUiConversation, getSessions, getSessionStatus, openSession, getPreviewPreferences: () => previewPreferences })
-  let stopTitles = []
-  function clearSummaryEffects() { preview.stop(false); for (const stop of stopTitles) stop(); stopTitles = [] }
+  let heldPreviewState
+  function dismissHeldPreview(event) {
+    if (!heldPreviewState || (event?.type === 'keydown' && event.key !== 'Escape')) return
+    if (event?.type === 'pointerdown' && (summaryRoot?.contains(event.target) || event.target.closest?.('[data-prts-summary-reply]'))) return
+    heldPreviewState = undefined
+    queueScan()
+  }
+  function enterPreviewState(state) {
+    if (heldPreviewState && heldPreviewState !== state) { heldPreviewState = undefined; queueScan() }
+    preview.enterState(state)
+  }
+  const preview = createSessionSummaryPreview({ document, window, sessions, getUiConversation, getSessions, getSessionStatus, openSession, getPreviewPreferences: () => previewPreferences, onPreviewClosed: () => { if (statusSourcesStarted) queueScan() }, onAnswerSubmitted: state => { heldPreviewState = state; queueScan() } })
+  const stopTitles = new Map()
+  const summaryGroups = new Map()
+  function clearSummaryEffects() { preview.stop(false); for (const stop of stopTitles.values()) stop(); stopTitles.clear(); summaryGroups.clear() }
   let owned = new Set()
   let vectorOwners = new Set()
   const dirtyVectors = new Map()
@@ -221,6 +233,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
   function openSession(sessionId) {
+    dismissHeldPreview()
     try {
       const uiWorkspace = getUiWorkspace?.()
       if (typeof uiWorkspace?.openSession === 'function') {
@@ -261,6 +274,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     count.setAttribute('data-prts-session-summary-count', '')
     count.textContent = String(items.length)
     trigger.append(count)
+    trigger.addEventListener('pointerenter', () => enterPreviewState(state))
+    trigger.addEventListener('focus', () => enterPreviewState(state))
 
     const popover = document.createElement('span')
     popover.setAttribute('data-prts-session-summary-popover', state)
@@ -287,7 +302,35 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     const list = document.createElement('span')
     list.setAttribute('data-prts-summary-list', '')
     popover.append(list)
-    for (const item of items) {
+    const entries = new Map()
+    const update = items => {
+      count.textContent = String(items.length)
+      trigger.setAttribute('aria-label', `${label} ${items.length}`)
+      const ids = new Set(items.map(item => item.id))
+      for (const [id, entry] of entries) {
+        if (ids.has(id)) continue
+        stopTitles.get(entry.button)?.()
+        stopTitles.delete(entry.button)
+        entry.button.remove()
+        entries.delete(id)
+      }
+      for (const [index, incoming] of items.entries()) {
+        const existing = entries.get(incoming.id)
+        if (existing) {
+          if (existing.item.title !== incoming.title) {
+            stopTitles.get(existing.button)?.()
+            existing.button.querySelector('[data-prts-summary-title] > span').textContent = incoming.title
+          }
+          Object.assign(existing.item, incoming)
+          let detail = existing.button.querySelector('[data-prts-session-summary-item-status]')
+          if (incoming.statusLabel && !detail) { detail = document.createElement('small'); detail.setAttribute('data-prts-session-summary-item-status',''); existing.button.append(detail) }
+          if (incoming.statusLabel) detail.textContent = incoming.statusLabel
+          else detail?.remove()
+          existing.button.setAttribute('aria-label', incoming.statusLabel ? `${incoming.title}，${incoming.statusLabel}` : incoming.title)
+          if (list.children[index] !== existing.button) list.insertBefore(existing.button, list.children[index] ?? null)
+          continue
+        }
+        const item = {...incoming}
       const button = document.createElement('button')
       button.type = 'button'
       button.setAttribute('role', 'menuitem')
@@ -299,14 +342,18 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       text.textContent = item.title
       title.append(text)
       button.append(title)
+      const viewing = document.createElement('em')
+      viewing.setAttribute('data-prts-preview-marker', '')
+      viewing.textContent = '预览中'
+      button.append(viewing)
       button.setAttribute('aria-label', item.title)
-      stopTitles.push(scrollSummaryTitle(button, title, text, window))
+      stopTitles.set(button, scrollSummaryTitle(button, title, text, window))
       const showReply = () => {
         const key = {ongoing:'previewOngoing',warning:'previewWarning',done:'previewDone'}[state]
         if (previewPreferences[key] === false) { preview.stop(); return }
         preview.show(item.id, reply, item.title, button)
       }
-      button.addEventListener('pointerenter', showReply)
+      button.addEventListener('pointermove', showReply)
       button.addEventListener('pointerleave', () => preview.leave())
       button.addEventListener('focus', showReply)
       if (item.statusLabel) {
@@ -321,8 +368,15 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         preview.stop()
         openSession(item.id)
       })
-      list.append(button)
+      list.insertBefore(button, list.children[index] ?? null)
+      entries.set(item.id, {item, button})
+      }
     }
+    update(items)
+    summaryGroups.set(state, {group, update, dispose: () => {
+      for (const {button} of entries.values()) { stopTitles.get(button)?.(); stopTitles.delete(button) }
+      group.remove()
+    }})
     popover.append(reply)
     group.append(trigger, popover)
     return group
@@ -331,6 +385,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function syncSummary(root, next) {
     const { header, label } = resolveSectionHeader(root)
     if (previewPreferences.sessionPreview === false || !header || !label) {
+      heldPreviewState = undefined
       preview.stop()
       clearSummaryEffects()
       summaryRoot?.remove()
@@ -361,10 +416,31 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         rows[index] = { ...rows[index], state: nativeRow.state }
       }
     }
-    const warning = rows.filter(item => item.state === 'warning')
-    const ongoing = rows.filter(item => item.state === 'ongoing')
-    const done = rows.filter(item => item.state === 'done')
+    // Do not move the row/menu to another status behind a frozen preview.
+    const pinned = preview.pinnedState()
+    if (pinned?.state) {
+      const item = rows.find(item => item.id === pinned.id)
+      if (item) { item.state = pinned.state; item.statusLabel = undefined }
+    }
+    // While reading a preview, preserve surviving rows' positions and append
+    // newcomers. No persistent ordering: the next idle sync uses host order.
+    const orderedState = state => {
+      const items = rows.filter(item => item.state === state)
+      if (!preview.isOpen() || !summaryRoot) return items
+      const remaining = new Map(items.map(item => [item.id, item]))
+      const stable = []
+      for (const row of summaryRoot.querySelectorAll(`[data-prts-session-summary-group="${state}"] [data-prts-session-summary-item]`)) {
+        const id = row.getAttribute('data-prts-session-summary-item')
+        if (remaining.has(id)) { stable.push(remaining.get(id)); remaining.delete(id) }
+      }
+      return [...stable, ...remaining.values()]
+    }
+    const warning = orderedState('warning')
+    const ongoing = orderedState('ongoing')
+    const done = orderedState('done')
+    if (heldPreviewState && !rows.some(item => item.state === heldPreviewState)) heldPreviewState = undefined
     const signature = JSON.stringify({
+      heldPreviewState,
       warning: warning.map(item => [item.id, item.title, item.statusLabel]),
       ongoing: ongoing.map(item => [item.id, item.title]),
       done: done.map(item => [item.id, item.title]),
@@ -384,12 +460,20 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     summaryRoot.hidden = warning.length === 0 && ongoing.length === 0 && done.length === 0
     if (signature === summarySignature) return
     summarySignature = signature
-    clearSummaryEffects()
-    summaryRoot.replaceChildren()
-    if (warning.length) summaryRoot.append(buildSummaryGroup('warning', '等待处理的会话', warning))
-    if (ongoing.length) summaryRoot.append(buildSummaryGroup('ongoing', '运行中的会话', ongoing))
-    if (done.length) summaryRoot.append(buildSummaryGroup('done', '完成未查看', done))
+    for (const [state, title, items] of [['warning','等待处理的会话',warning],['ongoing','运行中的会话',ongoing],['done','完成未查看',done]]) {
+      const existing = summaryGroups.get(state)
+      if (!items.length) { existing?.dispose(); summaryGroups.delete(state); continue }
+      if (existing) existing.update(items)
+      else summaryRoot.append(buildSummaryGroup(state, title, items))
+    }
+    let position = 0
+    for (const state of ['warning','ongoing','done']) {
+      const group = summaryGroups.get(state)?.group
+      if (group && summaryRoot.children[position++] !== group) summaryRoot.insertBefore(group, summaryRoot.children[position - 1] ?? null)
+      group?.removeAttribute('data-prts-preview-open')
+    }
     preview.reanchor(summaryRoot)
+    if (heldPreviewState) summaryRoot.querySelector(`[data-prts-session-summary-group="${heldPreviewState}"]`)?.setAttribute('data-prts-preview-open', '')
   }
 
   function scheduleVectors() {
@@ -567,7 +651,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
   return {
     start(preferences = {}) {
-      const keys = ['sessionPreview','previewOngoing','previewWarning','previewDone','previewDoubleClick']
+      const keys = ['sessionPreview','previewOngoing','previewWarning','previewDone','previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']
       if (keys.some(key => previewPreferences[key] !== preferences[key])) preview.stop()
       previewPreferences = Object.fromEntries(keys.map(key => [key, preferences[key]]))
       if (!document) return
@@ -585,6 +669,8 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
           flushVectors()
         })
       }
+      document.addEventListener('pointerdown', dismissHeldPreview)
+      document.addEventListener('keydown', dismissHeldPreview)
       scan()
       if (!statusSourcesStarted) {
         statusSourcesStarted = true
@@ -605,6 +691,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       })
     },
     dispose() {
+      heldPreviewState = undefined
+      document?.removeEventListener('pointerdown', dismissHeldPreview)
+      document?.removeEventListener('keydown', dismissHeldPreview)
       observer?.disconnect()
       observer = undefined
       stopSessionList()

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {JSDOM} from 'jsdom'
-import {renderPreviewMarkdown} from '../src/client/preview-markdown.js'
+import {renderPreviewMarkdown,createPreviewContentCache} from '../src/client/preview-markdown.js'
 
 test('preview renders Markdown structure including tables and code',()=>{
   const fence=String.fromCharCode(96).repeat(3)
@@ -22,4 +22,17 @@ test('preview never renders raw HTML, unsafe links, or remote images',()=>{
   assert.equal(links.length,1)
   assert.equal(links[0].getAttribute('rel'),'noopener noreferrer')
   assert.ok(document.body.textContent.includes('说明'))
+})
+
+ test('per-session content cache reuses parsing and summaries with bounded LRU eviction',()=>{
+  const dom=new JSDOM('');let parses=0
+  const cache=createPreviewContentCache(dom.window.document,text=>{parses++;return '<p>'+text+'</p>'})
+  const first=cache('same')
+  assert.equal(cache('same'),first);assert.equal(parses,1);assert.equal(first.summary,'same')
+  cache('changed');assert.equal(parses,2)
+  for(let i=0;i<32;i++)cache('reply '+i)
+  cache('same');assert.equal(parses,35)
+  const huge='x'.repeat(262144)
+  cache(huge);cache(huge);assert.equal(parses,37)
+  dom.window.close()
 })
