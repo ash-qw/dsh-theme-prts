@@ -37,7 +37,9 @@ function previewSetting(key, label, description) {
 }
 
 function settingButtons(key, label, options) {
-  const note = key === 'motion'
+  const note = key === 'composerGlass'
+      ? '<small data-prts-setting-note>增强输入框的背景模糊与轻微折射，关闭时使用原有材质</small>'
+      : key === 'motion'
       ? '<small data-prts-setting-note>关闭后减少装饰动效，保留运行状态等必要反馈</small><small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
       : key === 'railDefaultHidden'
         ? '<small data-prts-setting-note>在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开</small>'
@@ -54,7 +56,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['composerGlass', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -146,6 +148,7 @@ export function themeSettingsMarkup() {
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="native" aria-pressed="false"><span data-prts-conversation-sample="classic" aria-hidden="true"><i></i><i></i></span><strong>经典</strong><small>简洁正文，保留熟悉的阅读布局</small></button>
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="deck-chat" aria-pressed="false"><span data-prts-conversation-sample="baker" aria-hidden="true"><i></i><i></i></span><strong>Baker</strong><small>终末地通讯风格，圆形头像与消息气泡</small></button>
             </div>
+            ${settingButtons('composerGlass', '输入框增强毛玻璃', [])}
             <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
             <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}</div>

@@ -166,3 +166,39 @@ test('marks the rc.2 agent preset trigger and its semantic portal without touchi
   assert.equal(dom.window.document.querySelector('[role="menu"]:not([hidden])').dataset.prtsGlassMenu, 'preset')
   assert.equal(dom.window.document.querySelector('#closed-workspace').hasAttribute('data-prts-glass-menu'), false)
 })
+
+test('marks a newly opened composer portal before any animation frame', async t => {
+  const dom = new JSDOM('<body><main data-slot="conversation"><div data-composer-card><button aria-haspopup="menu" aria-controls="model">Model</button></div></main></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  // Hold animation frames: popup material must not depend on their delivery.
+  dom.window.requestAnimationFrame = () => 1
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  t.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  const popup = document.createElement('div')
+  popup.id = 'model'
+  popup.setAttribute('role', 'menu')
+  document.body.append(popup)
+  await Promise.resolve()
+  assert.equal(popup.dataset.prtsGlassMenu, 'model')
+  const unrelated = document.createElement('div')
+  unrelated.setAttribute('role', 'menu')
+  document.body.append(unrelated)
+  await Promise.resolve()
+  assert.equal(unrelated.hasAttribute('data-prts-glass-menu'), false)
+})
+
+test('rescanning a model picker leaves its internal scrolling menu unstyled', async t => {
+  const dom = new JSDOM('<body><main data-slot="conversation"><div data-composer-card><button aria-haspopup="menu" aria-controls="picker">Model</button></div></main><div id="picker" role="group" data-menu-material="translucent"><div id="models" role="menu"></div></div></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  t.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  assert.equal(document.getElementById('picker').dataset.prtsGlassMenu, 'model')
+  assert.equal(document.getElementById('models').hasAttribute('data-prts-glass-menu'), false)
+  const other = document.createElement('div')
+  other.setAttribute('role', 'menu')
+  document.body.append(other)
+  await Promise.resolve()
+  assert.equal(document.getElementById('models').hasAttribute('data-prts-glass-menu'), false)
+})

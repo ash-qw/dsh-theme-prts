@@ -1,3 +1,4 @@
+import { createComposerGlassSurface } from './composer-glass-surface.js'
 import { createAvatarStore } from './custom-avatar.js'
 import { registerEmblemToolPreview } from './emblem-tool-preview.js'
 import { createCustomEmblemStore } from './custom-emblem.js'
@@ -44,6 +45,7 @@ export function applyPrtsPlugin(ctx, environment) {
     version = 'development',
     startupTimings,
   } = environment
+  const composerSurface = createComposerGlassSurface({document, window, React, mount: environment.mountComposerGlassSurface})
   const safeMode = isSafeMode(window?.location?.search ?? '')
   const stopEmblemPreview = safeMode ? null : registerEmblemToolPreview(ctx, React)
   const storage = window?.localStorage
@@ -183,6 +185,7 @@ export function applyPrtsPlugin(ctx, environment) {
     conversationControls.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
+    composerSurface.dispose()
     floatingGlass.dispose()
     theme.apply({ ...preferences, enabled: false })
   }
@@ -259,6 +262,8 @@ export function applyPrtsPlugin(ctx, environment) {
     conversationControls.start()
     layoutDiagnostics.start()
     sidebarControls.start(preferences)
+    if (preferences.composerGlass) composerSurface.start()
+    else composerSurface.dispose()
     floatingGlass.start()
   }
 
@@ -361,6 +366,7 @@ export function applyPrtsPlugin(ctx, environment) {
     conversationControls.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
+    composerSurface.dispose()
     floatingGlass.dispose()
     if (typeof stopThemeSync === 'function') stopThemeSync()
     theme.dispose()
@@ -410,6 +416,21 @@ export function apply(ctx) {
     window,
     React,
     defineStore,
+    mountComposerGlassSurface(container, props) {
+      const { createRoot } = require('react-dom/client')
+      const root = createRoot(container)
+      const update = props => root.render(React.createElement(PrtsGlassSurface.default, {
+        width: '100%', height: '100%',
+        // Gentle edge refraction; a fully calm center avoids shifting input content.
+        distortionScale: -18, redOffset: 0, greenOffset: 1, blueOffset: 2,
+        opacity: 1, backgroundOpacity: 0.5, displace: 5,
+        ...props,
+      }))
+      update(props)
+      const dispose = () => root.unmount()
+      dispose.update = update
+      return dispose
+    },
     cssText: PRTS_CSS,
     assets: PRTS_ASSETS,
     version: PRTS_VERSION,

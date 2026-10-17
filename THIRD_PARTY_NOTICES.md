@@ -53,3 +53,14 @@ The browser build includes entities, linkify-it, mdurl, punycode.js, and uc.micr
 Their copyright and license notices are retained in the generated lib/client.js.
 This is a build-time dependency; DSH does not need to install it separately at runtime.
 Raw HTML and remote image loading are disabled in previews.
+
+## React Bits — GlassSurface
+
+- Author: David Haz
+- Source: https://github.com/DavidHDev/react-bits/tree/main/src/content/Components/GlassSurface
+- Retrieved: 2026-10-17
+- License: MIT + Commons Clause License Condition v1.0. This is not plain MIT.
+- The upstream-derived component and CSS are included in `src/vendor/react-bits/`, together with the full license. Used as part of the P.R.T.S. theme message composer, not distributed as a standalone component library.
+- Integration: compile JSX against the host React runtime, scope the original CSS, and mount decorative surfaces behind the native message composer, using the original shape option with the composer notch. The integration uses reduced refraction and channel offsets, a calm center, padded sampling, 5px blur, and 50% composer background opacity.
+- Local modifications: retain the valid displacement map while a resized shape loads, and stretch shape artwork to current bounds instead of fitting its source aspect ratio. Live boundaries and borders are drawn by CSS; refraction maps update after resizing settles so asynchronous artwork cannot control composer layout.
+- Attached composer menus reuse the host material plate with CSS tint and blur overrides; they do not mount this component or change menu layout, borders, or shadows.

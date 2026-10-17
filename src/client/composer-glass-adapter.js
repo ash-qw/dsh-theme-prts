@@ -57,6 +57,13 @@ function markPopup(popup, kind) {
   const card = popup.closest?.('[data-trigger-menu], [class*="mufS8W_card"]')
   mark(card, MENU_ATTRIBUTE, kind)
   for (const nested of popup.querySelectorAll?.('[role="menu"], [role="listbox"], [data-trigger-menu], [class*="mufS8W_card"]') ?? []) {
+    // The model picker replaces its contents with a scrolling role=menu.
+    // That list is content inside the material shell, not another popup.
+    if (kind === 'model' && popup.hasAttribute('data-menu-material')
+      && !nested.hasAttribute('data-menu-material')) {
+      nested.removeAttribute(MENU_ATTRIBUTE)
+      continue
+    }
     mark(nested, MENU_ATTRIBUTE, kind)
   }
 }
@@ -111,7 +118,17 @@ export function createComposerGlassAdapter({ document, window }) {
   }
 
   function onMutations(mutations) {
-    if (mutations.some(mutationTouchesComposer)) queueScan()
+    if (!mutations.some(mutationTouchesComposer)) return
+    const popupSelector = '[role="menu"], [role="listbox"], [data-trigger-menu]'
+    const openingPopup = mutations.some(mutation =>
+      (mutation.type === 'attributes' && ['aria-expanded', 'aria-controls'].includes(mutation.attributeName))
+      || [...(mutation.addedNodes ?? [])].some(node => node.nodeType === 1
+        && (node.matches?.(popupSelector) || node.querySelector?.(popupSelector))),
+    )
+    // Classify new popups in the mutation microtask, before the first paint.
+    // Waiting for another animation frame can expose their native material.
+    if (openingPopup) scan()
+    else queueScan()
   }
 
   function queueScan() {
@@ -185,6 +202,7 @@ export function createComposerGlassAdapter({ document, window }) {
       if (trigger.getAttribute('aria-expanded') !== 'true') continue
       const popup = controlledPopup(document, trigger)
         ?? localPopup(trigger)
+        ?? document.querySelector('[role="menu"]:has([class*="cubgiG_item"])')
       markPopup(popup, 'preset')
     }
 
@@ -217,6 +235,7 @@ export function createComposerGlassAdapter({ document, window }) {
         ?? document.querySelector('[data-slot="main.conversation"], [data-slot="conversation"]')
       if (!observationRoot) return
       observer = new Observer(onMutations)
+      if (observationRoot !== document.body) observer.observe(document.body, { childList: true })
       observer.observe(observationRoot, {
         subtree: true,
         childList: true,

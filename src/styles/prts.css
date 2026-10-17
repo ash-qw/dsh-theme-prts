@@ -1569,6 +1569,7 @@ html[data-dsh-prts] [data-prts-glass-control="preset"] {
   color: var(--prts-ink) !important;
 }
 
+html[data-dsh-prts] [data-menu-material][class*="_7KE1Ra_menu"],
 html[data-dsh-prts] [data-prts-glass-menu],
 html[data-dsh-prts] [data-prts-floating-glass="menu"],
 html[data-dsh-prts] [data-prts-floating-glass="listbox"],
@@ -1592,6 +1593,7 @@ html[data-dsh-prts] [data-prts-floating-glass="dialog"] {
   -webkit-backdrop-filter: none;
 }
 
+html[data-dsh-prts] [data-menu-material][class*="_7KE1Ra_menu"] :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]),
 html[data-dsh-prts] [data-prts-floating-item] {
   min-height: 38px;
   border-radius: var(--prts-radius-control) !important;
@@ -1905,4 +1907,92 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] {
   }
   & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]::before,
   & [data-message-role="user"]::before { left: auto; right: -9px; transform: scaleX(-1); }
+}
+
+/* The upstream component replaces only the composer's two background plates. */
+html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback])[data-prts-composer-glass-active]::before,
+html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback])[data-prts-composer-glass-active]::after {
+  content: none;
+}
+html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback]) > [data-prts-composer-glass-surface] {
+  position: absolute !important;
+  inset: -16px;
+  z-index: 0 !important;
+  pointer-events: none;
+}
+
+/* The host's sticky dock fades to opaque after 36px; let the glass see the chat. */
+html[data-dsh-prts] [data-composer-seat]:has([data-prts-composer-glass-active]) {
+  background: transparent !important;
+}
+
+
+/* Optional popup material changes neither popup geometry nor its border/shadow. */
+html[data-dsh-prts][data-prts-composer-enhanced] {
+  --prts-composer-menu-tint: rgba(25, 32, 38, .85);
+  --prts-composer-menu-filter: blur(16px) saturate(1.15);
+}
+html[data-dsh-prts][data-prts-composer-enhanced][data-prts-scheme="light"] {
+  --prts-composer-menu-tint: rgba(244, 249, 251, .85);
+}
+html[data-dsh-prts][data-prts-composer-enhanced] :is(
+  [data-prts-glass-menu],
+  [data-menu-material][class*="_7KE1Ra_menu"]
+) {
+  background: var(--prts-composer-menu-tint) !important;
+  backdrop-filter: var(--prts-composer-menu-filter) !important;
+  -webkit-backdrop-filter: var(--prts-composer-menu-filter) !important;
+}
+/* Reuse the host material plate when present; do not stack two blur filters. */
+html[data-dsh-prts][data-prts-composer-enhanced] :is(
+  [data-prts-glass-menu],
+  [data-menu-material][class*="_7KE1Ra_menu"]
+):has(> [aria-hidden="true"][class*="_material_"]) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-dsh-prts][data-prts-composer-enhanced] :is(
+  [data-prts-glass-menu],
+  [data-menu-material][class*="_7KE1Ra_menu"]
+) > [aria-hidden="true"][class*="_material_"] {
+  background: var(--prts-composer-menu-tint) !important;
+  backdrop-filter: var(--prts-composer-menu-filter) !important;
+  -webkit-backdrop-filter: var(--prts-composer-menu-filter) !important;
+}
+html[data-dsh-prts][data-prts-composer-enhanced] [data-prts-glass-menu] [data-prts-glass-menu]:not([data-menu-material]) {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* The live CSS outline owns geometry; asynchronously decoded artwork only refracts. */
+html[data-dsh-prts] [data-prts-composer-glass-active] > [data-prts-composer-glass-surface] > .glass-surface {
+  mask: none !important;
+  -webkit-mask: none !important;
+  opacity: 1 !important;
+  clip-path: polygon(19px 16px, calc(50% - 42px) 16px, calc(50% - 37px) 21px, calc(50% + 37px) 21px, calc(50% + 42px) 16px, calc(100% - 19px) 16px, calc(100% - 16px) 19px, calc(100% - 16px) calc(100% - 19px), calc(100% - 19px) calc(100% - 16px), 19px calc(100% - 16px), 16px calc(100% - 19px), 16px 19px);
+}
+html[data-dsh-prts] [data-prts-composer-glass-active] :is(.glass-surface__line, .glass-surface__glow) {
+  display: none;
+}
+html[data-dsh-prts] :is([data-composer-card], [data-prts-composer-fallback])[data-prts-composer-glass-active]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--prts-line-strong);
+  clip-path: polygon(evenodd,
+    3px 0, calc(50% - 42px) 0, calc(50% - 37px) 5px, calc(50% + 37px) 5px, calc(50% + 42px) 0, calc(100% - 3px) 0, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 0 calc(100% - 3px), 0 3px, 3px 0,
+    3px 1px, 1px 3px, 1px calc(100% - 3px), 3px calc(100% - 1px), calc(100% - 3px) calc(100% - 1px), calc(100% - 1px) calc(100% - 3px), calc(100% - 1px) 3px, calc(100% - 3px) 1px, calc(50% + 42px) 1px, calc(50% + 37px) 6px, calc(50% - 37px) 6px, calc(50% - 42px) 1px, 3px 1px);
+}
+
+/* A restrained tint/sheen keeps the material legible over a blank backdrop too. */
+html[data-dsh-prts] [data-prts-composer-glass-active] > [data-prts-composer-glass-surface] > .glass-surface {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .055), transparent 65%), rgba(31, 40, 47, .5);
+}
+html[data-dsh-prts][data-prts-scheme="light"] [data-prts-composer-glass-active] > [data-prts-composer-glass-surface] > .glass-surface {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .2), transparent 65%), rgba(244, 249, 251, .5);
 }

@@ -1,3 +1,4 @@
+import { build as buildVendor } from 'esbuild'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -92,7 +93,8 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRAB__', await cursorImage('prts-grab.png'))
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
-const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}`)
+const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
+const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,
@@ -155,6 +157,7 @@ const clientModulePaths = [
   'src/client/settings-page.js',
   'src/client/theme-settings-workbench.js',
   'src/client/operations-shell-v2.js',
+  'src/client/composer-glass-surface.js',
   'src/client/index.js',
 ]
 const moduleSources = await Promise.all(clientModulePaths.map(path =>
@@ -185,6 +188,15 @@ const MarkdownIt = (() => {
   return module.exports;
 })();`
 
+const glassVendor = await buildVendor({
+  entryPoints: [resolve(root, 'src/vendor/react-bits/GlassSurface.jsx')],
+  bundle: true, write: false, format: 'iife', globalName: 'PrtsGlassSurface',
+  external: ['react'], jsx: 'transform', jsxFactory: 'React.createElement',
+  jsxFragment: 'React.Fragment', loader: {'.css': 'empty'},
+  banner: {js: 'const React = require("react");'},
+})
+const glassLicense = await readFile(resolve(root, 'src/vendor/react-bits/LICENSE.md'), 'utf8')
+const glassBundle = '/* React Bits GlassSurface\n' + glassLicense + '\n*/\n' + glassVendor.outputFiles[0].text
 const bundledSource = moduleSources.map(bundleModule).join('\n')
 
 const host = `export { PACKAGE_ID, THEME_PLUGIN_ID, inject, apply } from '../src/index.js'\n`
@@ -203,6 +215,7 @@ const client = `window.__ModuleLoader__.load({
       emblemMasks: ${JSON.stringify(factionEmblemMasks)},
       heroEmblemMask: ${JSON.stringify(heroEmblemMask)}
     });
+    ${glassBundle}
     ${markdownBundle}
     ${bundledSource}
     exports.cssText = PRTS_CSS;
