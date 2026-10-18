@@ -1,8 +1,8 @@
 export function createSettingsPage(React, meta = {}) {
   const h = React.createElement
 
-  return function PrtsPluginSettingsPage({ useStore, updatePreference }) {
-    const { preferences } = useStore(state => ({ preferences: state.preferences }))
+  return function PrtsPluginSettingsPage({ useStore, updatePreference, retryPersistence }) {
+    const { preferences, persistence } = useStore(state => ({ preferences: state.preferences, persistence: state.status?.settingsPersistence }))
     const safeMode = Boolean(meta.safeMode)
     const enabled = Boolean(preferences.enabled) && !safeMode
     const bootAnimation = preferences.bootAnimation !== false
@@ -40,6 +40,11 @@ export function createSettingsPage(React, meta = {}) {
     safeMode && h('p', { className: 'prts-plugin-settings__safe', role: 'status' },
       '安全模式已暂停主题。移除地址中的 ?prts-safe=1 后即可恢复。',
     ),
+    persistence?.phase === 'error' && h('div', { role: 'alert' },
+      h('p', null, '设置未保存到 DSH。请检查连接或持久化支持；重试会重新提交本次修改。'),
+      h('button', { type: 'button', onClick: retryPersistence }, '重试保存'),
+    ),
+    persistence?.phase === 'saving' && h('p', { role: 'status' }, '正在保存…'),
     h('div', { className: 'prts-plugin-settings__list' },
       settingRow({
         key: 'enabled',

@@ -141,6 +141,18 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   const calls = { cleanups: [], injected: [], registrations: [] }
   t.after(() => calls.cleanups.splice(0).reverse().forEach(cleanup => cleanup()))
   const ctx = createCtx(calls)
+  const listeners = new Set()
+  let host = { status: 'ready', writable: true, revision: 0, value: { preferencesInitialized: true } }
+  ctx.configForms = { get: () => ({
+    getSnapshot: () => host,
+    subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn) },
+    async mutate(ops) {
+      host = { ...host, revision: host.revision + 1, value: { ...host.value } }
+      for (const op of ops) host.value[op.path[0]] = op.value
+      for (const fn of listeners) fn()
+      return true
+    },
+  }) }
   const React = { createElement() {} }
   api.applyPrtsPlugin(ctx, { document: dom.window.document, window: dom.window, React, defineStore: spec => spec, cssText: 'html[data-dsh-prts]{}', assets: {} })
   assert.deepEqual(calls.injected, ['tool.call.toolview', 'settings.plugins.tab'])
@@ -154,6 +166,7 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   const settingsSynced = []
   const actions = options.inject({ sync: (preferences, status, revision) => settingsSynced.push([preferences, status, revision]) })
   actions.updatePreference('enabled', true)
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(dom.window.document.querySelectorAll('[data-prts-startup]').length, 1)
   assert.equal(dom.window.document.querySelector('[data-prts-startup]').dataset.stage, 'visualOnline')
   assert.equal(dom.window.document.documentElement.getAttribute('data-dsh-prts'), '')
@@ -163,26 +176,29 @@ test('registers a Settings → Plugins tab and applies updates immediately', asy
   assert.deepEqual(calls.themeSets, ['light'])
   calls.themeListener({ id: 'dark' })
   assert.equal(dom.window.document.documentElement.dataset.prtsScheme, 'dark')
-  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).enabled, true)
+  assert.equal(host.value.enabled, true)
   assert.equal(settingsSynced.at(-1)[0].enabled, true)
   assert.equal(settingsSynced.at(-1)[1].connectionLabel, '未知')
   actions.updatePreference('glass', 'clear')
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(dom.window.document.documentElement.dataset.prtsGlass, 'clear')
   assert.equal(dom.window.document.documentElement.hasAttribute('data-prts-glass-highlight'), false)
-  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).glass, 'clear')
+  assert.equal(host.value.glass, 'clear')
   const brand = dom.window.document.querySelector('[data-prts-rail-brand]')
   brand.click()
   const appearancePanel = dom.window.document.querySelector('[data-prts-theme-settings]')
   appearancePanel.querySelector('[data-prts-setting-switch="railDefaultHidden"]').click()
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(appearancePanel.hasAttribute('open'), true)
   assert.equal(dom.window.document.documentElement.dataset.prtsRailMode, 'overlay')
   assert.equal(dom.window.document.querySelector('[data-prts-nav-rail]').getAttribute('aria-hidden'), 'true')
-  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).railDefaultHidden, true)
+  assert.equal(host.value.railDefaultHidden, true)
   dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   actions.resetPreferences()
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(dom.window.document.documentElement.hasAttribute('data-dsh-prts'), true)
-  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).glass, 'standard')
-  assert.equal(JSON.parse(dom.window.localStorage.getItem('dsh.ui.prts.v1')).railDefaultHidden, false)
+  assert.equal(host.value.glass, 'standard')
+  assert.equal(host.value.railDefaultHidden, false)
   assert.equal(dom.window.document.documentElement.dataset.prtsRailMode, 'docked')
   actions.updatePreference('enabled', false)
   assert.equal(dom.window.document.documentElement.hasAttribute('data-dsh-prts'), false)

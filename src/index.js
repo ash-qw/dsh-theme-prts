@@ -1,3 +1,5 @@
+import Schema from '@deepseek-ai/schemastery'
+import { DEFAULT_PREFERENCES } from './client/preferences.js'
 import { createAvatarService, registerAvatarApi } from './server/avatars.js'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
@@ -9,7 +11,17 @@ export const PACKAGE_ID = '@ash-qw/dsh-theme-prts'
 export const THEME_PLUGIN_ID = 'dsh-theme-prts'
 export const inject = ['tools', 'attachments', 'connection', 'webServer']
 
+export const Config = Schema.object(Object.fromEntries([
+  ...Object.entries(DEFAULT_PREFERENCES).map(([key, value]) => [key,
+    (typeof value === 'boolean' ? Schema.boolean() : typeof value === 'number' ? Schema.number() : Schema.string()).default(value).volatile(),
+  ]),
+  ['preferencesInitialized', Schema.boolean().default(false).volatile()],
+]))
+
 export async function apply(ctx) {
+  ctx.inject(['settings'], settingsCtx => {
+    settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
+  })
   const directory=join(process.env.DSH_HOME?.trim() || join(homedir(),'.dsh'),'plugins','dsh-theme-prts','emblems')
   const service=await createEmblemService(directory)
   const avatars=await createAvatarService(join(directory,'..','avatars'))

@@ -129,6 +129,7 @@ const heroEmblemMask = buildMaskRecord('rhodes-island-hero', factionEmblemBytes[
 
 const clientModulePaths = [
   'src/client/preferences.js',
+  'src/client/native-preferences.js',
   'src/client/emblem-reorder.js',
   'src/client/custom-emblem.js',
   'src/client/avatar-crop.js',
@@ -199,7 +200,7 @@ const glassLicense = await readFile(resolve(root, 'src/vendor/react-bits/LICENSE
 const glassBundle = '/* React Bits GlassSurface\n' + glassLicense + '\n*/\n' + glassVendor.outputFiles[0].text
 const bundledSource = moduleSources.map(bundleModule).join('\n')
 
-const host = `export { PACKAGE_ID, THEME_PLUGIN_ID, inject, apply } from '../src/index.js'\n`
+const host = `export { PACKAGE_ID, THEME_PLUGIN_ID, Config, inject, apply } from '../src/index.js'\n`
 const client = `window.__ModuleLoader__.load({
   id: ${JSON.stringify(packageName)},
   factory: (require) => {

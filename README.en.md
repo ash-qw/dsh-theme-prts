@@ -85,3 +85,5 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and [RELEASING.md](RELEASIN
 ### Set Baker avatars from a DSH conversation
 
 Upload an image and ask the AI to set it as your Baker avatar, or have it generate/edit an image first. `prts_avatar_inspect` reads current configuration and conversation images; `prts_avatar_apply` replaces user/AI avatars, re-crops the current original, or restores defaults. Changes are shared within the DSH instance. Replacing an avatar discards its previous original. Avatars appear in Baker mode; tools do not change the device-local conversation theme.
+
+Theme preferences now use DSH native profile configuration. Connected pages share updates; browser storage is only a startup cache. Existing local preferences are migrated only when the Host has no saved theme configuration. Failed or conflicting writes require an explicit retry and never automatically overwrite Host values. Older DSH hosts may expose memory-only settings for remote access; these cannot be reported as durable saves. Reload the server-side plugin after upgrading to register its configuration schema. Avatar and emblem assets keep their existing server storage.

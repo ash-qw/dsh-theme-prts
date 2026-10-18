@@ -1,8 +1,9 @@
+import { createNativePreferences } from './native-preferences.js'
 import { createComposerGlassSurface } from './composer-glass-surface.js'
 import { createAvatarStore } from './custom-avatar.js'
 import { registerEmblemToolPreview } from './emblem-tool-preview.js'
 import { createCustomEmblemStore } from './custom-emblem.js'
-import { DEFAULT_PREFERENCES, isSafeMode, loadPreferences, persistPreferences, resetPreferenceGroup, updatePreferenceValue } from './preferences.js'
+import { DEFAULT_PREFERENCES, isSafeMode, loadPreferences, resetPreferenceGroup, updatePreferenceValue } from './preferences.js'
 import { createHostGeometryAdapter } from './host-geometry-adapter.js'
 import { createComposerGlassAdapter } from './composer-glass-adapter.js'
 import { createAssistantGlassAdapter } from './assistant-glass-adapter.js'
@@ -125,7 +126,7 @@ export function applyPrtsPlugin(ctx, environment) {
 
   const sync = () => {
     revision += 1
-    for (const actions of bindings) actions.sync({ ...preferences }, { ...status }, revision)
+    for (const actions of bindings) actions.sync({ ...preferences }, { ...status, settingsPersistence }, revision)
   }
 
   const cancelMountFrame = () => {
@@ -267,32 +268,26 @@ export function applyPrtsPlugin(ctx, environment) {
     floatingGlass.start()
   }
 
-  const persistAndApply = next => {
-    const wasEnabled = Boolean(preferences.enabled)
-    const result = persistPreferences(storage, next)
-    preferences = result.preferences
-    settingsPersistence = {
-      phase: result.persisted ? 'saved' : 'error',
-      revision: settingsPersistence.revision + 1,
-    }
-    const shouldPlayStartup = !safeMode && !wasEnabled && preferences.enabled && preferences.bootAnimation
-    if (shouldPlayStartup) particleField.setStartupActive(true)
-    applyVisualState()
-    sync()
-    if (shouldPlayStartup && !startup.play()) particleField.setStartupActive(false)
-  }
-
-
-  const retryPersistence = () => {
-    const result = persistPreferences(storage, preferences)
-    preferences = result.preferences
-    settingsPersistence = {
-      phase: result.persisted ? 'saved' : 'error',
-      revision: settingsPersistence.revision + 1,
-    }
-    operations?.update(preferences, status, settingsPersistence)
-    sync()
-  }
+  const nativePreferences = createNativePreferences({
+    storage,
+    onChange(next, persistence) {
+      const changed = JSON.stringify(preferences) !== JSON.stringify(next)
+      const wasEnabled = preferences.enabled
+      preferences = next
+      settingsPersistence = persistence
+      if (changed) {
+        const play = !safeMode && !wasEnabled && preferences.enabled && preferences.bootAnimation
+        if (play) particleField.setStartupActive(true)
+        applyVisualState()
+        if (play && !startup.play()) particleField.setStartupActive(false)
+      }
+      operations?.update(preferences, status, settingsPersistence)
+      sync()
+    },
+  })
+  preferences = nativePreferences.value
+  const persistAndApply = next => nativePreferences.update(next)
+  const retryPersistence = () => nativePreferences.retry()
   const statusSource = createHarnessStatusSource({
     connection,
     onChange(next) {
@@ -350,8 +345,15 @@ export function applyPrtsPlugin(ctx, environment) {
   } else {
     applyVisualState()
   }
+  const bindNativePreferences = settingsCtx => {
+    const forms = contextService(settingsCtx, 'configForms')
+    if (forms) settingsCtx.effect(() => nativePreferences.bind(forms.get('theme-prts')))
+  }
+  if (typeof ctx.inject === 'function') ctx.inject(['configForms'], bindNativePreferences)
+  else bindNativePreferences(ctx)
   ctx.effect(() => () => {
     if (typeof stopEmblemPreview === 'function') stopEmblemPreview()
+    nativePreferences.dispose()
     statusSource.dispose()
     customEmblemStore.dispose()
     avatarStore.dispose()
@@ -373,7 +375,7 @@ export function applyPrtsPlugin(ctx, environment) {
     bindings.clear()
   }, 'dsh-theme-prts: visual cleanup')
 
-  const initialStoreState = { preferences, status, revision }
+  const initialStoreState = { preferences, status: { ...status, settingsPersistence }, revision }
   const settingsStore = createPrtsUiStore(defineStore, initialStoreState)
   const PrtsSettingsPage = createSettingsPage(React, {
     emblem: assets.emblem,
@@ -384,6 +386,7 @@ export function applyPrtsPlugin(ctx, environment) {
     bindings.add(actions)
     sync()
     return {
+      retryPersistence,
       updatePreference(key, value) { persistAndApply(updatePreferenceValue(preferences, key, value)) },
       resetPreferenceGroup(group) {
         persistAndApply(resetPreferenceGroup(preferences, group))

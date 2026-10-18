@@ -22,6 +22,8 @@ Baker 会话主题参考《明日方舟：终末地》的通讯界面。在主�
 - `package.json` 中的 `engines.dsh` 使用相同的精确版本声明，插件市场可据此判断兼容性。其他 DSH 版本需另行验证。
 - 若仍使用 DSH `0.1.7-rc.2`，请固定主题 `@ash-qw/dsh-theme-prts@1.0.2`；使用 DSH `0.1.2` 或 `0.1.5` 发布线时，请固定主题 `@ash-qw/dsh-theme-prts@0.1.102`。
 
+主题设置通过 DSH 原生配置服务保存，同一 profile 下的在线页面会同步更新。首次接入时，仅当服务端尚未保存主题配置，才迁移当前浏览器的旧设置；已有服务端配置优先。保存冲突或失败会显示提示，不自动重传旧配置；“重试保存”会按当前版本重新提交失败的修改。部分旧版 DSH 的远程访问仅支持内存配置，此时会提示未保存，需要宿主提供持久化支持。升级后需重新加载主题服务端插件，才能注册新增配置。
+
 ## 安装与更新
 
 Web 端与官方桌面客户端使用同一个主题包 `@ash-qw/dsh-theme-prts`，无需单独的桌面版主题。
@@ -61,7 +63,7 @@ npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 
 ## 安全模式与恢复
 
-若主题导致页面不可用，在 Harness 地址后添加 `?prts-safe=1`。安全模式会阻止所有主题视觉挂载，但保留“Settings → 插件 → P.R.T.S.”中的基础开关和恢复提示。也可以删除浏览器 localStorage 的 `dsh.ui.prts.v1`，下次加载会回到默认关闭状态。
+若主题导致页面不可用，在 Harness 地址后添加 `?prts-safe=1`。安全模式会阻止所有主题视觉挂载，但保留“Settings → 插件 → P.R.T.S.”中的基础开关和恢复提示。在此页面关闭主题会保存到 DSH；清除浏览器缓存不会重置服务端设置。
 
 ## 卸载
 
@@ -69,7 +71,7 @@ npx @deepseek-ai/dsh plugin --profile web add @ash-qw/dsh-theme-prts
 npx @deepseek-ai/dsh plugin --profile web remove @ash-qw/dsh-theme-prts
 ```
 
-卸载后建议重新启动 DSH Web。浏览器中的主题偏好不会被删除。多个全局主题可能发生 CSS 冲突，建议一次只启用一个完整 UI 主题。
+卸载后建议重新启动 DSH Web。主题偏好保存在 DSH 当前 profile 的原生配置中，浏览器只保留启动缓存。多个全局主题可能发生 CSS 冲突，建议一次只启用一个完整 UI 主题。
 
 ## 开发
 

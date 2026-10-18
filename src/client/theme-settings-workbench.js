@@ -126,7 +126,7 @@ export function themeSettingsMarkup() {
         </nav>
           <footer data-prts-settings-actions aria-label="全局主题设置操作">
             <div data-prts-persistence-error hidden role="alert">
-              <span><strong>仅本次会话生效</strong><small>无法写入本地设置，当前视觉效果仍会保留。</small></span>
+              <span><strong>设置未保存</strong><small>未能保存到 DSH，可能存在连接中断、配置冲突或当前访问不支持持久保存。重试将重新提交本次修改。</small></span>
               <button type="button" data-prts-retry-save>重试保存</button>
             </div>
             <div data-prts-reset-zone>
@@ -477,8 +477,8 @@ export function createThemeSettingsOverlay({
     if (phase === 'saved' && revision === renderedPersistenceRevision) return
     if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)
     savedTimer = undefined
-    status.hidden = phase !== 'saved'
-    status.textContent = phase === 'saved' ? '已保存' : ''
+    status.hidden = phase !== 'saved' && phase !== 'saving'
+    status.textContent = phase === 'saved' ? '已保存' : phase === 'saving' ? '正在保存…' : ''
     if (phase === 'saved') {
       renderedPersistenceRevision = revision
       savedTimer = window?.setTimeout?.(() => { status.hidden = true; savedTimer = undefined }, reducedMotion() ? 500 : 1200)

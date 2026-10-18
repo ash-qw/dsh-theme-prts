@@ -32,7 +32,7 @@ test('plugin registers route and worker cleanup with Cordis effects',async()=>{
   process.env.DSH_HOME=directory
   const cleanups=[],removed=[]
   try{
-    await apply({attachments:{},tools:{register:()=>()=>removed.push('tool')},connection:{admit:()=>({})},
+    await apply({inject(names, fn) { assert.deepEqual(names, ['settings']); },attachments:{},tools:{register:()=>()=>removed.push('tool')},connection:{admit:()=>({})},
       webServer:{register:route=>()=>removed.push(route.path)},
       effect:body=>{cleanups.push(body());return()=>{}},
       on(){throw Error('Legacy disposal events must not be used')}})
