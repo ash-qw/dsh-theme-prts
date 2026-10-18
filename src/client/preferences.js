@@ -25,6 +25,8 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   motion: 'system',
   bootAnimation: true,
   composerGlass: false,
+  backgroundMode: 'off',
+  backgroundDim: .45,
   cursor: 'prts',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
@@ -86,7 +88,7 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
   precise: Object.freeze({ conversationParticleDensity: 'dense', heroParticleDensity: 'ultra' }),
 })
 export const PREFERENCE_GROUPS = Object.freeze({
-  background: Object.freeze(['texture']),
+  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
@@ -190,6 +192,8 @@ export function normalizePreferences(value) {
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
     glass: normalizeGlass(input),
     motion: input.motion === 'full' ? 'system' : enumOr(input.motion, MOTIONS, DEFAULT_PREFERENCES.motion),
+    backgroundMode: ['off', 'split', 'full'].includes(input.backgroundMode) ? input.backgroundMode : 'off',
+    backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
     composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),
     cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,

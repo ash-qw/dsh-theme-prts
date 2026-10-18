@@ -1,3 +1,4 @@
+import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
 import { customEmblemMarkup, mountCustomEmblemEditor } from './custom-emblem.js'
 import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, SESSION_FLOW_SPEED_DEFAULT, SESSION_FLOW_SPEED_MAX, SESSION_FLOW_SPEED_MIN, SESSION_FLOW_SPEED_STEP, resolveParticleDetail } from './preferences.js'
@@ -153,6 +154,7 @@ export function themeSettingsMarkup() {
             ${avatarMarkup()}
             <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}</div>
           </section>
+            ${backgroundMarkup()}
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
@@ -225,7 +227,7 @@ export function createThemeSettingsOverlay({
   trigger,
   panel,
   backdrop,
-  customEmblemStore, avatarStore,
+  customEmblemStore, avatarStore, backgroundStore,
   onOpen = () => {},
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
@@ -233,6 +235,7 @@ export function createThemeSettingsOverlay({
   onRetrySave = () => {},
 }) {
   const window = document?.defaultView
+  const backgroundEditor = mountBackgroundSettings({panel,window,store:backgroundStore,onChange:onPreferenceChange})
   const avatarEditor = mountAvatarSettings({panel,window,store:avatarStore})
   const customEditor = mountCustomEmblemEditor({ panel, window, store: customEmblemStore })
   const transparencyMedia = window?.matchMedia?.('(prefers-reduced-transparency: reduce)')
@@ -710,6 +713,7 @@ export function createThemeSettingsOverlay({
       panel.querySelector('[data-prts-classic-options]').hidden = preferences?.conversationStyle === 'deck-chat'
       panel.querySelector('[data-prts-baker-options]').hidden = preferences?.conversationStyle !== 'deck-chat'
       panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
+      backgroundEditor.update(preferences)
       currentPreferences = preferences
       currentStatus = status
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
@@ -726,6 +730,7 @@ export function createThemeSettingsOverlay({
     dispose() {
       customEditor.dispose()
       avatarEditor.dispose()
+      backgroundEditor.dispose()
       isOpen = false
       hidePanel()
       if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)

@@ -45,13 +45,14 @@ function encodeBinaryAlphaMask(alpha, threshold = 40) {
   return Buffer.from(bytes).toString('base64')
 }
 
-const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
+const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, backgroundCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
   readFile(resolve(root, 'src/styles/prts.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/stabilization.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/refinement.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/theme-settings-workbench.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/facility-vector.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/startup-sequence.css'), 'utf8'),
+  readFile(resolve(root, 'src/styles/custom-background.css'), 'utf8'),
   readFile(resolve(root, 'src/assets/rhodes-dsh.svg'), 'utf8'),
   readFile(resolve(root, 'src/assets/prts-original-avatar.png')),
   Promise.all(factionEmblemDefinitions.map(({ file }) =>
@@ -94,7 +95,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
-const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`)
+const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${backgroundCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`)
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,
@@ -134,6 +135,7 @@ const clientModulePaths = [
   'src/client/custom-emblem.js',
   'src/client/avatar-crop.js',
   'src/client/custom-avatar.js',
+  'src/client/custom-background.js',
   'src/client/emblem-tool-preview.js',
   'src/client/host-geometry-adapter.js',
   'src/client/composer-glass-adapter.js',

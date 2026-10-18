@@ -1,3 +1,4 @@
+import { createBackgroundService, registerBackgroundApi } from './server/backgrounds.js'
 import Schema from '@deepseek-ai/schemastery'
 import { DEFAULT_PREFERENCES } from './client/preferences.js'
 import { createAvatarService, registerAvatarApi } from './server/avatars.js'
@@ -24,8 +25,9 @@ export async function apply(ctx) {
   })
   const directory=join(process.env.DSH_HOME?.trim() || join(homedir(),'.dsh'),'plugins','dsh-theme-prts','emblems')
   const service=await createEmblemService(directory)
+  const backgrounds=await createBackgroundService(join(directory,'..','backgrounds'))
   const avatars=await createAvatarService(join(directory,'..','avatars'))
   const disposers=[...emblemTools(service,ctx.attachments),...avatarTools(avatars,ctx.attachments)].map(tool=>ctx.tools.register(tool))
-  disposers.push(registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars))
-  ctx.effect(()=>async()=>{for(const dispose of disposers.reverse())dispose();await service.dispose()})
+  disposers.push(registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars),registerBackgroundApi(ctx,backgrounds))
+  ctx.effect(()=>async()=>{for(const dispose of disposers.reverse())dispose();await service.dispose();await backgrounds.dispose()})
 }

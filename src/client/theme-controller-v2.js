@@ -14,6 +14,7 @@ const ROOT_ATTRIBUTES = [
   'data-prts-session-flow-palette',
   'data-prts-session-flow-speed',
   'data-prts-conversation-style',
+  'data-prts-background-mode',
 ]
 const SESSION_FLOW_COLOR_PROPERTIES = {
   '--prts-session-flow-back': 'sessionFlowColorBack',
@@ -112,6 +113,7 @@ export function createThemeController({ document, window, cssText, service, curs
   }
 
   function clearThemeState() {
+    root.style.removeProperty('--prts-background-shade')
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
     for (const property of Object.keys(SESSION_FLOW_COLOR_PROPERTIES)) root.style.removeProperty(property)
     clearTransitionState()
@@ -734,6 +736,8 @@ export function createThemeController({ document, window, cssText, service, curs
       root.dataset.prtsSessionFlowSpeed = String(preferences.sessionFlowSpeed)
       for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences[key])
       root.dataset.prtsConversationStyle = preferences.conversationStyle
+      root.dataset.prtsBackgroundMode = preferences.backgroundMode
+      root.style.setProperty('--prts-background-shade', `${preferences.backgroundDim * 100}%`)
       refresh()
     },
     sync,

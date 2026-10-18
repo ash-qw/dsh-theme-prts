@@ -1,3 +1,4 @@
+import { createBackgroundStore } from './custom-background.js'
 import { createNativePreferences } from './native-preferences.js'
 import { createComposerGlassSurface } from './composer-glass-surface.js'
 import { createAvatarStore } from './custom-avatar.js'
@@ -68,6 +69,7 @@ export function applyPrtsPlugin(ctx, environment) {
       sync()
     },
   })
+  const backgroundStore = createBackgroundStore({window,document})
   const avatarStore = createAvatarStore({window,document})
   const customEmblemStore = createCustomEmblemStore({ window, emblems: assets.emblems, preview: entry => particleField.previewEmblem?.(entry), onChange: value => particleField.setCustomEmblemConfiguration?.(value) })
   const startup = createPrtsStartupSequence({
@@ -198,7 +200,7 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
-      document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore,
+      document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore, backgroundStore,
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
       },
@@ -357,6 +359,7 @@ export function applyPrtsPlugin(ctx, environment) {
     statusSource.dispose()
     customEmblemStore.dispose()
     avatarStore.dispose()
+    backgroundStore.dispose()
     particleField.dispose()
     startup.dispose({ restoreFocus: false })
     stopStartupReadyWatch()

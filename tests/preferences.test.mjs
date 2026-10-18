@@ -70,6 +70,8 @@ test('loads and migrates a complete version-one payload without losing independe
     motion: 'system',
     bootAnimation: true,
     composerGlass: false,
+    backgroundMode: 'off',
+    backgroundDim: .45,
     cursor: 'prts',
     conversationParticleDensity: 'standard',
     heroParticleDensity: 'dense',

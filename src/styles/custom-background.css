@@ -1,0 +1,145 @@
+/* Full mode uses one viewport-aligned image, so the two regions never crop independently. */
+html[data-dsh-prts] { --prts-background-wash: color-mix(in srgb, var(--prts-canvas) var(--prts-background-shade, 45%), transparent); }
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="frame"], [data-prts-nav-rail]) {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-full) center / cover fixed;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-sidebar) center / cover no-repeat;
+}
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] [data-prts-region="operation"] {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-conversation) center / cover no-repeat;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-ambient-layer],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] [data-prts-ambient-layer] { display: none !important; }
+[data-prts-background-settings] { display: grid; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--prts-line); }
+[data-prts-background-settings] header { display: grid; gap: 6px; }
+[data-prts-background-settings] small, [data-prts-background-status] { color: var(--prts-muted); font-size: 12px; line-height: 1.6; }
+[data-prts-background-modes] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+[data-prts-background-modes] button { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--prts-line); border-radius: 8px; background: transparent; color: var(--prts-ink); text-align: left; cursor: pointer; }
+[data-prts-background-modes] button strong { display: block; font-size: 13px; margin-bottom: 3px; }
+[data-prts-background-modes] button small { font-size: 11px; }
+[data-prts-background-modes] button[aria-pressed="true"] { border-color: var(--prts-cyan); background: color-mix(in srgb, var(--prts-cyan) 8%, transparent); box-shadow: inset 0 0 0 1px var(--prts-cyan); }
+[data-prts-background-diagram] { display: flex; gap: 3px; width: 44px; height: 26px; padding: 3px; border: 1px solid var(--prts-muted); border-radius: 4px; }
+[data-prts-background-diagram] i { background: var(--prts-muted); opacity: .35; border-radius: 1px; flex: 1; }
+[data-prts-background-diagram] i:first-child { flex: 0 0 28%; }
+[data-prts-background-diagram="split"] i { background: var(--prts-cyan); opacity: .6; }
+[data-prts-background-diagram="split"] i:first-child { opacity: .25; }
+[data-prts-background-diagram="full"] { background: color-mix(in srgb, var(--prts-cyan) 25%, transparent); }
+[data-prts-background-diagram="full"] i { background: transparent; }
+[data-prts-background-images] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+[data-prts-background-card="full"] { grid-column: 1 / -1; }
+[data-prts-background-card-heading] { display: flex; justify-content: space-between; align-items: center; min-height: 30px; margin-bottom: 6px; font-size: 13px; }
+[data-prts-background-upload] { position: relative; display: grid; place-items: center; width: 100%; height: 120px; padding: 0; border: 1px dashed var(--prts-line); border-radius: 8px; color: var(--prts-muted); background: var(--prts-panel); overflow: hidden; cursor: pointer; }
+[data-prts-background-card="full"] [data-prts-background-upload] { height: 155px; }
+[data-prts-background-upload][data-has-image] { border-style: solid; }
+[data-prts-background-upload]:hover { border-color: var(--prts-cyan); color: var(--prts-ink); }
+[data-prts-background-thumbnail] { position: absolute; inset: 0; background: center / cover no-repeat; }
+[data-prts-background-caption] { position: relative; padding: 6px 12px; border-radius: 5px; font-size: 12px; }
+[data-has-image] [data-prts-background-caption] { align-self: end; justify-self: end; margin: 8px; background: var(--prts-panel); color: var(--prts-ink); box-shadow: 0 1px 5px #0003; }
+[data-prts-background-remove] { padding: 4px 8px; background: transparent; color: var(--prts-muted); border: 0; border-radius: 4px; font-size: 12px; cursor: pointer; }
+[data-prts-background-remove]:hover { color: var(--prts-red); background: color-mix(in srgb, var(--prts-red) 8%, transparent); }
+[data-prts-background-shade] { display: grid; gap: 8px; font-size: 13px; padding-top: 14px; border-top: 1px solid var(--prts-line); }
+[data-prts-background-shade] > span { display: flex; justify-content: space-between; }
+[data-prts-background-shade] output { color: var(--prts-muted); font-variant-numeric: tabular-nums; }
+[data-prts-background-shade] input { width: 100%; accent-color: var(--prts-cyan); }
+[data-prts-background-status] { margin: 0; }
+[data-prts-background-status]:empty { display: none; }
+[data-prts-background-settings] button:focus-visible { outline: 2px solid var(--prts-cyan); outline-offset: 3px; }
+@media (max-width: 600px) {
+  [data-prts-background-modes] button { padding: 8px; }
+  [data-prts-background-modes] button small { display: none; }
+  [data-prts-background-images] { grid-template-columns: 1fr; }
+}
+[data-prts-background-settings] [hidden] { display: none !important; }
+/* Classic conversation roots keep their native surface unless an image is active. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] :is([data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase] { background: transparent !important; }
+/* The native fade ends in a solid sidebar color and would cover a custom image. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"] span[class$="_fade"],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"] span[class$="_fade"] { display: none !important; }
+
+/* Paint glass behind sidebar controls, never filter their ancestor: fixed
+ * settings/menus must retain their viewport positioning. The split-mode image
+ * stays on the parent so this surface can blur it as well as the full wallpaper. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"]::before,
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--prts-panel) 6%, transparent);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  backdrop-filter: blur(8px) saturate(1.15);
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
+}
+/* The sidebar slot is display:contents and cannot establish a paint layer.
+ * Raise its actual root so glass never blurs static plugin entries. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"] [data-slot="sidebar"] > :first-child,
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] [data-slot="sidebar"] > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
+/* The fixed rail already establishes a stacking context. Keep the glass below
+ * every control without changing their positioning or tooltip geometry. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--prts-panel) 30%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
+}
+
+/* Glass rail feedback retains the wallpaper instead of switching to solid black. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button {
+  color: var(--prts-muted) !important;
+  border-bottom-color: var(--prts-line);
+  transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--prts-panel-raised) 32%, transparent);
+  color: var(--prts-ink) !important;
+  box-shadow: inset 0 1px rgb(255 255 255 / 15%), inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 10%, transparent);
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:active {
+  background: color-mix(in srgb, var(--prts-panel-raised) 48%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 18%, transparent);
+}
+
+/* Daylight needs a little contrast, rather than another white highlight. */
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--prts-ink) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 16%, transparent);
+}
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:active {
+  background: color-mix(in srgb, var(--prts-ink) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 22%, transparent);
+}
+
+/* The solid rail stays dark in both schemes; use the same light feedback
+ * instead of the conversation palette's light-mode ink/surface colors. */
+html[data-dsh-prts]:not([data-prts-background-mode="full"][data-prts-background-full]) [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: rgb(255 255 255 / 8%);
+  color: #f3f6f7 !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+}
+html[data-dsh-prts]:not([data-prts-background-mode="full"][data-prts-background-full]) [data-prts-nav-rail] button:active {
+  background: rgb(255 255 255 / 14%);
+  color: #f3f6f7 !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 20%);
+}
+
+/* A dark solid-rail divider is too strong against the daylight wallpaper. */
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] {
+  border-right-color: color-mix(in srgb, var(--prts-ink) 10%, transparent);
+  box-shadow: none;
+}
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail]::before {
+  box-shadow: inset 0 1px rgb(255 255 255 / 8%);
+}
