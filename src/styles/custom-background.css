@@ -238,6 +238,9 @@ html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-backgro
 html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header strong { font-size: 13px; color: var(--prts-muted); }
 [data-prts-composer-glass-setting], [data-prts-composer-glass-required] { display: block; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
 [data-prts-composer-glass-required] { font-size: 12px; color: var(--prts-muted); }
+html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
+html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] > span { display: grid; gap: 4px; min-width: 0; }
+html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] > span > strong { font: 550 13px/1.5 var(--prts-body); }
 
 /* Native data-streaming disappears for settled and interrupted responses.
  * Hide only the current response body, never reasoning, tools or earlier rounds. */
