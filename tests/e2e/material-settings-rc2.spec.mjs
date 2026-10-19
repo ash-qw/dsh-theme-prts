@@ -111,3 +111,44 @@ test('Baker solid background uses the conversation color for the native composer
   await page.locator('[data-composer-card]').evaluate(card => card.setAttribute('data-prts-composer-glass-active', ''))
   await expect(page.locator('[data-composer-seat]')).toHaveCSS('background-image', 'none')
 })
+
+test('Classic user messages use the saved wallpaper opacity in dark and light modes', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('prtsFixtureNativeConfig')) localStorage.setItem('prtsFixtureNativeConfig', JSON.stringify({
+      revision: 1, value: { enabled: true, bootAnimation: false, conversationStyle: 'native', backgroundMode: 'full' },
+    }))
+  })
+  await page.route('**/prts-theme-api/backgrounds/configuration', route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ revision: 1, sidebar: null, conversation: null, full: { id: '11111111-1111-4111-8111-111111111111' } }),
+  }))
+  await page.route('**/prts-theme-api/backgrounds/image/*', route => route.fulfill({
+    status: 200, contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WZfG9AAAAAASUVORK5CYII=', 'base64'),
+  }))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await expect(page.locator('html')).toHaveAttribute('data-prts-background-full', '')
+  await page.evaluate(() => {
+    const scroll = document.querySelector('[data-conversation-scroll]')
+    scroll.insertAdjacentHTML('afterbegin', '<article data-message-role="user">已发送的用户消息</article><div data-submission-echo><div class="fixture_bubble">发送中的用户消息</div></div>')
+  })
+  const message = page.locator('[data-message-role="user"]')
+  const echo = page.locator('[data-submission-echo] .fixture_bubble')
+  await expect(message).toHaveCSS('background-color', 'rgba(23, 29, 33, 0.5)')
+  await expect(echo).toHaveCSS('background-color', 'rgba(23, 29, 33, 0.5)')
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="background"]').click()
+  const input = page.locator('[data-prts-opacity-control="classicUserOpacity"] input[type="number"]')
+  await input.fill('76')
+  await input.press('Tab')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('prtsFixtureNativeConfig')).value.classicUserOpacity)).toBe(.24)
+  await expect(message).toHaveCSS('background-color', 'rgba(23, 29, 33, 0.24)')
+  await expect(echo).toHaveCSS('background-color', 'rgba(23, 29, 33, 0.24)')
+  await page.evaluate(() => { document.documentElement.dataset.prtsScheme = 'light' })
+  await expect(message).toHaveCSS('background-color', 'rgba(229, 234, 237, 0.24)')
+  await expect(echo).toHaveCSS('background-color', 'rgba(229, 234, 237, 0.24)')
+  await page.reload()
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-settings-jump="background"]').click()
+  await expect(page.locator('[data-prts-opacity-control="classicUserOpacity"] input[type="number"]')).toHaveValue('76')
+})

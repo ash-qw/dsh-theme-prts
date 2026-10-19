@@ -6,9 +6,9 @@ import { DEFAULT_PREFERENCES, normalizePreferences } from '../src/client/prefere
 
 test('opacity defaults and normalization preserve existing material strengths', () => {
   const defaults = normalizePreferences({})
-  assert.equal(defaults.sidebarOpacity,.06);assert.equal(defaults.railOpacity,.3);assert.equal(defaults.bakerOpacity,.5)
-  const normalized = normalizePreferences({sidebarOpacity:-1,railOpacity:2,bakerOpacity:NaN})
-  assert.equal(normalized.sidebarOpacity,0);assert.equal(normalized.railOpacity,1);assert.equal(normalized.bakerOpacity,.5)
+  assert.equal(defaults.sidebarOpacity,.06);assert.equal(defaults.railOpacity,.3);assert.equal(defaults.bakerOpacity,.5);assert.equal(defaults.classicUserOpacity,.5)
+  const normalized = normalizePreferences({sidebarOpacity:-1,railOpacity:2,bakerOpacity:NaN,classicUserOpacity:2})
+  assert.equal(normalized.sidebarOpacity,0);assert.equal(normalized.railOpacity,1);assert.equal(normalized.bakerOpacity,.5);assert.equal(normalized.classicUserOpacity,1)
 })
 test('dial supports exact entry, keyboard, preview without writes and cancel rollback', () => {
   const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
@@ -31,5 +31,22 @@ test('dial supports exact entry, keyboard, preview without writes and cancel rol
   assert.equal(changes.length,1)
   dials.update({...DEFAULT_PREFERENCES,backgroundMode:'off'}, {})
   assert.equal(section.querySelector('fieldset').hidden,true)
+  dials.dispose();dom.window.close()
+})
+
+test('classic user-message opacity is active only with a conversation wallpaper', () => {
+  const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
+  const dials = mountOpacityDials({section,window:w,onChange:(...args)=>changes.push(args)})
+  const note = section.querySelector('[data-prts-opacity-control="classicUserOpacity"] [data-prts-opacity-note]')
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'split',conversationStyle:'native'}, {sidebar:{id:'sidebar'}})
+  assert.equal(note.textContent,'当前未启用此材质')
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'split',conversationStyle:'native'}, {conversation:{id:'conversation'}})
+  assert.equal(note.textContent,'')
+  const input = section.querySelector('[data-prts-opacity-control="classicUserOpacity"] input')
+  input.value='76';input.dispatchEvent(new w.Event('change'))
+  assert.deepEqual(changes.pop(),['classicUserOpacity',.24])
+  assert.equal(w.document.documentElement.style.getPropertyValue('--prts-classic-user-opacity'),'24%')
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'full',conversationStyle:'deck-chat'}, {full:{id:'full'}})
+  assert.equal(note.textContent,'当前未启用此材质')
   dials.dispose();dom.window.close()
 })

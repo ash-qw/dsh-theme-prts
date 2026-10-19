@@ -30,6 +30,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   sidebarOpacity: .06,
   railOpacity: .3,
   bakerOpacity: .5,
+  classicUserOpacity: .5,
   cursor: 'prts',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
@@ -92,7 +93,7 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
   precise: Object.freeze({ conversationParticleDensity: 'dense', heroParticleDensity: 'ultra' }),
 })
 export const PREFERENCE_GROUPS = Object.freeze({
-  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity']),
+  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
@@ -201,6 +202,7 @@ export function normalizePreferences(value) {
     sidebarOpacity: typeof input.sidebarOpacity === 'number' && Number.isFinite(input.sidebarOpacity) ? Math.min(1, Math.max(0, input.sidebarOpacity)) : .06,
     railOpacity: typeof input.railOpacity === 'number' && Number.isFinite(input.railOpacity) ? Math.min(1, Math.max(0, input.railOpacity)) : .3,
     bakerOpacity: typeof input.bakerOpacity === 'number' && Number.isFinite(input.bakerOpacity) ? Math.min(1, Math.max(0, input.bakerOpacity)) : .5,
+    classicUserOpacity: typeof input.classicUserOpacity === 'number' && Number.isFinite(input.classicUserOpacity) ? Math.min(1, Math.max(0, input.classicUserOpacity)) : .5,
     backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
     composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),

@@ -75,6 +75,7 @@ test('loads and migrates a complete version-one payload without losing independe
     sidebarOpacity: .06,
     railOpacity: .3,
     bakerOpacity: .5,
+    classicUserOpacity: .5,
     cursor: 'prts',
     conversationParticleDensity: 'standard',
     heroParticleDensity: 'dense',

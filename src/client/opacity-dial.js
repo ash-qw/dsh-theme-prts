@@ -4,6 +4,7 @@ export const BACKGROUND_OPACITY_CONTROLS = Object.freeze([
   { key: 'sidebarOpacity', label: '会话列表侧栏', property: '--prts-sidebar-opacity', value: 94 },
   { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70 },
   { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50 },
+  { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50 },
 ])
 const dialClamp = value => Math.min(100, Math.max(0, Math.round(value)))
 const dialPoint = angle => [100 + Math.cos(angle * Math.PI / 180) * 80, 100 + Math.sin(angle * Math.PI / 180) * 80]
@@ -12,7 +13,7 @@ const dialArc = (start, end) => {
   return `M ${x} ${y} A 80 80 0 ${end - start > 180 ? 1 : 0} 1 ${ex} ${ey}`
 }
 export function opacityDialMarkup() {
-  return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度</legend><small>数值越高越透明。拖动圆环或输入百分比，松手后保存。</small><div data-prts-opacity-grid>${BACKGROUND_OPACITY_CONTROLS.map(({key,label,value}) => `<div data-prts-opacity-control="${key}"><strong>${label}</strong><div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div><div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${key === 'bakerOpacity' ? '<span>这是一条回复</span><i></i>' : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'}</div></div><button type="button" data-prts-opacity-reset>恢复 ${value}%</button><small data-prts-opacity-note></small></div>`).join('')}</div></fieldset>`
+  return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度</legend><small>数值越高越透明。拖动圆环或输入百分比，松手后保存。</small><div data-prts-opacity-grid>${BACKGROUND_OPACITY_CONTROLS.map(({key,label,value}) => `<div data-prts-opacity-control="${key}"><strong>${label}</strong><div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div><div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${key === 'bakerOpacity' ? '<span>这是一条回复</span><i></i>' : key === 'classicUserOpacity' ? '<span>这是我发送的消息</span><i></i>' : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'}</div></div><button type="button" data-prts-opacity-reset>恢复 ${value}%</button><small data-prts-opacity-note></small></div>`).join('')}</div></fieldset>`
 }
 export function mountOpacityDials({ section, window, onChange }) {
   const root = section.ownerDocument.documentElement
@@ -89,7 +90,10 @@ export function mountOpacityDials({ section, window, onChange }) {
       const full = preferences.backgroundMode === 'full' && Boolean(state.full)
       const split = preferences.backgroundMode === 'split'
       section.querySelector('[data-prts-opacity-settings]').hidden = preferences.backgroundMode === 'off'
-      const active = [full || (split && Boolean(state.sidebar)),full,(full || (split && Boolean(state.conversation))) && preferences.conversationStyle === 'deck-chat']
+      const conversationImage = full || (split && Boolean(state.conversation))
+      const active = [full || (split && Boolean(state.sidebar)), full,
+        conversationImage && preferences.conversationStyle === 'deck-chat',
+        conversationImage && preferences.conversationStyle === 'native']
       controls.forEach((control,i)=>control.update(preferences,active[i]))
     },
     dispose() {for(const control of controls)control.dispose()},

@@ -170,9 +170,28 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"]:is(
   }
 }
 
+/* Classic user messages share the wallpaper translucency controls with Baker bubbles. */
+html[data-dsh-prts][data-prts-conversation-style="native"]:is(
+  [data-prts-background-mode="full"][data-prts-background-full],
+  [data-prts-background-mode="split"][data-prts-background-conversation]
+) {
+  & [data-message-role="user"],
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] {
+    background: rgb(23 29 33 / var(--prts-classic-user-opacity, 50%)) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(1.08);
+    backdrop-filter: blur(8px) saturate(1.08);
+  }
+  &[data-prts-scheme="light"] {
+    & [data-message-role="user"],
+    & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] {
+      background: rgb(229 234 237 / var(--prts-classic-user-opacity, 50%)) !important;
+    }
+  }
+}
+
 [data-prts-opacity-settings] { min-width: 0; margin: 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--prts-line); }
 [data-prts-opacity-settings] legend { padding: 0 8px 0 0; font-size: 13px; font-weight: 600; }
-[data-prts-opacity-grid] { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+[data-prts-opacity-grid] { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
 [data-prts-opacity-control] { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; min-width: 0; }
 [data-prts-opacity-control] > strong { font-size: 12px; }
 [data-prts-opacity-dial] { position: relative; width: min(100%,126px); aspect-ratio: 1; user-select: none; }
@@ -231,6 +250,8 @@ html[data-prts-background-mode="split"] [data-prts-material-preview="bakerOpacit
 [data-prts-material-preview="railOpacity"] [data-prts-material-preview-surface] { inset: 0 auto 0 0; width: 40%; padding: 5px; justify-items: center; gap: 2px; background: color-mix(in srgb, var(--prts-preview-surface) var(--prts-rail-opacity, 30%), transparent); backdrop-filter: blur(12px) saturate(1.15); }
 [data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { inset: 16px 10px; border-radius: 0 10px 10px 10px; background: rgb(69 70 68 / var(--prts-baker-opacity, 50%)); backdrop-filter: blur(8px) saturate(1.08); }
 html[data-prts-scheme="light"] [data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { background: rgb(223 227 223 / var(--prts-baker-opacity, 50%)); }
+[data-prts-material-preview="classicUserOpacity"] [data-prts-material-preview-surface] { inset: 16px 10px; border-left: 3px solid var(--prts-yellow); border-radius: var(--prts-radius-card); background: rgb(23 29 33 / var(--prts-classic-user-opacity, 50%)); backdrop-filter: blur(8px) saturate(1.08); }
+html[data-prts-scheme="light"] [data-prts-material-preview="classicUserOpacity"] [data-prts-material-preview-surface] { background: rgb(229 234 237 / var(--prts-classic-user-opacity, 50%)); }
 
 /* Backgrounds now have their own settings page. */
 html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-section="background"] > [data-prts-background-settings] { margin: 0; padding: 0; border: 0; }
