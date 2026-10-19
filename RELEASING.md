@@ -2,6 +2,8 @@
 
 本文档供维护者使用。普通用户应按照 README 的说明直接从 npm 安装。
 
+以下本地命令从仓库根目录执行，适用于安装了 Node.js、npm、Git 和 GitHub CLI 的常见终端。`vX.Y.Z` 和 `X.Y.Z` 是版本占位符，执行前须替换为实际版本号；两个 `.local` 文件放在仓库根目录，已被 Git 忽略。GitHub Actions 中的 `$RUNNER_TEMP` 由其 Linux 运行器提供，不是本地命令的前提。
+
 提交信息统一遵循 [AGENTS.md](AGENTS.md)：保留英文类型前缀，描述使用中文，并提供概述修改内容的正文。
 
 ## 可信发布者（Trusted Publisher）
@@ -28,15 +30,15 @@
    ```
 
 4. 审阅预演文件清单，确认所需运行时文件、两份 README、`CHANGELOG.md`、`LICENSE` 和 `THIRD_PARTY_NOTICES.md` 均已包含，同时维护者专用文件和秘密信息没有进入发行包。
-5. 使用 `node scripts/release-notes.mjs vX.Y.Z /tmp/release-notes.md` 提取将由发布工作流使用的 GitHub Release 正文，并准备标签注释。向用户展示拟发布版本号、上一公开版本标签、完整 Release 正文、完整标签注释、当前支持的 DSH 版本及旧版对应关系，以及检查结果。等待用户对这些具体内容明确确认；若审核后修改了发布信息，重新展示并确认。
+5. 使用 `node scripts/release-notes.mjs vX.Y.Z .release-notes.local.md` 提取将由发布工作流使用的 GitHub Release 正文，并将拟发布的标签注释以 UTF-8 保存到 `.release-tag-message.local.txt`。向用户展示拟发布版本号、上一公开版本标签、完整 Release 正文、完整标签注释、当前支持的 DSH 版本及旧版对应关系，以及检查结果。等待用户对这些具体内容明确确认；若审核后修改了发布信息，重新展示并确认。
 6. 审核通过后，将对应内容提交到干净历史的公开分支，并把该提交推送至公开仓库的默认分支。推送前再次确认提交中的 `CHANGELOG.md` 与获批正文一致。审核前不得推送发布标签、手工执行 `npm publish` 或以其他方式触发发布工作流。
 
 ## 正式发布
 
-在用户已确认发布信息且准确的发布提交进入公开默认分支后，创建带注释的版本标签。标签注释须使用获批版本，写明当前支持的 DSH 版本、相对上一公开版本的变化，以及旧版 DSH 用户应选用的主题版本。推送标签会立即触发 npm 发布；推送前核对标签指向、注释和 `CHANGELOG.md`，然后只将该标签推送到公开远端：
+在用户已确认发布信息且准确的发布提交进入公开默认分支后，创建带注释的版本标签。标签注释须使用获批版本，写明当前支持的 DSH 版本、相对上一公开版本的变化，以及旧版 DSH 用户应选用的主题版本。先用 `git rev-parse HEAD` 和 `git ls-remote origin refs/heads/main` 核对本地提交与公开默认分支的 SHA 一致。推送标签会立即触发 npm 发布；推送前再次核对标签指向、注释和 `CHANGELOG.md`，然后只将该标签推送到公开远端：
 
 ```bash
-git tag -a -F /tmp/release-tag-message.txt vX.Y.Z <public-release-commit>
+git tag -a -F .release-tag-message.local.txt vX.Y.Z
 git push origin vX.Y.Z
 ```
 
@@ -45,9 +47,9 @@ git push origin vX.Y.Z
 工作流成功后，以匿名方式验证 npm 公开注册表：
 
 ```bash
-npm view @ash-qw/dsh-theme-prts@X.Y.Z version --registry=https://registry.npmjs.org
-npm view @ash-qw/dsh-theme-prts dist-tags --json --registry=https://registry.npmjs.org
-npm view @ash-qw/dsh-theme-prts@X.Y.Z dist.attestations --json --registry=https://registry.npmjs.org
+npm view "@ash-qw/dsh-theme-prts@X.Y.Z" version --registry=https://registry.npmjs.org
+npm view "@ash-qw/dsh-theme-prts" dist-tags --json --registry=https://registry.npmjs.org
+npm view "@ash-qw/dsh-theme-prts@X.Y.Z" dist.attestations --json --registry=https://registry.npmjs.org
 ```
 
 工作流会在发布 npm 前校验 `CHANGELOG.md` 存在对应的 `## X.Y.Z - 日期` 非空章节；npm 发布成功后，独立的 `release` 任务从该章节提取中文说明并创建 GitHub Release，保留历史 Release。正式版的 Latest 由 GitHub 自动判定，带预发布后缀的标签标记为预发布且不设为 Latest。已存在的 Release 不会被覆盖。
@@ -57,6 +59,6 @@ npm view @ash-qw/dsh-theme-prts@X.Y.Z dist.attestations --json --registry=https:
 补建历史 Release 时，使用已有远端标签并显式指定 `--latest=false`，不重新发布 npm：
 
 ```bash
-node scripts/release-notes.mjs vX.Y.Z /tmp/release-notes.md
-gh release create vX.Y.Z --verify-tag --latest=false --title vX.Y.Z --notes-file /tmp/release-notes.md
+node scripts/release-notes.mjs vX.Y.Z .release-notes.local.md
+gh release create vX.Y.Z --verify-tag --latest=false --title vX.Y.Z --notes-file .release-notes.local.md
 ```

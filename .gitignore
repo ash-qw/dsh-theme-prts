@@ -5,3 +5,5 @@ playwright-report/
 .playwright/
 artifacts/
 *.tgz
+.release-notes.local.md
+.release-tag-message.local.txt
