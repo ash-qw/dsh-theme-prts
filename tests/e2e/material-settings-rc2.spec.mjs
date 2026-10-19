@@ -69,8 +69,13 @@ test('native settings save background material and Baker loading through the hos
       height: row.getBoundingClientRect().height,
       dialRight: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().right,
       dialTop: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().top,
+      dialBottom: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().bottom,
+      headingTop: row.querySelector('[data-prts-opacity-heading]').getBoundingClientRect().top,
       headingBottom: row.querySelector('[data-prts-opacity-heading]').getBoundingClientRect().bottom,
       resetBottom: row.querySelector('[data-prts-opacity-reset]').getBoundingClientRect().bottom,
+      resetWidth: row.querySelector('[data-prts-opacity-reset]').getBoundingClientRect().width,
+      previewTop: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().top,
+      previewBottom: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().bottom,
       headingWidth: row.querySelector('[data-prts-opacity-heading]').getBoundingClientRect().width,
       previewLeft: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().left,
       previewWidth: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().width,
@@ -89,12 +94,15 @@ test('native settings save background material and Baker loading through the hos
     expect(row.height).toBeLessThanOrEqual(151)
     expect(row.headingBottom).toBeLessThanOrEqual(row.dialTop)
     expect(row.resetBottom).toBeLessThanOrEqual(row.dialTop)
+    expect(row.resetWidth).toBe(24)
     expect(row.previewLeft).toBeGreaterThan(row.dialRight)
     expect(row.previewWidth).toBeCloseTo(row.headingWidth, 0)
-    expect(row.previewHeight).toBe(84)
+    expect(row.previewTop).toBeCloseTo(row.headingTop, 0)
+    expect(Math.abs(row.previewBottom - row.dialBottom)).toBeLessThanOrEqual(3)
+    expect(row.previewHeight).toBe(128)
   }
   const reset = page.locator('[data-prts-opacity-control="railOpacity"] [data-prts-opacity-reset]')
-  await expect(reset).toHaveText('恢复')
+  await expect(reset.locator('svg')).toHaveCount(1)
   await expect(reset).toHaveAttribute('aria-label', '恢复设置侧栏透明度到 70%')
   await reset.hover()
   await expect.poll(() => reset.evaluate(button => getComputedStyle(button, '::after').opacity)).toBe('1')

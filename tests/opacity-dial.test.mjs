@@ -14,9 +14,9 @@ test('dial supports exact entry, keyboard, preview without writes and cancel rol
   const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
   const dials = mountOpacityDials({section,window:w,onChange:(...args)=>changes.push(args)})
   dials.update({...DEFAULT_PREFERENCES,backgroundMode:'full'}, {full:{id:'test'}})
-  const svg = section.querySelector('svg'), input = section.querySelector('input')
+  const svg = section.querySelector('[data-prts-opacity-dial] svg'), input = section.querySelector('input')
   const reset = section.querySelector('[data-prts-opacity-control="sidebarOpacity"] [data-prts-opacity-reset]')
-  assert.equal(reset.textContent,'恢复')
+  assert.equal(reset.querySelector('svg')?.getAttribute('aria-hidden'),'true')
   assert.equal(reset.getAttribute('data-prts-opacity-reset-tooltip'),'恢复到 94%')
   svg.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}))
   assert.deepEqual(changes.pop(),['sidebarOpacity',.05])

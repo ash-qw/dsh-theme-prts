@@ -18,7 +18,7 @@ export function opacityDialMarkup() {
       : key === 'classicUserOpacity' ? '<span>这是我发送的消息</span><i></i>'
         : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'
     return `<div data-prts-opacity-control="${key}">
-      <div data-prts-opacity-heading><strong>${label}</strong><button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%">恢复</button></div>
+      <div data-prts-opacity-heading><strong>${label}</strong><button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 10a7.5 7.5 0 1 1 .7 5.2M4.5 4.5V10H10"/></svg></button></div>
       <div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div>
       <div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${sample}</div></div>
       <small data-prts-opacity-note></small>
@@ -30,7 +30,7 @@ export function mountOpacityDials({ section, window, onChange }) {
   const root = section.ownerDocument.documentElement
   const controls = BACKGROUND_OPACITY_CONTROLS.map(definition => {
     const container = section.querySelector(`[data-prts-opacity-control="${definition.key}"]`)
-    const svg = container.querySelector('svg'), input = container.querySelector('input'), tail = svg.querySelector('[data-dial-tail]')
+    const svg = container.querySelector('[data-prts-opacity-dial] svg'), input = container.querySelector('input'), tail = svg.querySelector('[data-dial-tail]')
     let value = definition.value, saved = value, grip = null, timer
     const paint = next => {
       const previous = value
