@@ -31,6 +31,10 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   railOpacity: .3,
   bakerOpacity: .5,
   classicUserOpacity: .5,
+  sidebarBlur: 8,
+  railBlur: 12,
+  bakerBlur: 8,
+  classicUserBlur: 8,
   cursor: 'prts',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
@@ -93,7 +97,7 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
   precise: Object.freeze({ conversationParticleDensity: 'dense', heroParticleDensity: 'ultra' }),
 })
 export const PREFERENCE_GROUPS = Object.freeze({
-  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity']),
+  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity', 'sidebarBlur', 'railBlur', 'bakerBlur', 'classicUserBlur']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
@@ -140,6 +144,12 @@ function enumOr(value, allowed, fallback) {
 
 function colorOr(value, fallback) {
   return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback
+}
+
+function materialBlurOr(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(32, Math.max(0, Math.round(value)))
+    : fallback
 }
 
 function particleTraversalSpeedOr(value, fallback) {
@@ -203,6 +213,10 @@ export function normalizePreferences(value) {
     railOpacity: typeof input.railOpacity === 'number' && Number.isFinite(input.railOpacity) ? Math.min(1, Math.max(0, input.railOpacity)) : .3,
     bakerOpacity: typeof input.bakerOpacity === 'number' && Number.isFinite(input.bakerOpacity) ? Math.min(1, Math.max(0, input.bakerOpacity)) : .5,
     classicUserOpacity: typeof input.classicUserOpacity === 'number' && Number.isFinite(input.classicUserOpacity) ? Math.min(1, Math.max(0, input.classicUserOpacity)) : .5,
+    sidebarBlur: materialBlurOr(input.sidebarBlur, DEFAULT_PREFERENCES.sidebarBlur),
+    railBlur: materialBlurOr(input.railBlur, DEFAULT_PREFERENCES.railBlur),
+    bakerBlur: materialBlurOr(input.bakerBlur, DEFAULT_PREFERENCES.bakerBlur),
+    classicUserBlur: materialBlurOr(input.classicUserBlur, DEFAULT_PREFERENCES.classicUserBlur),
     backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
     composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),

@@ -117,6 +117,8 @@ export function createThemeController({ document, window, cssText, service, curs
     root.style.removeProperty('--prts-background-shade')
     for (const name of ['sidebar', 'rail', 'baker']) root.style.removeProperty(`--prts-${name}-opacity`)
     root.style.removeProperty('--prts-classic-user-opacity')
+    for (const name of ['sidebar', 'rail', 'baker']) root.style.removeProperty(`--prts-${name}-blur`)
+    root.style.removeProperty('--prts-classic-user-blur')
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
     for (const property of Object.keys(SESSION_FLOW_COLOR_PROPERTIES)) root.style.removeProperty(property)
     clearTransitionState()
@@ -744,6 +746,8 @@ export function createThemeController({ document, window, cssText, service, curs
       root.style.setProperty('--prts-background-shade', `${preferences.backgroundDim * 100}%`)
       for (const name of ['sidebar', 'rail', 'baker']) root.style.setProperty(`--prts-${name}-opacity`, `${preferences[`${name}Opacity`] * 100}%`)
       root.style.setProperty('--prts-classic-user-opacity', `${preferences.classicUserOpacity * 100}%`)
+      for (const name of ['sidebar', 'rail', 'baker']) root.style.setProperty(`--prts-${name}-blur`, `${preferences[`${name}Blur`]}px`)
+      root.style.setProperty('--prts-classic-user-blur', `${preferences.classicUserBlur}px`)
       refresh()
     },
     sync,

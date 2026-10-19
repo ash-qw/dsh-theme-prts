@@ -9,6 +9,9 @@ test('opacity defaults and normalization preserve existing material strengths', 
   assert.equal(defaults.sidebarOpacity,.06);assert.equal(defaults.railOpacity,.3);assert.equal(defaults.bakerOpacity,.5);assert.equal(defaults.classicUserOpacity,.5)
   const normalized = normalizePreferences({sidebarOpacity:-1,railOpacity:2,bakerOpacity:NaN,classicUserOpacity:2})
   assert.equal(normalized.sidebarOpacity,0);assert.equal(normalized.railOpacity,1);assert.equal(normalized.bakerOpacity,.5);assert.equal(normalized.classicUserOpacity,1)
+  assert.deepEqual([defaults.sidebarBlur, defaults.railBlur, defaults.bakerBlur, defaults.classicUserBlur], [8,12,8,8])
+  const blur = normalizePreferences({sidebarBlur:-1,railBlur:44,bakerBlur:7.6,classicUserBlur:NaN})
+  assert.deepEqual([blur.sidebarBlur,blur.railBlur,blur.bakerBlur,blur.classicUserBlur], [0,32,8,8])
 })
 test('dial supports exact entry, keyboard, preview without writes and cancel rollback', () => {
   const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
@@ -60,5 +63,28 @@ test('classic user-message opacity is active only with a conversation wallpaper'
   assert.equal(baker.hidden,false)
   assert.equal(rail.hidden,false)
   assert.equal(note.textContent,'当前未启用此材质')
+  dials.dispose();dom.window.close()
+})
+
+test('blur previews immediately, saves on change, resets and hides without an image', () => {
+  const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
+  w.document.documentElement.setAttribute('data-dsh-prts', '')
+  const dials = mountOpacityDials({section,window:w,onChange:(...args)=>changes.push(args)})
+  const control = section.querySelector('[data-prts-opacity-control="sidebarOpacity"] [data-prts-blur-control]')
+  const range = control.querySelector('input'), output = control.querySelector('output')
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'full'}, {})
+  assert.equal(control.hidden,true)
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'full'}, {full:{id:'image'}})
+  assert.equal(control.hidden,false)
+  range.value='19';range.dispatchEvent(new w.Event('input',{bubbles:true}))
+  assert.equal(output.value,'19px')
+  assert.equal(w.document.documentElement.style.getPropertyValue('--prts-sidebar-blur'),'19px')
+  assert.deepEqual(changes,[])
+  range.dispatchEvent(new w.Event('change',{bubbles:true}))
+  assert.deepEqual(changes.pop(),['sidebarBlur',19])
+  control.querySelector('[data-prts-blur-reset]').click()
+  assert.deepEqual(changes.pop(),['sidebarBlur',8])
+  dials.update({...DEFAULT_PREFERENCES,backgroundMode:'split'}, {conversation:{id:'conversation'}})
+  assert.equal(control.hidden,true)
   dials.dispose();dom.window.close()
 })
