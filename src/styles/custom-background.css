@@ -238,9 +238,18 @@ html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-backgro
 html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header strong { font-size: 13px; color: var(--prts-muted); }
 [data-prts-composer-glass-setting], [data-prts-composer-glass-required] { display: block; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
 [data-prts-composer-glass-required] { font-size: 12px; color: var(--prts-muted); }
-html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
-html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] > span { display: grid; gap: 4px; min-width: 0; }
-html[data-dsh-prts] [data-prts-composer-glass-setting] [data-prts-setting-row] > span > strong { font: 550 13px/1.5 var(--prts-body); }
+
+/* The native active composer fades into DSH's base color. Baker paints a
+ * different solid backdrop, so match that backdrop while keeping the fade. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"] [data-phase="active"] [data-composer-seat]:not(:has([data-prts-composer-glass-active])) {
+  background: linear-gradient(180deg, transparent 0, var(--prts-chat-dock-surface, var(--prts-chat-backdrop)) 36px) !important;
+}
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"][data-prts-texture="restrained"] {
+  --prts-chat-dock-surface: color-mix(in srgb, var(--prts-chat-backdrop) 82%, var(--prts-canvas));
+}
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"][data-prts-texture="off"] {
+  --prts-chat-dock-surface: color-mix(in srgb, var(--prts-chat-backdrop) 72%, var(--prts-canvas));
+}
 
 /* Native data-streaming disappears for settled and interrupted responses.
  * Hide only the current response body, never reasoning, tools or earlier rounds. */

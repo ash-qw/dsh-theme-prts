@@ -69,14 +69,45 @@ test('native settings save background material and Baker loading through the hos
   await expect(page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')).toHaveValue('82')
   await page.locator('[data-prts-settings-jump="appearance"]').click()
   await expect(loading).toHaveAttribute('aria-checked', 'true')
+  const bakerRow = await page.locator('[data-prts-setting-row="bakerGroupAvatars"]').evaluate(row => {
+    const label = row.querySelector('span').getBoundingClientRect()
+    const toggle = row.querySelector('button').getBoundingClientRect()
+    return { display: getComputedStyle(row).display, labelLeft: label.left, labelBottom: label.bottom, toggleLeft: toggle.left, toggleTop: toggle.top }
+  })
   await page.setViewportSize({ width: 390, height: 780 })
   await page.locator('[data-prts-settings-jump="background"]').click()
   const composerRow = await page.locator('[data-prts-composer-glass-setting] [data-prts-setting-row]').evaluate(row => {
     const label = row.querySelector('span').getBoundingClientRect()
     const toggle = row.querySelector('button').getBoundingClientRect()
-    return { labelRight: label.right, toggleLeft: toggle.left, overflow: row.scrollWidth - row.clientWidth }
+    return { display: getComputedStyle(row).display, labelLeft: label.left, labelBottom: label.bottom, toggleLeft: toggle.left, toggleTop: toggle.top, overflow: row.scrollWidth - row.clientWidth }
   })
-  expect(composerRow.labelRight).toBeLessThanOrEqual(composerRow.toggleLeft)
+  expect(bakerRow.display).toBe('grid')
+  expect(bakerRow.toggleLeft).toBeCloseTo(bakerRow.labelLeft, 0)
+  expect(bakerRow.toggleTop).toBeGreaterThanOrEqual(bakerRow.labelBottom)
+  expect(composerRow.display).toBe(bakerRow.display)
+  expect(composerRow.toggleLeft).toBeCloseTo(composerRow.labelLeft, 0)
+  expect(composerRow.toggleTop).toBeGreaterThanOrEqual(composerRow.labelBottom)
   expect(composerRow.overflow).toBe(0)
   expect(errors).toEqual([])
+})
+
+test('Baker solid background uses the conversation color for the native composer fade', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('prtsFixtureNativeConfig', JSON.stringify({
+    revision: 1, value: { enabled: true, bootAnimation: false, conversationStyle: 'deck-chat', backgroundMode: 'off', composerGlass: false },
+  })))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await expect(page.locator('html')).not.toHaveAttribute('data-prts-composer-enhanced')
+  const fade = await page.evaluate(() => {
+    document.querySelector('[data-prts-region="operation"]').dataset.phase = 'active'
+    return getComputedStyle(document.querySelector('[data-composer-seat]')).backgroundImage
+  })
+  expect(fade).toContain('rgb(10, 14, 17)')
+  expect(fade).not.toContain('rgb(8, 10, 12)')
+  const lightFade = await page.evaluate(() => {
+    document.documentElement.dataset.prtsScheme = 'light'
+    return getComputedStyle(document.querySelector('[data-composer-seat]')).backgroundImage
+  })
+  expect(lightFade).toContain('rgb(237, 241, 243)')
+  await page.locator('[data-composer-card]').evaluate(card => card.setAttribute('data-prts-composer-glass-active', ''))
+  await expect(page.locator('[data-composer-seat]')).toHaveCSS('background-image', 'none')
 })
