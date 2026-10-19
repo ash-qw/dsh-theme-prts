@@ -1,5 +1,28 @@
 import {test,expect} from '@playwright/test'
 
+test('status list stays open while the pointer crosses into its top-layer popover',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.sessionList.set({
+    current:'fixture-session',ids:['fixture-session','fixture-done'],
+    byId:{'fixture-session':{id:'fixture-session',displayTitle:'当前会话'},'fixture-done':{id:'fixture-done',displayTitle:'已完成会话',completed:true}},
+  }))
+  const trigger=page.locator('[data-prts-session-summary-trigger="done"]')
+  await expect(trigger.locator('[data-prts-session-summary-count]')).toHaveText('1')
+  await trigger.hover()
+  const popover=page.locator('[data-prts-session-summary-popover="done"]')
+  await expect(popover).toBeVisible()
+  const button=await trigger.boundingBox(), panel=await popover.boundingBox()
+  const x=button.x+button.width/2
+  await page.mouse.move(x,button.y+button.height+2)
+  await page.waitForTimeout(200)
+  await page.mouse.move(x,panel.y+3)
+  await page.waitForTimeout(200)
+  await expect(popover).toBeVisible()
+  await page.locator('[data-prts-session-summary-item="fixture-done"]').click()
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-done'])
+})
+
 test('summary hover scrolls long titles and streams replies without opening the session',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'full'})))

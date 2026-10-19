@@ -486,11 +486,12 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function buildSummaryGroup(state, label, items) {
     const group = document.createElement('span')
     group.setAttribute('data-prts-session-summary-group', state)
-    group.addEventListener('pointerenter', () => keepSummaryHover(group))
-    group.addEventListener('pointerleave', () => {
+    const deferHoverClose = () => {
       window.clearTimeout(summaryLeaveTimer)
-      summaryLeaveTimer = window.setTimeout(() => { if (hoveredSummary === group) clearSummaryHover() }, 180)
-    })
+      summaryLeaveTimer = window.setTimeout(() => { if (hoveredSummary === group) clearSummaryHover() }, 350)
+    }
+    group.addEventListener('pointerenter', () => keepSummaryHover(group))
+    group.addEventListener('pointerleave', deferHoverClose)
 
     const trigger = document.createElement('button')
     trigger.type = 'button'
@@ -517,6 +518,10 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     popover.setAttribute('role', 'menu')
     popover.setAttribute('popover', 'manual')
     popover.setAttribute('aria-label', label)
+    // The popover lives in the browser top layer; crossing into it can leave
+    // the trigger's hit area even though it remains a DOM descendant.
+    popover.addEventListener('pointerenter', () => keepSummaryHover(group))
+    popover.addEventListener('pointerleave', deferHoverClose)
     const heading = document.createElement('span')
     heading.setAttribute('data-prts-session-summary-heading', '')
     const headingLabel = document.createElement('strong')
