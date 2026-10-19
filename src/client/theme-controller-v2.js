@@ -1,6 +1,8 @@
 import { createCursorAdapter } from './cursor-adapter.js'
 import { normalizePreferences } from './preferences.js'
 
+export const SCHEME_COMMIT_PROGRESS = .15
+
 const ROOT_ATTRIBUTES = [
   'data-dsh-prts',
   'data-prts-scheme',
@@ -244,11 +246,23 @@ export function createThemeController({ document, window, cssText, service, curs
   function updateRevealHud(session) {
     if (!session || session.settled) return
     const percentage = Math.round(revealProgress(session.progress) * 100)
-    if (session.hudEdge) session.hudEdge.dataset.prtsSchemeRevealSide = 'left'
-    root.style.setProperty('--prts-scheme-control-progress', String(session.progress))
-    root.style.setProperty('--prts-scheme-control-meter-height', `${revealProgress(session.progress) * 48}px`)
-    root.style.setProperty('--prts-scheme-control-value-image', revealValueImageUrl(percentage))
-    root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, session.interactive && session.progress >= .5)
+    if (session.hudEdge && session.hudEdge.dataset.prtsSchemeRevealSide !== 'left') session.hudEdge.dataset.prtsSchemeRevealSide = 'left'
+    if (session.hudPercentage !== percentage) {
+      session.hudPercentage = percentage
+      const image = revealValueImageUrl(percentage)
+      if (session.hudAnimation?.effect?.setKeyframes) {
+        const frame = {
+          backgroundImage: image + ',linear-gradient(#ffd400,#ffd400)',
+          backgroundSize: '24px 11px,2px ' + (percentage * .48) + 'px',
+        }
+        session.hudAnimation.effect.setKeyframes([frame, frame])
+      } else {
+        root.style.setProperty('--prts-scheme-control-meter-height', `${percentage * .48}px`)
+        root.style.setProperty('--prts-scheme-control-value-image', image)
+      }
+    }
+    const armed = session.interactive && session.progress >= SCHEME_COMMIT_PROGRESS
+    if (root.hasAttribute(TRANSITION_ARMED_ATTRIBUTE) !== armed) root.toggleAttribute(TRANSITION_ARMED_ATTRIBUTE, armed)
   }
 
   function releaseRevealHud(session) {
@@ -361,11 +375,16 @@ export function createThemeController({ document, window, cssText, service, curs
       ], options, '::view-transition-new(prts-scheme-grid)')
       const mark = revealNamedAnimation([
         { offset: 0, translate: revealGroupTranslate(0), rotate: '45deg' },
-        { offset: .49, translate: revealGroupTranslate(session.geometry.width * .49), rotate: '45deg' },
-        { offset: .51, translate: revealGroupTranslate(session.geometry.width * .51), rotate: '225deg' },
+        { offset: SCHEME_COMMIT_PROGRESS - .01, translate: revealGroupTranslate(session.geometry.width * (SCHEME_COMMIT_PROGRESS - .01)), rotate: '45deg' },
+        { offset: SCHEME_COMMIT_PROGRESS + .01, translate: revealGroupTranslate(session.geometry.width * (SCHEME_COMMIT_PROGRESS + .01)), rotate: '225deg' },
         { offset: 1, translate: revealGroupTranslate(session.geometry.width), rotate: '225deg' },
       ], options, '::view-transition-group(prts-scheme-mark)')
       session.scrubAnimations = [clip, edge, node, grid, gridPhase, mark]
+      session.hudAnimation = revealNamedAnimation([{}], options, '::view-transition-new(prts-scheme-node)')
+      session.hudAnimation.pause?.()
+      session.hudAnimation.currentTime = 0
+      session.hudPercentage = undefined
+      updateRevealHud(session)
       for (const animation of session.scrubAnimations) {
         animation.pause?.()
         animation.currentTime = session.progress * session.duration
@@ -377,11 +396,10 @@ export function createThemeController({ document, window, cssText, service, curs
     if (!session || session.settled) return
     session.progress = revealProgress(value)
     session.revealX = session.progress * session.geometry.width
-    root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
+    if (!session.scrubAnimations) root.style.setProperty('--prts-scheme-reveal-x', `${session.revealX}px`)
     if (session.scrubAnimations) {
       try {
         for (const animation of session.scrubAnimations) {
-          animation.pause?.()
           animation.currentTime = session.progress * session.duration
         }
       } catch {}
@@ -402,12 +420,19 @@ export function createThemeController({ document, window, cssText, service, curs
     for (const animation of session?.scrubAnimations || []) {
       try { animation?.cancel?.() } catch {}
     }
-    if (session) session.scrubAnimations = undefined
+    session?.hudAnimation?.cancel?.()
+    if (session) {
+      session.scrubAnimations = undefined
+      session.hudAnimation = undefined
+      session.hudPercentage = undefined
+    }
   }
 
   function animateRevealTo(session, value, duration, easing) {
     if (!session || session.settled) return Promise.resolve(false)
     cancelRevealAnimation(session)
+    // Transfer the last HUD value once before the release animation takes over.
+    updateRevealHud(session)
     const targetProgress = revealProgress(value)
     const targetX = revealTargetX(session, targetProgress)
     if (!(duration > 0)) {
@@ -449,8 +474,8 @@ export function createThemeController({ document, window, cssText, service, curs
         { backgroundSize: `2px ${targetProgress * 48}px` },
       ], options, '::view-transition-new(prts-scheme-node)')
       const mark = revealNamedAnimation([
-        { translate: revealGroupTranslate(session.revealX), rotate: session.progress >= .5 ? '225deg' : '45deg' },
-        { translate: revealGroupTranslate(targetX), rotate: targetProgress >= .5 ? '225deg' : '45deg' },
+        { translate: revealGroupTranslate(session.revealX), rotate: session.progress >= SCHEME_COMMIT_PROGRESS ? '225deg' : '45deg' },
+        { translate: revealGroupTranslate(targetX), rotate: targetProgress >= SCHEME_COMMIT_PROGRESS ? '225deg' : '45deg' },
       ], options, '::view-transition-group(prts-scheme-mark)')
       animations = [clip, edge, node, grid, gridPhase, nodeProgress, mark]
     } catch {
@@ -608,7 +633,7 @@ export function createThemeController({ document, window, cssText, service, curs
     let settled = false
     return {
       update(value) { if (!settled) progress = revealProgress(value) },
-      finish(commit = progress >= .5) {
+      finish(commit = progress >= SCHEME_COMMIT_PROGRESS) {
         if (settled) return root.dataset.prtsScheme
         settled = true
         return commit ? setTheme(target, { animate: false }) : source

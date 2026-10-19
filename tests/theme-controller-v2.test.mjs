@@ -47,6 +47,8 @@ function installViewTransitions(dom) {
     animations.push(record)
     return {
       finished: finished.promise,
+      effect: { setKeyframes(frames) { record.keyframes = frames } },
+      set currentTime(value) { record.currentTime = value },
       cancel() { record.cancelled += 1 },
     }
   }
@@ -159,9 +161,10 @@ test('scrubs an interactive reveal while the host theme request is still pending
   gesture.update(.63)
   assert.equal(root.dataset.prtsScheme, 'light')
   assert.equal(current, 'dark')
-  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '756px')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '120px', 'drag must not invalidate inherited root variables')
+  assert.equal(records.animations[0].currentTime, records.animations[0].options.duration * .63)
   assert.equal(root.getAttribute('data-prts-scheme-transition-armed'), '')
-  assert.equal(records.animations.length, 6)
+  assert.equal(records.animations.length, 7)
 
   const result = gesture.finish(true)
   await settle()
@@ -196,7 +199,7 @@ test('uses the compact reveal duration on phone viewports', async t => {
   assert.equal(await request, 'light')
 })
 
-test('tracks an interactive boundary in both directions and rolls back below 50 percent', async t => {
+test('tracks an interactive boundary in both directions and rolls back below 15 percent', async t => {
   const dom = createDom()
   let current = 'dark'
   let hostCommits = 0
@@ -231,25 +234,32 @@ test('tracks an interactive boundary in both directions and rolls back below 50 
   assert.equal(edgeScrub.keyframes.at(-1).translate, '1200px 0px')
 
   gesture.update(.63)
-  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '756px')
-  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.63')
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '120px', 'drag must not invalidate inherited root variables')
+  assert.equal(records.animations[0].currentTime, records.animations[0].options.duration * .63)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.1')
   assert.equal(root.getAttribute('data-prts-scheme-transition-armed'), '')
   assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-label]')?.textContent, 'CTRL')
   assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-value]')?.textContent, '')
-  assert.match(root.style.getPropertyValue('--prts-scheme-control-value-image'), /^url\("data:image\/svg\+xml,.*063/)
+  assert.match(records.animations[6].keyframes[0].backgroundImage, /^url\("data:image\/svg\+xml,.*063/)
   assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal-grid]')?.parentElement?.hasAttribute('data-prts-scheme-reveal-edge'), true)
 
+  const stableStyle = root.style.cssText
+  const hudFrames = records.animations[6].keyframes
+  gesture.update(.631)
+  assert.equal(root.style.cssText, stableStyle, 'same-side dragging leaves root styles untouched')
+  assert.equal(records.animations[6].keyframes, hudFrames, 'same percentage reuses the HUD image')
   controller.sync('dark')
   assert.equal(root.dataset.prtsScheme, 'light')
-  gesture.update(.35)
-  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '420px')
-  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.35')
+  gesture.update(.14)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-reveal-x'), '120px')
+  assert.equal(records.animations[0].currentTime, records.animations[0].options.duration * .14)
+  assert.equal(root.style.getPropertyValue('--prts-scheme-control-progress'), '0.1')
   assert.equal(root.hasAttribute('data-prts-scheme-transition-armed'), false)
-  assert.match(root.style.getPropertyValue('--prts-scheme-control-value-image'), /035/)
+  assert.match(records.animations[6].keyframes[0].backgroundImage, /014/)
 
   const result = gesture.finish(false)
   await settle()
-  const completion = records.animations.filter(record => record.options.duration === 121)
+  const completion = records.animations.filter(record => record.options.duration === 90)
   const clip = completion.find(record => record.options.pseudoElement)
   assert.equal(clip.keyframes.at(-1).clipPath, 'inset(0 1232px 0 0)')
   for (const record of completion) record.finished.resolve()
@@ -262,7 +272,7 @@ test('tracks an interactive boundary in both directions and rolls back below 50 
   assert.equal(dom.window.document.querySelector('[data-prts-scheme-reveal]'), null)
 })
 
-test('commits an interactive reveal above 50 percent through the host authority', async t => {
+test('commits an interactive reveal above 15 percent through the host authority', async t => {
   const dom = createDom()
   let current = 'dark'
   const hostTargets = []

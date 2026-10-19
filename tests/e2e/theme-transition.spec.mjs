@@ -82,7 +82,7 @@ test('reveals the new theme behind one soft PRTS boundary', async ({ page }) => 
   await expect(toggle).toHaveAttribute('data-prts-scheme-current', target)
 })
 
-test('tracks a held drag in both directions and rolls back below halfway', async ({ page }) => {
+test('tracks a held drag in both directions and rolls back below 15 percent', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await enableTheme(page)
 
@@ -100,6 +100,10 @@ test('tracks a held drag in both directions and rolls back below halfway', async
     await page.mouse.move(1440 * progress, y)
     await expect(root).toHaveAttribute('data-prts-scheme-transition-interactive', '')
     await expect(page.locator('[data-prts-scheme-reveal-grid]')).toHaveCount(1)
+    await expect.poll(() => root.evaluate(node => {
+      const clip = getComputedStyle(node, '::view-transition-new(root)').clipPath
+      return innerWidth - Number.parseFloat(clip.split(' ')[1])
+    })).toBeCloseTo(1440 * progress, 0)
     const geometry = await root.evaluate(node => {
       const rootNew = getComputedStyle(node, '::view-transition-new(root)')
       const edgeGroup = getComputedStyle(node, '::view-transition-group(prts-scheme-edge)')
@@ -136,20 +140,17 @@ test('tracks a held drag in both directions and rolls back below halfway', async
   await expect(page.locator('[data-prts-scheme-reveal-grid]')).toHaveCount(1)
   const takeover63 = await root.evaluate(node => ({
     nodeImage: getComputedStyle(node, '::view-transition-new(prts-scheme-node)').backgroundImage,
-    valueImage: node.style.getPropertyValue('--prts-scheme-control-value-image'),
-    meterHeight: node.style.getPropertyValue('--prts-scheme-control-meter-height'),
+    valueImage: getComputedStyle(node, '::view-transition-new(prts-scheme-node)').backgroundImage,
+    meterHeight: getComputedStyle(node, '::view-transition-new(prts-scheme-node)').backgroundSize,
   }))
   expect(takeover63.nodeImage).toContain('data:image/svg+xml')
   expect(takeover63.valueImage).toContain('063')
-  expect(Number.parseFloat(takeover63.meterHeight)).toBeCloseTo(48 * .63, 2)
-  expect(await root.evaluate(node => Number.parseFloat(node.style.getPropertyValue('--prts-scheme-reveal-x')))).toBeCloseTo(1440 * .63, 1)
-  expect(await root.evaluate(node => Number(node.style.getPropertyValue('--prts-scheme-control-progress')))).toBeCloseTo(.63, 2)
+  expect(Number.parseFloat(takeover63.meterHeight.split(',')[1].trim().split(' ')[1])).toBeCloseTo(48 * .63, 2)
 
-  await page.mouse.move(1440 * .35, y)
+  await page.mouse.move(1440 * .14, y)
   await expect(root).not.toHaveAttribute('data-prts-scheme-transition-armed')
   expect(await root.evaluate(node =>
-    node.style.getPropertyValue('--prts-scheme-control-value-image'))).toContain('035')
-  expect(await root.evaluate(node => Number.parseFloat(node.style.getPropertyValue('--prts-scheme-reveal-x')))).toBeCloseTo(1440 * .35, 1)
+    getComputedStyle(node, '::view-transition-new(prts-scheme-node)').backgroundImage)).toContain('014')
 
   await page.mouse.up()
   await expect(root).toHaveAttribute('data-prts-scheme', before)
@@ -158,7 +159,7 @@ test('tracks a held drag in both directions and rolls back below halfway', async
   expect(await page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.theme.current)).toBe(before)
 })
 
-test('commits a held drag above halfway without firing a second click toggle', async ({ page }) => {
+test('commits a held drag at 15 percent without firing a second click toggle', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await enableTheme(page)
 
@@ -172,7 +173,7 @@ test('commits a held drag above halfway without firing a second click toggle', a
 
   await page.mouse.move(box.x + box.width / 2, y)
   await page.mouse.down()
-  await page.mouse.move(1440 * .65, y)
+  await page.mouse.move(1440 * .15, y)
   await expect(root).toHaveAttribute('data-prts-scheme-transition-armed', '')
   await page.mouse.up()
 
@@ -213,7 +214,7 @@ test('starts click and held-drag feedback before a delayed host theme response',
   const y = box.y + box.height / 2
   await page.mouse.move(box.x + box.width / 2, y)
   await page.mouse.down()
-  await page.mouse.move(1440 * .65, y)
+  await page.mouse.move(1440 * .15, y)
   await expect(root).toHaveAttribute('data-prts-scheme-transition-interactive', '')
   await expect(root).toHaveAttribute('data-prts-scheme-transition-armed', '')
   expect(await page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.theme.current)).toBe(target)

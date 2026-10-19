@@ -1,3 +1,4 @@
+import { SCHEME_COMMIT_PROGRESS } from './theme-controller-v2.js'
 import { createThemeSettingsOverlay, themeSettingsMarkup } from './theme-settings-workbench.js'
 
 const PHONE_RAIL_BREAKPOINT = 640
@@ -83,9 +84,9 @@ export function createOperationsShell({
     try { return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true } catch { return false }
   }
 
-  function phoneRailGesture() {
+  function phoneRailGesture(pointerType) {
     if (railMode !== 'overlay' || Number(window.innerWidth) > PHONE_RAIL_BREAKPOINT) return false
-    return railPointerQuery?.matches === true
+    return pointerType === 'touch' || railPointerQuery?.matches === true
       || railHoverQuery?.matches === true
       || Number(window.navigator?.maxTouchPoints) > 0
   }
@@ -105,13 +106,16 @@ export function createOperationsShell({
 
   function armRailGesture() {
     railHoldTimer = undefined
-    if (!railPointer || !phoneRailGesture()) return
+    if (!railPointer || !phoneRailGesture('touch')) return
     railPointer.armed = true
     railLauncher?.setAttribute('data-prts-rail-gesture-active', '')
   }
 
+  let railInputType
   function onRailPointerDown(event) {
-    if (!phoneRailGesture() || railPointer || (event.button ?? 0) !== 0) return
+    railInputType = event.pointerType || 'mouse'
+    if (railInputType !== 'touch') return
+    if (!phoneRailGesture(event.pointerType) || railPointer || (event.button ?? 0) !== 0) return
     const pointerId = event.pointerId ?? 1
     railPointer = {
       pointerId,
@@ -159,7 +163,9 @@ export function createOperationsShell({
   }
 
   function onRailClick(event) {
-    if (phoneRailGesture() && Number(event?.detail) > 0) {
+    const inputType = event?.pointerType || railInputType
+    railInputType = undefined
+    if (phoneRailGesture(inputType) && inputType === 'touch' && Number(event?.detail) > 0) {
       event.preventDefault?.()
       return
     }
@@ -262,9 +268,19 @@ export function createOperationsShell({
     }, 1000)
   }
 
+  function flushSchemeProgress(pointer) {
+    if (pointer.frame !== undefined) window.cancelAnimationFrame(pointer.frame)
+    pointer.frame = undefined
+    if (pointer.progress !== undefined) {
+      pointer.gesture?.update?.(pointer.progress)
+      pointer.progress = undefined
+    }
+  }
+
   function settleSchemePointer({ commit = false } = {}) {
     const pointer = schemePointer
     if (!pointer) return
+    flushSchemeProgress(pointer)
     schemePointer = undefined
     try { schemeToggle?.releasePointerCapture?.(pointer.pointerId) } catch {}
     if (!pointer.dragging) return
@@ -313,19 +329,25 @@ export function createOperationsShell({
       }
     }
     event.preventDefault?.()
-    pointer.gesture?.update?.(schemePointerProgress(event))
+    pointer.progress = schemePointerProgress(event)
+    if (pointer.frame === undefined) pointer.frame = window.requestAnimationFrame(() => {
+      pointer.frame = undefined
+      if (schemePointer === pointer) flushSchemeProgress(pointer)
+    })
   }
 
   function onSchemePointerUp(event) {
     const pointer = schemePointer
     if (!pointer || (event.pointerId ?? 1) !== pointer.pointerId) return
-    const commit = pointer.dragging && schemePointerProgress(event) >= .5
+    if (pointer.dragging) pointer.progress = schemePointerProgress(event)
+    const commit = pointer.dragging && schemePointerProgress(event) >= SCHEME_COMMIT_PROGRESS
     settleSchemePointer({ commit })
   }
 
   function cancelSchemePointer() {
     const pointer = schemePointer
     if (!pointer) return
+    if (pointer.frame !== undefined) window.cancelAnimationFrame(pointer.frame)
     if (pointer.dragging) {
       try { pointer.gesture?.cancel?.() } catch {}
     }
@@ -353,7 +375,7 @@ export function createOperationsShell({
     const overlay = railMode === 'overlay'
     const open = overlay && root.hasAttribute('data-prts-rail-open')
     railLauncher.setAttribute('aria-expanded', String(open))
-    const closedLabel = phoneRailGesture() ? '长按并向下滑动打开 P.R.T.S. 导航' : '打开 P.R.T.S. 导航'
+    const closedLabel = phoneRailGesture() ? '打开 P.R.T.S. 导航（触摸时长按并下滑）' : '打开 P.R.T.S. 导航'
     railLauncher.setAttribute('aria-label', open ? '关闭 P.R.T.S. 导航' : closedLabel)
     if (overlay && !open) {
       navRail.setAttribute('aria-hidden', 'true')
@@ -418,12 +440,16 @@ export function createOperationsShell({
   }
 
   function onResponsiveChange() {
+    railInputType = undefined
     clearRailGesture()
     setRailViewport(window.innerWidth)
     syncRailState()
   }
 
+  let railPhoneQuery
   function bindResponsiveQueries() {
+    railPhoneQuery = window.matchMedia?.('(max-width: 640px)')
+    railPhoneQuery?.addEventListener?.('change', onResponsiveChange)
     railViewportQuery = window.matchMedia?.('(min-width: 1180px)')
     railPointerQuery = window.matchMedia?.('(pointer: coarse)')
     railHoverQuery = window.matchMedia?.('(hover: none)')
@@ -507,6 +533,9 @@ export function createOperationsShell({
     schemeToggle?.removeEventListener('lostpointercapture', onSchemeLostPointerCapture)
     window.removeEventListener?.('blur', cancelSchemePointer)
     themeDisable?.removeEventListener('click', disableTheme)
+    railPhoneQuery?.removeEventListener?.('change', onResponsiveChange)
+    railPhoneQuery = undefined
+    railInputType = undefined
     railViewportQuery?.removeEventListener?.('change', onResponsiveChange)
     railPointerQuery?.removeEventListener?.('change', onResponsiveChange)
     railHoverQuery?.removeEventListener?.('change', onResponsiveChange)

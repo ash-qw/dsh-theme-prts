@@ -110,13 +110,15 @@ test('mounts the shell without an operator dossier and restores the host', async
 
   schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointerdown', { clientX: 30, clientY: 50, button: 0, bubbles: true }))
   schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointermove', { clientX: 500, clientY: 52, buttons: 1, bubbles: true, cancelable: true }))
+  schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointermove', { clientX: 540, clientY: 52, buttons: 1, bubbles: true }))
+  assert.equal(schemeDrags[0].updates.length, 0, 'moves are queued until a frame or release')
   schemeToggle.dispatchEvent(new dom.window.MouseEvent('pointerup', { clientX: 500, clientY: 52, button: 0, bubbles: true }))
   await new Promise(resolve => dom.window.setTimeout(resolve, 25))
   schemeToggle.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, detail: 1 }))
   assert.equal(schemeDrags.length, 1)
   assert.equal(schemeDrags[0].current, 'light')
   assert.deepEqual(schemeDrags[0].interaction.origin, { x: 30, y: 50 })
-  assert.equal(schemeDrags[0].updates.at(-1), .625)
+  assert.deepEqual(schemeDrags[0].updates, [.625], 'release flushes the final coordinate and cancels the pending frame')
   assert.deepEqual(schemeDrags[0].commits, [true])
   assert.deepEqual(schemeToggles, ['light'])
 
@@ -260,13 +262,22 @@ test('requires a held downward swipe on coarse phones while preserving keyboard 
       detail,
     })
     Object.defineProperty(event, 'pointerId', { value: 7 })
+    Object.defineProperty(event, 'pointerType', { value: 'touch' })
     return event
   }
 
-  assert.equal(launcher.getAttribute('aria-label'), '长按并向下滑动打开 P.R.T.S. 导航')
+  assert.equal(launcher.getAttribute('aria-label'), '打开 P.R.T.S. 导航（触摸时长按并下滑）')
   launcher.dispatchEvent(pointer('click', { detail: 1 }))
   assert.equal(root.hasAttribute('data-prts-rail-open'), false, 'a coarse pointer tap is ignored')
 
+  launcher.dispatchEvent(pointer('pointerdown'))
+  launcher.dispatchEvent(pointer('pointercancel'))
+  const mouseDown = new dom.window.MouseEvent('pointerdown', { bubbles: true, button: 0 })
+  Object.defineProperty(mouseDown, 'pointerType', { value: 'mouse' })
+  launcher.dispatchEvent(mouseDown)
+  launcher.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, detail: 1 }))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), true, 'cancelled touch does not block a subsequent mouse click')
+  document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   launcher.dispatchEvent(pointer('pointerdown'))
   launcher.dispatchEvent(pointer('pointermove', { y: 309 }))
   assert.equal(launcher.hasAttribute('data-prts-rail-gesture-active'), false, 'movement before the hold threshold cancels recognition')
@@ -278,6 +289,8 @@ test('requires a held downward swipe on coarse phones while preserving keyboard 
   assert.equal(launcher.hasAttribute('data-prts-rail-gesture-ready'), true)
   launcher.dispatchEvent(pointer('pointerup', { y: 332 }))
   assert.equal(root.hasAttribute('data-prts-rail-open'), true)
+  launcher.dispatchEvent(pointer('click', { detail: 1 }))
+  assert.equal(root.hasAttribute('data-prts-rail-open'), true, 'touch compatibility click must not close the rail')
   assert.equal(launcher.hasAttribute('data-prts-rail-gesture-active'), false)
 
   document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
@@ -318,4 +331,25 @@ test('leaves foreign details content and host sidebar geometry under host contro
   assert.equal(frame.style.gridTemplateColumns, '280px minmax(0px, 1fr) 320px')
   assert.equal(detailsRegion.style.width, '320px')
   assert.equal(detailsSlot.firstElementChild, foreignPanel)
+})
+
+for (const width of [520,640,641]) test('mouse and keyboard open narrow navigation on touch-capable hardware at '+width, t => {
+ const dom=new JSDOM(fixture,{url:'http://localhost/',pretendToBeVisual:true})
+ t.after(()=>dom.window.close())
+ Object.defineProperty(dom.window,'innerWidth',{value:width,configurable:true})
+ Object.defineProperty(dom.window.navigator,'maxTouchPoints',{value:10})
+ dom.window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}})
+ const document=dom.window.document
+ const shell=createOperationsShell({document,window:dom.window,adapter:createRc7Adapter({document})})
+ t.after(()=>shell.dispose())
+ shell.update(enabled,status)
+ const launcher=document.querySelector('[data-prts-rail-launcher]')
+ const down=new dom.window.MouseEvent('pointerdown',{bubbles:true,button:0})
+ Object.defineProperty(down,'pointerType',{value:'mouse'})
+ launcher.dispatchEvent(down)
+ launcher.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,detail:1}))
+ assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'),true)
+ document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}))
+ launcher.click()
+ assert.equal(document.documentElement.hasAttribute('data-prts-rail-open'),true)
 })
