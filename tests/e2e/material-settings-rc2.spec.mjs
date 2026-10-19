@@ -68,24 +68,34 @@ test('native settings save background material and Baker loading through the hos
       left: row.getBoundingClientRect().left,
       height: row.getBoundingClientRect().height,
       dialRight: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().right,
-      detailLeft: row.querySelector('[data-prts-opacity-detail]').getBoundingClientRect().left,
+      dialTop: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().top,
       previewLeft: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().left,
-      labelLeft: row.querySelector('strong').getBoundingClientRect().left,
+      previewWidth: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().width,
+      previewHeight: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().height,
+      labelBottom: row.querySelector('strong').getBoundingClientRect().bottom,
     })),
   }))
   expect(opacityLayout.width).toBeLessThanOrEqual(420)
   expect(await page.locator('[data-prts-opacity-settings]').evaluate(fieldset => fieldset.getBoundingClientRect().width)).toBeLessThanOrEqual(420)
   expect(opacityLayout.columns).toBe(1)
-  expect(opacityLayout.dialWidth).toBe(88)
+  expect(opacityLayout.dialWidth).toBe(96)
   expect(opacityLayout.rows).toHaveLength(3)
   expect(opacityLayout.rows.map(row => row.left)).toEqual([opacityLayout.rows[0].left, opacityLayout.rows[0].left, opacityLayout.rows[0].left])
   expect(opacityLayout.rows[0].top).toBeLessThan(opacityLayout.rows[1].top)
   expect(opacityLayout.rows[1].top).toBeLessThan(opacityLayout.rows[2].top)
   for (const row of opacityLayout.rows) {
-    expect(row.height).toBeLessThanOrEqual(112)
-    expect(row.detailLeft).toBeGreaterThan(row.dialRight)
-    expect(row.previewLeft).toBeGreaterThan(row.labelLeft)
+    expect(row.height).toBeLessThanOrEqual(151)
+    expect(row.labelBottom).toBeLessThan(row.dialTop)
+    expect(row.previewLeft).toBeGreaterThan(row.dialRight)
+    expect(row.previewWidth).toBe(196)
+    expect(row.previewHeight).toBe(84)
   }
+  const reset = page.locator('[data-prts-opacity-control="railOpacity"] [data-prts-opacity-reset]')
+  await expect(reset).toHaveText('恢复')
+  await expect(reset).toHaveAttribute('aria-label', '恢复设置侧栏透明度到 70%')
+  await reset.hover()
+  await expect.poll(() => reset.evaluate(button => getComputedStyle(button, '::after').opacity)).toBe('1')
+  expect(await reset.evaluate(button => getComputedStyle(button, '::after').content)).toContain('恢复到 70%')
   const dial = page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')
   await dial.fill('82')
   await dial.press('Tab')
@@ -96,6 +106,9 @@ test('native settings save background material and Baker loading through the hos
   await page.locator('[data-prts-rail-brand]').click()
   await page.locator('[data-prts-settings-jump="background"]').click()
   await expect(page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')).toHaveValue('82')
+  await page.locator('[data-prts-opacity-control="railOpacity"] [data-prts-opacity-reset]').click()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('prtsFixtureNativeConfig')).value.railOpacity)).toBe(.3)
+  await expect(page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')).toHaveValue('70')
   await page.locator('[data-prts-settings-jump="appearance"]').click()
   await expect(loading).toHaveAttribute('aria-checked', 'true')
   const bakerRow = await page.locator('[data-prts-setting-row="bakerGroupAvatars"]').evaluate(row => {
@@ -114,7 +127,7 @@ test('native settings save background material and Baker loading through the hos
   expect(narrowGrid.width).toBeLessThanOrEqual(420)
   expect(narrowGrid.columns).toBe(1)
   expect(narrowGrid.overflow).toBe(0)
-  expect(narrowGrid.dialWidth).toBe(80)
+  expect(narrowGrid.dialWidth).toBe(88)
   const composerRow = await page.locator('[data-prts-composer-glass-setting] [data-prts-setting-row]').evaluate(row => {
     const label = row.querySelector('span').getBoundingClientRect()
     const toggle = row.querySelector('button').getBoundingClientRect()

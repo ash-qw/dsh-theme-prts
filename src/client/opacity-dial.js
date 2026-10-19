@@ -18,8 +18,11 @@ export function opacityDialMarkup() {
       : key === 'classicUserOpacity' ? '<span>这是我发送的消息</span><i></i>'
         : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'
     return `<div data-prts-opacity-control="${key}">
+      <strong>${label}</strong>
       <div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div>
-      <div data-prts-opacity-detail><strong>${label}</strong><button type="button" data-prts-opacity-reset>恢复 ${value}%</button><small data-prts-opacity-note></small><div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${sample}</div></div></div>
+      <button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%">恢复</button>
+      <div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${sample}</div></div>
+      <small data-prts-opacity-note></small>
     </div>`
   }).join('')
   return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度</legend><small>数值越高越透明。拖动圆环或输入百分比，松手后保存。</small><div data-prts-opacity-grid>${controls}</div></fieldset>`
