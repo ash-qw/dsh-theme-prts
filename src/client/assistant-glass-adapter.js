@@ -106,6 +106,36 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   let observationRoot
   let groupAvatars = true
   let avatarsDirty = true
+  let loadingTransitions = false
+  const streamingSteps = new Set()
+  const revealAnimations = new Map()
+  function cancelReveal(step) {
+    const animations = revealAnimations.get(step)
+    revealAnimations.delete(step)
+    for (const animation of animations ?? []) animation.cancel()
+  }
+  function revealResponse(step, surface) {
+    cancelReveal(step)
+    if (!loadingTransitions || !surface?.animate || !surface.isConnected
+      || document.documentElement.getAttribute('data-prts-motion') === 'reduced'
+      || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      || step.closest('[hidden], [data-turn-process-hidden="true"]')) return
+    const bounds = surface.getBoundingClientRect()
+    if (!bounds.width || !bounds.height) return
+    const animations = [surface.animate([
+      { width: '78px', height: '42px', overflow: 'clip' },
+      { width: `${bounds.width}px`, height: `${bounds.height}px`, overflow: 'clip' },
+    ], { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' })]
+    for (const child of surface.children) {
+      if (!child.animate) continue
+      animations.push(child.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: 160, delay: 80, fill: 'backwards', easing: 'ease-out' }))
+    }
+    revealAnimations.set(step, animations)
+    void Promise.all(animations.map(animation => animation.finished)).catch(() => {}).then(() => {
+      if (revealAnimations.get(step) === animations) revealAnimations.delete(step)
+    })
+  }
   const avatarSteps = new Set()
   const emptySteps = new Set()
   function refreshAvatars() {
@@ -210,6 +240,8 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   function releaseStep(step) {
+    streamingSteps.delete(step)
+    cancelReveal(step)
     const previousSurface = stepSurfaces.get(step)
     stepSurfaces.delete(step)
     ownedSteps.delete(step)
@@ -241,6 +273,13 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
     surface.setAttribute(ASSISTANT_SURFACE_ATTRIBUTE, kind)
     ownedSurfaces.add(surface)
     stepSurfaces.set(step, surface)
+    const streaming = surface.parentElement?.hasAttribute('data-streaming') === true
+    const wasStreaming = streamingSteps.has(step)
+    if (streaming) { streamingSteps.add(step); cancelReveal(step) }
+    else {
+      streamingSteps.delete(step)
+      if (wasStreaming) revealResponse(step, surface)
+    }
   }
 
   function scan() {
@@ -301,7 +340,9 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   return {
-    start({ groupAvatars: enabled = true } = {}) {
+    start({ groupAvatars: enabled = true, loading = false } = {}) {
+      loadingTransitions = loading
+      if (!loading) for (const step of [...revealAnimations.keys()]) cancelReveal(step)
       if (!document) return
       if (groupAvatars !== enabled) {
         groupAvatars = enabled
@@ -324,7 +365,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot', 'data-chat-turn', 'hidden', 'data-turn-process-hidden', 'data-turn-process-member', 'data-turn-process-answer'],
+        attributeFilter: ['data-streaming', 'class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot', 'data-chat-turn', 'hidden', 'data-turn-process-hidden', 'data-turn-process-member', 'data-turn-process-answer'],
       })
     },
     dispose() {
@@ -335,6 +376,8 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         else window?.clearTimeout?.(scanFrame)
       }
       scanFrame = undefined
+      for (const step of [...revealAnimations.keys()]) cancelReveal(step)
+      streamingSteps.clear()
       removeMarkers()
       for (const step of avatarSteps) step.removeAttribute('data-prts-avatar-hidden')
       avatarSteps.clear()

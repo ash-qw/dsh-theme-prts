@@ -24,6 +24,17 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   glass: 'standard',
   motion: 'system',
   bootAnimation: true,
+  composerGlass: false,
+  backgroundMode: 'off',
+  backgroundDim: .45,
+  sidebarOpacity: .06,
+  railOpacity: .3,
+  bakerOpacity: .5,
+  classicUserOpacity: .5,
+  sidebarBlur: 8,
+  railBlur: 12,
+  bakerBlur: 8,
+  classicUserBlur: 8,
   cursor: 'prts',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
@@ -48,6 +59,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   sessionFlowSpeed: SESSION_FLOW_SPEED_DEFAULT,
   conversationStyle: 'native',
   bakerGroupAvatars: true,
+  bakerLoading: false,
   conversationEmblem: true,
 })
 
@@ -85,12 +97,12 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
   precise: Object.freeze({ conversationParticleDensity: 'dense', heroParticleDensity: 'ultra' }),
 })
 export const PREFERENCE_GROUPS = Object.freeze({
-  background: Object.freeze(['texture']),
+  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity', 'sidebarBlur', 'railBlur', 'bakerBlur', 'classicUserBlur']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
-  material: Object.freeze(['glass']),
+  material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
   navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
-  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'conversationEmblem']),
+  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -132,6 +144,12 @@ function enumOr(value, allowed, fallback) {
 
 function colorOr(value, fallback) {
   return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value.toLowerCase() : fallback
+}
+
+function materialBlurOr(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(32, Math.max(0, Math.round(value)))
+    : fallback
 }
 
 function particleTraversalSpeedOr(value, fallback) {
@@ -189,6 +207,18 @@ export function normalizePreferences(value) {
     texture: enumOr(input.texture, TEXTURES, DEFAULT_PREFERENCES.texture),
     glass: normalizeGlass(input),
     motion: input.motion === 'full' ? 'system' : enumOr(input.motion, MOTIONS, DEFAULT_PREFERENCES.motion),
+    bakerLoading: input.bakerLoading === true,
+    backgroundMode: ['off', 'split', 'full'].includes(input.backgroundMode) ? input.backgroundMode : 'off',
+    sidebarOpacity: typeof input.sidebarOpacity === 'number' && Number.isFinite(input.sidebarOpacity) ? Math.min(1, Math.max(0, input.sidebarOpacity)) : .06,
+    railOpacity: typeof input.railOpacity === 'number' && Number.isFinite(input.railOpacity) ? Math.min(1, Math.max(0, input.railOpacity)) : .3,
+    bakerOpacity: typeof input.bakerOpacity === 'number' && Number.isFinite(input.bakerOpacity) ? Math.min(1, Math.max(0, input.bakerOpacity)) : .5,
+    classicUserOpacity: typeof input.classicUserOpacity === 'number' && Number.isFinite(input.classicUserOpacity) ? Math.min(1, Math.max(0, input.classicUserOpacity)) : .5,
+    sidebarBlur: materialBlurOr(input.sidebarBlur, DEFAULT_PREFERENCES.sidebarBlur),
+    railBlur: materialBlurOr(input.railBlur, DEFAULT_PREFERENCES.railBlur),
+    bakerBlur: materialBlurOr(input.bakerBlur, DEFAULT_PREFERENCES.bakerBlur),
+    classicUserBlur: materialBlurOr(input.classicUserBlur, DEFAULT_PREFERENCES.classicUserBlur),
+    backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
+    composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),
     cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),

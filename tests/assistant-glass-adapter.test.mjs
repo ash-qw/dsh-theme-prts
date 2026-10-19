@@ -369,3 +369,25 @@ test('an empty streaming step does not consume the avatar before it has content'
   assert.equal(document.querySelector('#answer').hasAttribute('data-prts-avatar-hidden'),true)
   adapter.dispose();dom.window.close()
 })
+
+test('reveals only a previously streaming response and cancels animations on disable', async () => {
+  const dom = domWith('<div data-chat-flow-kind="assistant-step"><div data-streaming><div class="test_body"><p data-markdown>正文</p></div></div></div>')
+  const {document} = dom.window
+  const calls = []
+  dom.window.Element.prototype.animate = function (frames, options) {
+    const record = { frames, options, cancelled: false, finished: new Promise(()=>{}), cancel(){this.cancelled=true} }
+    calls.push(record);return record
+  }
+  const body = document.querySelector('.test_body')
+  body.getBoundingClientRect = () => ({width:320,height:140})
+  const adapter = createAssistantGlassAdapter({document,window:dom.window})
+  adapter.start({loading:true})
+  assert.equal(calls.length,0)
+  document.querySelector('[data-streaming]').removeAttribute('data-streaming')
+  await flush(dom.window)
+  assert.equal(calls.length,2)
+  assert.equal(calls[0].frames[1].height,'140px')
+  adapter.start({loading:false})
+  assert.ok(calls.every(call=>call.cancelled))
+  adapter.dispose();dom.window.close()
+})

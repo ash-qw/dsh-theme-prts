@@ -69,6 +69,17 @@ test('loads and migrates a complete version-one payload without losing independe
     glass: 'clear',
     motion: 'system',
     bootAnimation: true,
+    composerGlass: false,
+    backgroundMode: 'off',
+    backgroundDim: .45,
+    sidebarOpacity: .06,
+    railOpacity: .3,
+    bakerOpacity: .5,
+    classicUserOpacity: .5,
+    sidebarBlur: 8,
+    railBlur: 12,
+    bakerBlur: 8,
+    classicUserBlur: 8,
     cursor: 'prts',
     conversationParticleDensity: 'standard',
     heroParticleDensity: 'dense',
@@ -84,6 +95,7 @@ test('loads and migrates a complete version-one payload without losing independe
     sessionFlowSpeed: 1,
     conversationStyle: 'native',
     bakerGroupAvatars: true,
+    bakerLoading: false,
     conversationEmblem: true,
     sessionPreview: true,
     previewOngoing: true,
@@ -334,4 +346,11 @@ test('preview reply limits default to five and accept finite presets or unlimite
   for(const [input,expected] of [[undefined,5],[null,5],['5',5],[10,10],[0,0],['0',0],[-1,5],[500,5]]) {
     assert.equal(api.normalizePreferences({previewReplyLimit:input}).previewReplyLimit,expected)
   }
+})
+
+test('Baker loading is opt-in and persists independently of conversation theme', () => {
+  assert.equal(api.normalizePreferences({}).bakerLoading, false)
+  assert.equal(api.normalizePreferences({ bakerLoading: true, conversationStyle: 'deck-chat' }).bakerLoading, true)
+  assert.equal(api.normalizePreferences({ bakerLoading: true, conversationStyle: 'native' }).bakerLoading, true)
+  assert.equal(api.normalizePreferences({ bakerLoading: 'true' }).bakerLoading, false)
 })

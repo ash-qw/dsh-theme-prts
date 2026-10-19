@@ -1,3 +1,4 @@
+import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
 import { customEmblemMarkup, mountCustomEmblemEditor } from './custom-emblem.js'
 import { PARTICLE_TRAVERSAL_SPEED_DEFAULT, PARTICLE_TRAVERSAL_SPEED_MAX, PARTICLE_TRAVERSAL_SPEED_MIN, PARTICLE_TRAVERSAL_SPEED_STEP, SESSION_FLOW_SPEED_DEFAULT, SESSION_FLOW_SPEED_MAX, SESSION_FLOW_SPEED_MIN, SESSION_FLOW_SPEED_STEP, resolveParticleDetail } from './preferences.js'
@@ -37,7 +38,11 @@ function previewSetting(key, label, description) {
 }
 
 function settingButtons(key, label, options) {
-  const note = key === 'motion'
+  const note = key === 'composerGlass'
+      ? '<small data-prts-setting-note>增强输入框的背景模糊与轻微折射，关闭时使用原有材质</small>'
+      : key === 'bakerLoading'
+      ? '<small data-prts-setting-note>每轮正文生成时显示三点动画，完成后显示全文；中断时保留已收到的内容</small>'
+      : key === 'motion'
       ? '<small data-prts-setting-note>关闭后减少装饰动效，保留运行状态等必要反馈</small><small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
       : key === 'railDefaultHidden'
         ? '<small data-prts-setting-note>在任意窗口宽度下默认收起 P.R.T.S. 导航，可从左侧按钮临时展开</small>'
@@ -54,7 +59,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -116,7 +121,8 @@ export function themeSettingsMarkup() {
         <div data-prts-settings-body>
         <div data-prts-settings-sidebar>
         <nav data-prts-settings-nav role="tablist" aria-label="设置分区">
-          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话外观</button>
+          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话主题</button>
+          <button type="button" data-prts-settings-jump="background" role="tab" id="prts-tab-background" aria-controls="prts-page-background" aria-selected="false" tabindex="-1">会话背景</button>
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子徽记</button>
@@ -124,7 +130,7 @@ export function themeSettingsMarkup() {
         </nav>
           <footer data-prts-settings-actions aria-label="全局主题设置操作">
             <div data-prts-persistence-error hidden role="alert">
-              <span><strong>仅本次会话生效</strong><small>无法写入本地设置，当前视觉效果仍会保留。</small></span>
+              <span><strong>设置未保存</strong><small>未能保存到 DSH，可能存在连接中断、配置冲突或当前访问不支持持久保存。重试将重新提交本次修改。</small></span>
               <button type="button" data-prts-retry-save>重试保存</button>
             </div>
             <div data-prts-reset-zone>
@@ -148,8 +154,13 @@ export function themeSettingsMarkup() {
             </div>
             <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
-            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}</div>
+            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}</div>
           </section>
+          </section>
+          <section data-prts-settings-section="background" role="tabpanel" id="prts-page-background" aria-labelledby="prts-tab-background" tabindex="0" hidden>
+            ${backgroundMarkup()}
+            <div data-prts-composer-glass-setting>${settingButtons('composerGlass', '输入框增强毛玻璃', [])}</div>
+            <small data-prts-composer-glass-required hidden>自定义背景下，输入框增强毛玻璃始终开启。</small>
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
@@ -222,7 +233,7 @@ export function createThemeSettingsOverlay({
   trigger,
   panel,
   backdrop,
-  customEmblemStore, avatarStore,
+  customEmblemStore, avatarStore, backgroundStore,
   onOpen = () => {},
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
@@ -230,6 +241,7 @@ export function createThemeSettingsOverlay({
   onRetrySave = () => {},
 }) {
   const window = document?.defaultView
+  const backgroundEditor = mountBackgroundSettings({panel,window,store:backgroundStore,onChange:onPreferenceChange})
   const avatarEditor = mountAvatarSettings({panel,window,store:avatarStore})
   const customEditor = mountCustomEmblemEditor({ panel, window, store: customEmblemStore })
   const transparencyMedia = window?.matchMedia?.('(prefers-reduced-transparency: reduce)')
@@ -474,8 +486,8 @@ export function createThemeSettingsOverlay({
     if (phase === 'saved' && revision === renderedPersistenceRevision) return
     if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)
     savedTimer = undefined
-    status.hidden = phase !== 'saved'
-    status.textContent = phase === 'saved' ? '已保存' : ''
+    status.hidden = phase !== 'saved' && phase !== 'saving'
+    status.textContent = phase === 'saved' ? '已保存' : phase === 'saving' ? '正在保存…' : ''
     if (phase === 'saved') {
       renderedPersistenceRevision = revision
       savedTimer = window?.setTimeout?.(() => { status.hidden = true; savedTimer = undefined }, reducedMotion() ? 500 : 1200)
@@ -707,6 +719,10 @@ export function createThemeSettingsOverlay({
       panel.querySelector('[data-prts-classic-options]').hidden = preferences?.conversationStyle === 'deck-chat'
       panel.querySelector('[data-prts-baker-options]').hidden = preferences?.conversationStyle !== 'deck-chat'
       panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
+      const customBackground = preferences.backgroundMode !== 'off'
+      panel.querySelector('[data-prts-composer-glass-setting]').hidden = customBackground
+      panel.querySelector('[data-prts-composer-glass-required]').hidden = !customBackground
+      backgroundEditor.update(preferences)
       currentPreferences = preferences
       currentStatus = status
       currentPersistence = persistenceState ?? { phase: 'idle', revision: 0 }
@@ -723,6 +739,7 @@ export function createThemeSettingsOverlay({
     dispose() {
       customEditor.dispose()
       avatarEditor.dispose()
+      backgroundEditor.dispose()
       isOpen = false
       hidePanel()
       if (savedTimer !== undefined) window?.clearTimeout?.(savedTimer)

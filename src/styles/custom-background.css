@@ -1,0 +1,326 @@
+/* Full mode uses one viewport-aligned image, so the two regions never crop independently. */
+html[data-dsh-prts] { --prts-background-wash: color-mix(in srgb, var(--prts-canvas) var(--prts-background-shade, 45%), transparent); }
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="frame"], [data-prts-nav-rail]) {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-full) center / cover fixed;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-sidebar) center / cover no-repeat;
+}
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] [data-prts-region="operation"] {
+  background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-conversation) center / cover no-repeat;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-ambient-layer],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] [data-prts-ambient-layer] { display: none !important; }
+[data-prts-background-settings] { display: grid; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--prts-line); }
+[data-prts-background-settings] header { display: grid; gap: 6px; }
+[data-prts-background-settings] small, [data-prts-background-status] { color: var(--prts-muted); font-size: 12px; line-height: 1.6; }
+[data-prts-background-modes] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+[data-prts-background-modes] button { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--prts-line); border-radius: 8px; background: transparent; color: var(--prts-ink); text-align: left; cursor: pointer; }
+[data-prts-background-modes] button strong { display: block; font-size: 13px; margin-bottom: 3px; }
+[data-prts-background-modes] button small { font-size: 11px; }
+[data-prts-background-modes] button[aria-pressed="true"] { border-color: var(--prts-cyan); background: color-mix(in srgb, var(--prts-cyan) 8%, transparent); box-shadow: inset 0 0 0 1px var(--prts-cyan); }
+[data-prts-background-diagram] { display: flex; gap: 3px; width: 44px; height: 26px; padding: 3px; border: 1px solid var(--prts-muted); border-radius: 4px; }
+[data-prts-background-diagram] i { background: var(--prts-muted); opacity: .35; border-radius: 1px; flex: 1; }
+[data-prts-background-diagram] i:first-child { flex: 0 0 28%; }
+[data-prts-background-diagram="split"] i { background: var(--prts-cyan); opacity: .6; }
+[data-prts-background-diagram="split"] i:first-child { opacity: .25; }
+[data-prts-background-diagram="full"] { background: color-mix(in srgb, var(--prts-cyan) 25%, transparent); }
+[data-prts-background-diagram="full"] i { background: transparent; }
+[data-prts-background-images] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+[data-prts-background-card="full"] { grid-column: 1 / -1; }
+[data-prts-background-card-heading] { display: flex; justify-content: space-between; align-items: center; min-height: 30px; margin-bottom: 6px; font-size: 13px; }
+[data-prts-background-upload] { position: relative; display: grid; place-items: center; width: 100%; height: 120px; padding: 0; border: 1px dashed var(--prts-line); border-radius: 8px; color: var(--prts-muted); background: var(--prts-panel); overflow: hidden; cursor: pointer; }
+[data-prts-background-card="full"] [data-prts-background-upload] { height: 155px; }
+[data-prts-background-upload][data-has-image] { border-style: solid; }
+[data-prts-background-upload]:hover { border-color: var(--prts-cyan); color: var(--prts-ink); }
+[data-prts-background-thumbnail] { position: absolute; inset: 0; background: center / cover no-repeat; }
+[data-prts-background-caption] { position: relative; padding: 6px 12px; border-radius: 5px; font-size: 12px; }
+[data-has-image] [data-prts-background-caption] { align-self: end; justify-self: end; margin: 8px; background: var(--prts-panel); color: var(--prts-ink); box-shadow: 0 1px 5px #0003; }
+[data-prts-background-remove] { padding: 4px 8px; background: transparent; color: var(--prts-muted); border: 0; border-radius: 4px; font-size: 12px; cursor: pointer; }
+[data-prts-background-remove]:hover { color: var(--prts-red); background: color-mix(in srgb, var(--prts-red) 8%, transparent); }
+[data-prts-background-shade] { display: grid; gap: 8px; font-size: 13px; padding-top: 14px; border-top: 1px solid var(--prts-line); }
+[data-prts-background-shade] > span { display: flex; justify-content: space-between; }
+[data-prts-background-shade] output { color: var(--prts-muted); font-variant-numeric: tabular-nums; }
+[data-prts-background-shade] input { width: 100%; accent-color: var(--prts-cyan); }
+[data-prts-background-status] { margin: 0; }
+[data-prts-background-status]:empty { display: none; }
+[data-prts-background-settings] button:focus-visible { outline: 2px solid var(--prts-cyan); outline-offset: 3px; }
+@media (max-width: 600px) {
+  [data-prts-background-modes] button { padding: 8px; }
+  [data-prts-background-modes] button small { display: none; }
+  [data-prts-background-images] { grid-template-columns: 1fr; }
+}
+[data-prts-background-settings] [hidden] { display: none !important; }
+/* Classic conversation roots keep their native surface unless an image is active. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] :is([data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase] { background: transparent !important; }
+/* The native fade ends in a solid sidebar color and would cover a custom image. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"] span[class$="_fade"],
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] [data-slot="sidebar.workspaces"] span[class$="_fade"] { display: none !important; }
+
+/* Paint glass behind sidebar controls, never filter their ancestor: fixed
+ * settings/menus must retain their viewport positioning. The split-mode image
+ * stays on the parent so this surface can blur it as well as the full wallpaper. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"]::before,
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--prts-panel) var(--prts-sidebar-opacity, 6%), transparent);
+  -webkit-backdrop-filter: blur(var(--prts-sidebar-blur, 8px)) saturate(1.15);
+  backdrop-filter: blur(var(--prts-sidebar-blur, 8px)) saturate(1.15);
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
+}
+/* The sidebar slot is display:contents and cannot establish a paint layer.
+ * Raise its actual root so glass never blurs static plugin entries. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-region="sessions"] [data-slot="sidebar"] > :first-child,
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] [data-prts-region="sessions"] [data-slot="sidebar"] > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
+/* The fixed rail already establishes a stacking context. Keep the glass below
+ * every control without changing their positioning or tooltip geometry. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--prts-panel) var(--prts-rail-opacity, 30%), transparent);
+  -webkit-backdrop-filter: blur(var(--prts-rail-blur, 12px)) saturate(1.15);
+  backdrop-filter: blur(var(--prts-rail-blur, 12px)) saturate(1.15);
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
+}
+
+/* Glass rail feedback retains the wallpaper instead of switching to solid black. */
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button {
+  color: var(--prts-muted) !important;
+  border-bottom-color: var(--prts-line);
+  transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--prts-panel-raised) 32%, transparent);
+  color: var(--prts-ink) !important;
+  box-shadow: inset 0 1px rgb(255 255 255 / 15%), inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 10%, transparent);
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:active {
+  background: color-mix(in srgb, var(--prts-panel-raised) 48%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 18%, transparent);
+}
+
+/* Daylight needs a little contrast, rather than another white highlight. */
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--prts-ink) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 16%, transparent);
+}
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] button:active {
+  background: color-mix(in srgb, var(--prts-ink) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prts-ink) 22%, transparent);
+}
+
+/* The solid rail stays dark in both schemes; use the same light feedback
+ * instead of the conversation palette's light-mode ink/surface colors. */
+html[data-dsh-prts]:not([data-prts-background-mode="full"][data-prts-background-full]) [data-prts-nav-rail] button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  background: rgb(255 255 255 / 8%);
+  color: #f3f6f7 !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+}
+html[data-dsh-prts]:not([data-prts-background-mode="full"][data-prts-background-full]) [data-prts-nav-rail] button:active {
+  background: rgb(255 255 255 / 14%);
+  color: #f3f6f7 !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 20%);
+}
+
+/* A dark solid-rail divider is too strong against the daylight wallpaper. */
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail] {
+  border-right-color: color-mix(in srgb, var(--prts-ink) 10%, transparent);
+  box-shadow: none;
+}
+html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail]::before {
+  box-shadow: inset 0 1px rgb(255 255 255 / 8%);
+}
+
+/* Baker keeps its game palette; only a real conversation wallpaper enables glass. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"]:is(
+  [data-prts-background-mode="full"][data-prts-background-full],
+  [data-prts-background-mode="split"][data-prts-background-conversation]
+) {
+  --prts-chat-user-surface: rgb(239 239 237 / var(--prts-baker-opacity, 50%));
+  --prts-chat-assistant-surface: rgb(69 70 68 / var(--prts-baker-opacity, 50%));
+  &[data-prts-scheme="light"] {
+    --prts-chat-user-surface: rgb(255 255 255 / var(--prts-baker-opacity, 50%));
+    --prts-chat-assistant-surface: rgb(223 227 223 / var(--prts-baker-opacity, 50%));
+  }
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"],
+  & :is([data-prts-ai-surface], [data-message-role="user"], [data-message-role="assistant"]),
+  & [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)) {
+    -webkit-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+    backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+  }
+  & [data-prts-ai-surface]::before,
+  & [data-message-role="assistant"]::after,
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]::before,
+  & [data-message-role="user"]::before {
+    -webkit-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+    backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+  }
+}
+
+/* Classic user messages share the wallpaper translucency controls with Baker bubbles. */
+html[data-dsh-prts][data-prts-conversation-style="native"]:is(
+  [data-prts-background-mode="full"][data-prts-background-full],
+  [data-prts-background-mode="split"][data-prts-background-conversation]
+) {
+  & [data-message-role="user"],
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] {
+    background: rgb(23 29 33 / var(--prts-classic-user-opacity, 50%)) !important;
+    -webkit-backdrop-filter: blur(var(--prts-classic-user-blur, 8px)) saturate(1.08);
+    backdrop-filter: blur(var(--prts-classic-user-blur, 8px)) saturate(1.08);
+  }
+  &[data-prts-scheme="light"] {
+    & [data-message-role="user"],
+    & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"] {
+      background: rgb(229 234 237 / var(--prts-classic-user-opacity, 50%)) !important;
+    }
+  }
+}
+
+[data-prts-opacity-settings] { min-width: 0; max-width: 420px; margin: 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--prts-line); }
+[data-prts-opacity-settings] legend { padding: 0 8px 0 0; font-size: 13px; font-weight: 600; }
+[data-prts-opacity-grid] { display: grid; grid-template-columns: minmax(0,1fr); max-width: 420px; margin-top: 12px; }
+[data-prts-opacity-control] { display: grid; grid-template-columns: minmax(116px,38%) minmax(0,1fr); grid-template-rows: 26px 96px auto auto; align-items: center; column-gap: 16px; min-width: 0; padding: 10px 0 12px; }
+[data-prts-opacity-control]:not(:first-child):not([hidden]) { border-top: 1px solid var(--prts-line); }
+[data-prts-opacity-control][hidden] { display: none; }
+[data-prts-opacity-heading] { grid-column: 1; grid-row: 1; display: flex; align-self: stretch; align-items: center; justify-content: center; gap: 4px; min-width: 0; }
+[data-prts-opacity-heading] > strong { font-size: 12px; line-height: 1.4; white-space: nowrap; }
+[data-prts-opacity-control] > [data-prts-material-preview] { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+[data-prts-opacity-control] > [data-prts-opacity-note] { grid-column: 1 / -1; grid-row: 4; }
+[data-prts-blur-control] { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: minmax(0, 1fr) 36px 22px; align-items: center; gap: 8px; min-width: 0; margin-top: 6px; }
+[data-prts-blur-control][hidden] { display: none; }
+[data-prts-blur-control] label { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; font-size: 11px; color: var(--prts-muted); }
+[data-prts-blur-control] input { width: 100%; min-width: 0; margin: 0; accent-color: var(--prts-cyan); cursor: pointer; }
+[data-prts-blur-control] output { color: var(--prts-ink); font: 11px/1 var(--prts-mono); text-align: right; font-variant-numeric: tabular-nums; }
+[data-prts-blur-reset] { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--prts-muted); cursor: pointer; }
+[data-prts-blur-reset]:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--prts-cyan) 12%, transparent); color: var(--prts-cyan); }
+[data-prts-blur-reset] svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+[data-prts-opacity-dial] { position: relative; grid-column: 1; grid-row: 2; justify-self: center; width: 96px; aspect-ratio: 1; user-select: none; }
+[data-prts-opacity-dial] svg { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; border-radius: 50%; }
+[data-dragging] [data-prts-opacity-dial] svg { cursor: grabbing; }
+[data-prts-opacity-dial] svg:focus-visible { outline: 2px solid var(--prts-cyan); outline-offset: 2px; }
+[data-prts-opacity-dial] path { fill: none; stroke-width: 5; stroke-linecap: round; }
+[data-dial-track] { stroke: var(--prts-muted); opacity: .25; }
+[data-dial-lit], [data-dial-tail] { stroke: var(--prts-cyan); }
+[data-prts-opacity-dial] [data-dial-tail] { stroke-width: 12; transition: opacity 160ms ease; }
+[data-dial-head] { fill: var(--prts-cyan); }
+[data-prts-opacity-number] { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; align-items: baseline; gap: 1px; }
+[data-prts-opacity-number] input { appearance: textfield; width: 3ch; padding: 3px 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; outline-offset: 2px; background: transparent; color: var(--prts-ink); text-align: center; font: 500 22px/1.2 var(--prts-mono); font-variant-numeric: tabular-nums; }
+[data-prts-opacity-number] input:focus { border-bottom-color: var(--prts-cyan); }
+[data-prts-opacity-number] input::-webkit-inner-spin-button, [data-prts-opacity-number] input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+[data-prts-opacity-number] span { font-size: 11px; color: var(--prts-muted); }
+[data-prts-opacity-reset] { position: relative; display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--prts-muted); cursor: pointer; }
+[data-prts-opacity-reset] svg { display: block; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+[data-prts-opacity-reset]:hover, [data-prts-opacity-reset]:focus-visible { background: color-mix(in srgb, var(--prts-cyan) 12%, transparent); color: var(--prts-cyan); }
+[data-prts-opacity-reset]::after { content: attr(data-prts-opacity-reset-tooltip); position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; padding: 5px 8px; border: 1px solid var(--prts-line); border-radius: 4px; background: var(--prts-panel-raised); color: var(--prts-ink); box-shadow: var(--prts-shadow-glass-overlay); white-space: nowrap; opacity: 0; transform: translateY(-3px); pointer-events: none; transition: opacity 120ms ease, transform 120ms ease; }
+[data-prts-opacity-reset]:hover::after, [data-prts-opacity-reset]:focus-visible::after { opacity: 1; transform: translateY(0); }
+[data-prts-opacity-control] [data-prts-opacity-note] { font-size: 10px; }
+[data-prts-opacity-note]:empty { display: none; }
+html[data-prts-motion="reduced"] [data-prts-opacity-dial] [data-dial-tail] { display: none; }
+@media (prefers-reduced-motion: reduce) { [data-prts-opacity-dial] [data-dial-tail] { display: none; } }
+
+/* Match the two peer modules without boxing one of them in a second surface. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-section="appearance"] > section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-background-settings] {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--prts-line);
+}
+/* SVG outlines are rectangular in Chromium. Draw keyboard focus inside the ring. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-opacity-dial] svg:focus { outline: none !important; box-shadow: none; }
+[data-dial-focus] { fill: none; stroke: var(--prts-cyan); stroke-width: 2; opacity: 0; }
+[data-prts-opacity-dial] svg:focus-visible [data-dial-focus] { opacity: .8; }
+[data-prts-opacity-control][data-dragging] [data-dial-focus] { opacity: 0; }
+[data-prts-material-preview] {
+  position: relative;
+  width: 100%;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid var(--prts-line);
+  border-radius: 6px;
+  background: var(--prts-background-full, linear-gradient(135deg, #8bb6c2, #c7b69c)) center / cover;
+  --prts-preview-surface: var(--prts-panel);
+}
+html[data-prts-background-mode="split"] [data-prts-material-preview="sidebarOpacity"] { background-image: var(--prts-background-sidebar, linear-gradient(135deg, #8bb6c2, #c7b69c)); }
+html[data-prts-background-mode="split"] [data-prts-material-preview="bakerOpacity"] { background-image: var(--prts-background-conversation, linear-gradient(135deg, #8bb6c2, #c7b69c)); }
+html[data-prts-background-mode="split"] [data-prts-material-preview="classicUserOpacity"] { background-image: var(--prts-background-conversation, linear-gradient(135deg, #8bb6c2, #c7b69c)); }
+[data-prts-material-preview]::before { content: ""; position: absolute; inset: 0; background: var(--prts-background-wash); }
+[data-prts-material-preview-surface] { position: absolute; inset: 0; display: grid; align-content: center; gap: 6px; padding: 10px; font-size: 10px; text-align: left; color: var(--prts-ink); background: color-mix(in srgb, var(--prts-preview-surface) var(--prts-sidebar-opacity, 6%), transparent); backdrop-filter: blur(var(--prts-sidebar-blur, 8px)) saturate(1.15); }
+[data-prts-material-preview-surface] i { display: block; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--prts-ink) 18%, transparent); }
+[data-prts-material-preview-surface] i:last-child { width: 65%; }
+[data-prts-material-preview="railOpacity"] [data-prts-material-preview-surface] { inset: 0 auto 0 0; width: 40%; padding: 5px; justify-items: center; gap: 2px; background: color-mix(in srgb, var(--prts-preview-surface) var(--prts-rail-opacity, 30%), transparent); backdrop-filter: blur(var(--prts-rail-blur, 12px)) saturate(1.15); }
+[data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { inset: 16px 10px; border-radius: 0 10px 10px 10px; background: rgb(69 70 68 / var(--prts-baker-opacity, 50%)); backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08); }
+html[data-prts-scheme="light"] [data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { background: rgb(223 227 223 / var(--prts-baker-opacity, 50%)); }
+[data-prts-material-preview="classicUserOpacity"] [data-prts-material-preview-surface] { inset: 16px 10px; border-left: 3px solid var(--prts-yellow); border-radius: var(--prts-radius-card); background: rgb(23 29 33 / var(--prts-classic-user-opacity, 50%)); backdrop-filter: blur(var(--prts-classic-user-blur, 8px)) saturate(1.08); }
+html[data-prts-scheme="light"] [data-prts-material-preview="classicUserOpacity"] [data-prts-material-preview-surface] { background: rgb(229 234 237 / var(--prts-classic-user-opacity, 50%)); }
+@media (max-width: 560px) {
+  [data-prts-opacity-control] { column-gap: 10px; }
+  [data-prts-opacity-heading] { gap: 6px; }
+  [data-prts-opacity-dial] { width: 88px; }
+}
+
+/* Backgrounds now have their own settings page. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-section="background"] > [data-prts-background-settings] { margin: 0; padding: 0; border: 0; }
+html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header { padding: 16px 0 10px; }
+html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header strong { font-size: 13px; color: var(--prts-muted); }
+[data-prts-composer-glass-setting], [data-prts-composer-glass-required] { display: block; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
+[data-prts-composer-glass-required] { font-size: 12px; color: var(--prts-muted); }
+
+/* The native active composer fades into DSH's base color. Baker paints a
+ * different solid backdrop, so match that backdrop while keeping the fade. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"] [data-phase="active"] [data-composer-seat]:not(:has([data-prts-composer-glass-active])) {
+  background: linear-gradient(180deg, transparent 0, var(--prts-chat-dock-surface, var(--prts-chat-backdrop)) 36px) !important;
+}
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"][data-prts-texture="restrained"] {
+  --prts-chat-dock-surface: color-mix(in srgb, var(--prts-chat-backdrop) 82%, var(--prts-canvas));
+}
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"][data-prts-texture="off"] {
+  --prts-chat-dock-surface: color-mix(in srgb, var(--prts-chat-backdrop) 72%, var(--prts-canvas));
+}
+
+/* Native data-streaming disappears for settled and interrupted responses.
+ * Hide only the current response body, never reasoning, tools or earlier rounds. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-baker-loading]
+[data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])
+[data-streaming] > :is([data-prts-ai-surface], [class$="_body"]) {
+  min-width: 78px;
+  width: 78px !important;
+  min-height: 42px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px !important;
+  & > * { display: none !important; }
+  &::after {
+    content: "正在生成回复";
+    font-size: 0;
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    animation: prts-baker-typing 1.2s linear infinite;
+  }
+}
+@keyframes prts-baker-typing {
+  0%, 100% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 currentColor, 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
+  33% { background: currentColor; box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
+  66% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 currentColor; }
+}

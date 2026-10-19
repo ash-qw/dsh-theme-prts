@@ -295,6 +295,31 @@ const fixtureBootstrap = `
   }
   window.__PRTS_FIXTURE_RUNTIME__.theme = harnessTheme
   window.__PRTS_HARNESS_THEME__ = harnessTheme
+  const nativeConfigEnabled = new URLSearchParams(location.search).has('native-forms')
+  const nativeConfigKey = 'prtsFixtureNativeConfig'
+  const nativeConfigListeners = new Set()
+  const nativeConfigStored = nativeConfigEnabled ? JSON.parse(localStorage.getItem(nativeConfigKey) || '{}') : {}
+  let nativeConfigSnapshot = {
+    status: 'ready', writable: true, revision: nativeConfigStored.revision || 1,
+    value: { preferencesInitialized: true, ...(nativeConfigStored.value || {}) },
+  }
+  const nativeConfigForm = {
+    getSnapshot() { return nativeConfigSnapshot },
+    subscribe(listener) { nativeConfigListeners.add(listener); return () => nativeConfigListeners.delete(listener) },
+    async mutate(ops, expectedRevision) {
+      if (expectedRevision !== nativeConfigSnapshot.revision) return false
+      const value = { ...nativeConfigSnapshot.value }
+      for (const op of ops) {
+        if (op.op === 'set' && op.path.length === 1) value[op.path[0]] = op.value
+        else if (op.op === 'unset' && op.path.length === 1) delete value[op.path[0]]
+      }
+      nativeConfigSnapshot = { ...nativeConfigSnapshot, revision: nativeConfigSnapshot.revision + 1, value }
+      localStorage.setItem(nativeConfigKey, JSON.stringify({ revision: nativeConfigSnapshot.revision, value }))
+      for (const listener of nativeConfigListeners) listener()
+      return true
+    },
+  }
+  if (nativeConfigEnabled) window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm = nativeConfigForm
   const ctx = {
     theme: harnessTheme,
     on(name, listener) {
@@ -310,6 +335,9 @@ const fixtureBootstrap = `
     modelDirectories,
     get(name) { return this[name] },
     inject(names, factory) {
+      if (nativeConfigEnabled && Array.isArray(names) && names.includes('configForms')) {
+        return factory({ configForms: { get: () => nativeConfigForm, }, effect: this.effect.bind(this) })
+      }
       if (Array.isArray(names) && names.includes('modelDirectories')) {
         return factory({ modelDirectories })
       }
@@ -353,6 +381,7 @@ const fixtureBootstrap = `
     load(definition) {
       const require = id => {
         if (id === 'react') return React
+        if (id === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) }
         if (id === '@deepseek-ai/dsh-client-store') return runtime
         throw new Error('Unexpected fixture module: ' + id)
       }

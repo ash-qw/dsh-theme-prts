@@ -10,6 +10,11 @@ const css = (await Promise.all([
   readFile(new URL('../src/styles/facility-vector.css', import.meta.url), 'utf8'),
   readFile(new URL('../src/styles/startup-sequence.css', import.meta.url), 'utf8'),
 ])).join('\n')
+const addedCss = (await Promise.all([
+  readFile(new URL('../src/styles/custom-background.css', import.meta.url), 'utf8'),
+  readFile(new URL('../src/styles/cursor.css', import.meta.url), 'utf8'),
+  readFile(new URL('../src/vendor/react-bits/GlassSurface.css', import.meta.url), 'utf8'),
+])).join('\n')
 
 function includesAll(values) {
   for (const value of values) assert.ok(css.includes(value), `missing CSS contract: ${value}`)
@@ -34,7 +39,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css) < 191_000, 'stylesheets including responsive settings, custom avatar cropping and Baker content surfaces and session reply previews with direct-answer controls and Markdown preview layout and grouped preview settings must stay below 191 kB')
+  assert.ok(Buffer.byteLength(css + addedCss) < 230_000, 'theme stylesheets including custom backgrounds and glass surfaces must stay below 230 kB')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
