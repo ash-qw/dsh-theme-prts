@@ -17,8 +17,8 @@ The Baker conversation theme is inspired by the messenger in Arknights: Endfield
 
 ## Compatibility
 
-- Supports DeepSeek Harness `0.2.1-rc.2` on Web, verified on a live local container. The official desktop client has not yet been independently verified for this version. The earlier `0.2.0-rc.2`, `0.1.7`, `0.1.5`, and `0.1.2` release lines are outside the current compatibility declaration.
-- The theme has been checked on a live `0.2.1-rc.2` page for mounting, workspaces and session cards, long-title hover behavior, the native conversation width drag control, and narrow-window layout. Browser regression tests cover session status and pending interaction indicators.
+- Supports DeepSeek Harness `0.2.1-rc.2` on Web and the official desktop client. Web was verified on a live local container; the desktop client received a real-device check with no basic functionality issues found. The earlier `0.2.0-rc.2`, `0.1.7`, `0.1.5`, and `0.1.2` release lines are outside the current compatibility declaration.
+- The theme has been checked on a live Web `0.2.1-rc.2` page for mounting, workspaces and session cards, long-title hover behavior, the native conversation width drag control, and narrow-window layout. Browser regression tests cover session status and pending interaction indicators.
 - `engines.dsh` in `package.json` uses the same exact version for plugin market compatibility checks. Other DSH versions require separate verification.
 - For DSH `0.2.0-rc.2`, pin the previous public theme release `@ash-qw/dsh-theme-prts@1.4.2`. For DSH `0.1.7-rc.2`, pin `1.0.2`. For DSH `0.1.2` or `0.1.5`, pin `0.1.102`.
 
