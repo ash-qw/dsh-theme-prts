@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares only the locally verified dsh 0.2.0-rc.2 client contract', async () => {
+test('declares only the locally verified dsh 0.2.1-rc.2 client contract', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -41,8 +41,9 @@ test('declares only the locally verified dsh 0.2.0-rc.2 client contract', async 
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
     node: '>=20.9.0',
-    dsh: '0.2.0-rc.2',
+    dsh: '0.2.1-rc.2',
   })
+  assert.deepEqual(lock.packages[''].engines, pkg.engines)
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.exports['./client'].default, './lib/client.js')
@@ -64,8 +65,8 @@ test('declares only the locally verified dsh 0.2.0-rc.2 client contract', async 
 
   const readmeZh = await readText('../README.md')
   const readmeEn = await readText('../README.en.md')
-  assert.match(readmeZh, /`0\.2\.0-rc\.2`/)
-  assert.match(readmeEn, /`0\.2\.0-rc\.2`/)
+  assert.match(readmeZh, /`0\.2\.1-rc\.2`/)
+  assert.match(readmeEn, /`0\.2\.1-rc\.2`/)
 })
 
 test('build writes Host and browser module-loader entries', async () => {
