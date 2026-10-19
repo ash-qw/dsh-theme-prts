@@ -1340,20 +1340,26 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   color: var(--prts-ink) !important;
 }
 
-/* Bordered Baker tables need inset cells and a scrollport inside the bubble. */
+/* Baker code cards and tables. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-  [data-prts-ai-surface], [data-message-role="assistant"], [data-message-role="user"],
-  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
+[data-prts-ai-surface], [data-message-role="assistant"], [data-message-role="user"],
+:is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]
 ) {
-  & :is(th,td){padding-inline:14px!important}
-  & :is(.md-table-wide,[class*="_tableScroll_"]){
-    box-sizing:border-box;width:100%;max-width:100%;min-width:0;
-    margin-inline:0!important;padding:0!important;overflow:auto;
-    border:1px solid color-mix(in srgb,var(--prts-cyan) 24%,var(--prts-line));
-    border-radius:10px;corner-shape:round;
-    background:color-mix(in srgb,var(--prts-canvas) 88%,transparent);
-    & > table{border:0;background:transparent;margin:0;width:100%}
-  }
+/* Clip preserves header stickiness. */
+& :has(>[data-code-block-content]){
+box-sizing:border-box;max-width:100%;border:1px solid var(--prts-line);border-left:3px solid var(--prts-cyan);border-radius:12px;overflow:clip;
+& [data-code-block-banner]{border-radius:11px 11px 0 0;background:color-mix(in srgb,var(--prts-ink) 7%,var(--prts-canvas));border-bottom:1px solid var(--prts-line)}
+&>[data-code-block-content] pre{box-sizing:border-box;width:100%;border:0!important;border-radius:0 0 11px 11px;margin:0!important}
+}
+& :is(th,td){padding-inline:14px!important}
+& :is(.md-table-wide,[class*="_tableScroll_"]){
+box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+margin-inline:0!important;padding:0!important;overflow:auto;
+border:1px solid color-mix(in srgb,var(--prts-cyan) 24%,var(--prts-line));
+border-radius:10px;corner-shape:round;
+background:color-mix(in srgb,var(--prts-canvas) 88%,transparent);
+& > table{border:0;background:transparent;margin:0;width:100%}
+}
 }
 
 /* Group process avatars without changing reply alignment or final-answer avatars. */
@@ -1361,10 +1367,10 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-avatar-
 
 /* Baker quote surfaces; classic prose retains the host styling. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind],[data-message-role],[data-prts-ai-surface],[data-submission-echo]) blockquote {
-  border-radius:10px;corner-shape:round;padding:8px 14px;
-  border-inline-start:3px solid var(--prts-cyan)!important;
-  & > :first-child{margin-top:0}
-  & > :last-child{margin-bottom:0}
+border-radius:10px;corner-shape:round;padding:8px 14px;
+border-inline-start:3px solid var(--prts-cyan)!important;
+& > :first-child{margin-top:0}
+& > :last-child{margin-bottom:0}
 }
 
 html[data-dsh-prts] [aria-invalid="true"],

@@ -1,0 +1,35 @@
+import {test,expect} from '@playwright/test'
+for(const width of [1280,390]) for(const scheme of ['light','dark']) test(`Baker code block owns its sticky header and scrolling (${width}, ${scheme})`,async({page})=>{
+  await page.setViewportSize({width,height:900})
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,conversationStyle:'deck-chat'}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await expect(page.locator('html')).toHaveAttribute('data-dsh-prts','')
+  await page.evaluate(scheme=>{
+    document.documentElement.setAttribute('data-prts-scheme',scheme)
+    const host=document.createElement('div');host.dataset.codeTest=''
+    host.style.cssText='position:fixed;inset:20px 10px auto auto;z-index:1000;width:min(520px,calc(100vw - 20px));height:360px;overflow:auto;background:var(--prts-canvas)'
+    host.innerHTML=`<div data-prts-ai-surface style="margin:12px;max-width:calc(100% - 24px)"><div data-markdown><div class="native-code"><div class="native-banner-wrap"><div data-code-block-banner>go <button>复制</button></div></div><div data-code-block-content><pre><code>${Array.from({length:75},(_,i)=>`<span class="line">${i}: long_line_${'abcdefghij'.repeat(14)}</span>`).join('\n')}</code></pre></div></div></div></div><div style="height:360px"></div>`
+    document.body.append(host)
+  },scheme)
+  await page.addStyleTag({content:'.native-code{position:relative;margin:16px 0;background:#1a1a1a;border-radius:12px}.native-banner-wrap{position:sticky;top:0;z-index:6;background:#1a1a1a;border-top-left-radius:12px;border-top-right-radius:12px}[data-code-block-banner]{padding:10px;display:flex;justify-content:space-between}.native-code pre{margin:0;overflow-x:auto;white-space:pre-wrap;padding:16px}.native-code .line{white-space:pre;display:block}'})
+  const block=page.locator('[data-code-test] .native-code'),pre=block.locator('pre'),scroll=page.locator('[data-code-test]')
+  await expect(block).toHaveCSS('overflow','clip')
+  await expect(pre).toHaveCSS('border-left-width','0px')
+  await expect(block.locator('[data-code-block-banner]')).toHaveCSS('border-bottom-width','1px')
+  expect(await block.evaluate(n=>getComputedStyle(n.querySelector('[data-code-block-banner]')).backgroundColor!==getComputedStyle(n.querySelector('pre')).backgroundColor)).toBe(true)
+  await expect(block.locator('.native-banner-wrap')).toHaveCSS('position','sticky')
+  expect(await block.evaluate(n=>n.getBoundingClientRect().right<=n.closest('[data-prts-ai-surface]').getBoundingClientRect().right)).toBe(true)
+  expect(await pre.evaluate(n=>{n.scrollLeft=150;return n.scrollLeft})).toBeGreaterThan(0)
+  await scroll.evaluate(n=>n.scrollTop=180)
+  await expect(block.locator('[data-code-block-banner]')).toHaveCSS('border-top-left-radius','11px')
+  await expect(pre).toHaveCSS('border-bottom-left-radius','11px')
+  await expect(block).toHaveCSS('clip-path','none')
+  const sticky=await block.locator('.native-banner-wrap').boundingBox(),viewport=await scroll.boundingBox()
+  expect(Math.abs(sticky.y-viewport.y)).toBeLessThan(2)
+  await scroll.evaluate(n=>{const block=n.querySelector('.native-code');n.scrollTop=block.offsetTop+block.offsetHeight-25})
+  expect(await block.evaluate(n=>{const r=n.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.bottom+5);return !hit||!n.contains(hit)})).toBe(true)
+  await scroll.evaluate(n=>n.scrollTop=0)
+  await expect(block).toHaveCSS('clip-path','none')
+  await page.evaluate(()=>document.documentElement.setAttribute('data-prts-conversation-style','native'))
+  await expect(block).toHaveCSS('overflow','visible')
+})
