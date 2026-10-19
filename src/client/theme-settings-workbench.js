@@ -154,7 +154,7 @@ export function themeSettingsMarkup() {
             </div>
             <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
-            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}<div data-prts-baker-loading-sample aria-hidden="true"><span></span><small>生成时显示，完成后展开正文</small></div></div>
+            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}</div>
           </section>
           </section>
           <section data-prts-settings-section="background" role="tabpanel" id="prts-page-background" aria-labelledby="prts-tab-background" tabindex="0" hidden>

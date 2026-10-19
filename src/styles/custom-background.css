@@ -271,7 +271,3 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-baker-lo
   33% { background: currentColor; box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
   66% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 currentColor; }
 }
-[data-prts-baker-loading-sample] { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-[data-prts-baker-loading-sample] > span { display: grid; place-items: center; width: 78px; height: 42px; background: var(--prts-chat-assistant-surface); color: var(--prts-ink); border-radius: 0 14px 14px 14px; }
-[data-prts-baker-loading-sample] > span::after { content: ""; width: 4px; height: 4px; border-radius: 1px; animation: prts-baker-typing 1.2s linear infinite; }
-@media (prefers-reduced-motion: reduce) { [data-prts-baker-loading-sample] > span::after { animation: none; background: currentColor; box-shadow: -10px 0 currentColor, 10px 0 currentColor; } }

@@ -29,6 +29,7 @@ test('native settings save background material and Baker loading through the hos
   await page.locator('[data-prts-rail-brand]').click()
   const loading = page.getByRole('switch', { name: '回复完成前显示加载动画' })
   await expect(loading).toBeVisible()
+  await expect(page.locator('[data-prts-baker-loading-sample]')).toHaveCount(0)
   await loading.click()
   await expect(loading).toHaveAttribute('aria-checked', 'true')
   await expect(page.locator('html')).toHaveAttribute('data-prts-baker-loading', '')
