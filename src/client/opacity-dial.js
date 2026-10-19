@@ -2,7 +2,7 @@
 // See src/vendor/react-bits/LICENSE.md and THIRD_PARTY_NOTICES.md.
 export const BACKGROUND_OPACITY_CONTROLS = Object.freeze([
   { key: 'sidebarOpacity', label: '会话列表侧栏', property: '--prts-sidebar-opacity', value: 94 },
-  { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70 },
+  { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70, fullBackgroundOnly: true },
   { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50, theme: 'deck-chat' },
   { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50, theme: 'native' },
 ])
@@ -18,9 +18,8 @@ export function opacityDialMarkup() {
       : key === 'classicUserOpacity' ? '<span>这是我发送的消息</span><i></i>'
         : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'
     return `<div data-prts-opacity-control="${key}">
-      <strong>${label}</strong>
+      <div data-prts-opacity-heading><strong>${label}</strong><button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%">恢复</button></div>
       <div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div>
-      <button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%">恢复</button>
       <div data-prts-material-preview="${key}" aria-hidden="true"><div data-prts-material-preview-surface>${sample}</div></div>
       <small data-prts-opacity-note></small>
     </div>`
@@ -90,7 +89,8 @@ export function mountOpacityDials({ section, window, onChange }) {
     paint(value)
     return {
       update(preferences, active) {
-        container.hidden = Boolean(definition.theme && preferences.conversationStyle !== definition.theme)
+        container.hidden = Boolean((definition.theme && preferences.conversationStyle !== definition.theme)
+          || (definition.fullBackgroundOnly && preferences.backgroundMode !== 'full'))
         saved = 100 - Math.round((preferences[definition.key] ?? (100 - definition.value) / 100) * 100)
         if (!grip && section.ownerDocument.activeElement !== input) paint(saved)
         container.querySelector('[data-prts-opacity-note]').textContent = active ? '' : '当前未启用此材质'

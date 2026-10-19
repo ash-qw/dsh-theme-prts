@@ -69,10 +69,12 @@ test('native settings save background material and Baker loading through the hos
       height: row.getBoundingClientRect().height,
       dialRight: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().right,
       dialTop: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().top,
+      headingBottom: row.querySelector('[data-prts-opacity-heading]').getBoundingClientRect().bottom,
+      resetBottom: row.querySelector('[data-prts-opacity-reset]').getBoundingClientRect().bottom,
+      headingWidth: row.querySelector('[data-prts-opacity-heading]').getBoundingClientRect().width,
       previewLeft: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().left,
       previewWidth: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().width,
       previewHeight: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().height,
-      labelBottom: row.querySelector('strong').getBoundingClientRect().bottom,
     })),
   }))
   expect(opacityLayout.width).toBeLessThanOrEqual(420)
@@ -85,9 +87,10 @@ test('native settings save background material and Baker loading through the hos
   expect(opacityLayout.rows[1].top).toBeLessThan(opacityLayout.rows[2].top)
   for (const row of opacityLayout.rows) {
     expect(row.height).toBeLessThanOrEqual(151)
-    expect(row.labelBottom).toBeLessThan(row.dialTop)
+    expect(row.headingBottom).toBeLessThanOrEqual(row.dialTop)
+    expect(row.resetBottom).toBeLessThanOrEqual(row.dialTop)
     expect(row.previewLeft).toBeGreaterThan(row.dialRight)
-    expect(row.previewWidth).toBe(196)
+    expect(row.previewWidth).toBeCloseTo(row.headingWidth, 0)
     expect(row.previewHeight).toBe(84)
   }
   const reset = page.locator('[data-prts-opacity-control="railOpacity"] [data-prts-opacity-reset]')
@@ -109,6 +112,10 @@ test('native settings save background material and Baker loading through the hos
   await page.locator('[data-prts-opacity-control="railOpacity"] [data-prts-opacity-reset]').click()
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('prtsFixtureNativeConfig')).value.railOpacity)).toBe(.3)
   await expect(page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')).toHaveValue('70')
+  await page.locator('[data-prts-setting-key="backgroundMode"][data-prts-setting-value="split"]').click()
+  await expect(page.locator('[data-prts-opacity-control="railOpacity"]')).toBeHidden()
+  await expect(page.locator('[data-prts-opacity-control="sidebarOpacity"]')).toBeVisible()
+  await expect(page.locator('[data-prts-opacity-control="bakerOpacity"]')).toBeVisible()
   await page.locator('[data-prts-settings-jump="appearance"]').click()
   await expect(loading).toHaveAttribute('aria-checked', 'true')
   const bakerRow = await page.locator('[data-prts-setting-row="bakerGroupAvatars"]').evaluate(row => {
@@ -128,6 +135,7 @@ test('native settings save background material and Baker loading through the hos
   expect(narrowGrid.columns).toBe(1)
   expect(narrowGrid.overflow).toBe(0)
   expect(narrowGrid.dialWidth).toBe(88)
+  await expect(page.locator('[data-prts-opacity-control="railOpacity"]')).toBeHidden()
   const composerRow = await page.locator('[data-prts-composer-glass-setting] [data-prts-setting-row]').evaluate(row => {
     const label = row.querySelector('span').getBoundingClientRect()
     const toggle = row.querySelector('button').getBoundingClientRect()
