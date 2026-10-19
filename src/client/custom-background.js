@@ -18,6 +18,8 @@ export function createBackgroundStore({ window, document }) {
       if (url) root.style.setProperty(`--prts-background-${slot}`, `url("${url}")`)
       else root.style.removeProperty(`--prts-background-${slot}`)
     }
+    const ratio = Number(state.sidebar?.width) / Number(state.sidebar?.height)
+    document.documentElement.style.setProperty('--prts-sidebar-image-ratio', String(Number.isFinite(ratio) && ratio > 0 ? ratio : 1))
     for (const listener of listeners) listener(state)
   }
   const request = async data => {
@@ -52,6 +54,7 @@ export function createBackgroundStore({ window, document }) {
       catch (error) { await refresh().catch(() => {}); throw error }
     },
     dispose() {
+      document.documentElement.style.removeProperty('--prts-sidebar-image-ratio')
       disposed = true; abort?.abort(); events?.close(); listeners.clear(); window.removeEventListener('focus', focus)
       for (const slot of Object.keys(backgroundLabels)) {
         document.documentElement.removeAttribute(`data-prts-background-${slot}`)

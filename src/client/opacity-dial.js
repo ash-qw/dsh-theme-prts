@@ -2,7 +2,7 @@
 // See src/vendor/react-bits/LICENSE.md and THIRD_PARTY_NOTICES.md.
 export const BACKGROUND_OPACITY_CONTROLS = Object.freeze([
   { key: 'sidebarOpacity', label: '会话列表侧栏', property: '--prts-sidebar-opacity', value: 94, blurKey: 'sidebarBlur', blurProperty: '--prts-sidebar-blur', blurDefault: 8 },
-  { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70, blurKey: 'railBlur', blurProperty: '--prts-rail-blur', blurDefault: 12, fullBackgroundOnly: true },
+  { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70, blurKey: 'railBlur', blurProperty: '--prts-rail-blur', blurDefault: 12 },
   { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50, blurKey: 'bakerBlur', blurProperty: '--prts-baker-blur', blurDefault: 8, theme: 'deck-chat' },
   { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50, blurKey: 'classicUserBlur', blurProperty: '--prts-classic-user-blur', blurDefault: 8, theme: 'native' },
 ])
@@ -109,8 +109,7 @@ export function mountOpacityDials({ section, window, onChange }) {
     paint(value)
     return {
       update(preferences, active) {
-        container.hidden = Boolean((definition.theme && preferences.conversationStyle !== definition.theme)
-          || (definition.fullBackgroundOnly && preferences.backgroundMode !== 'full'))
+        container.hidden = Boolean(definition.theme && preferences.conversationStyle !== definition.theme)
         saved = 100 - Math.round((preferences[definition.key] ?? (100 - definition.value) / 100) * 100)
         if (!grip && section.ownerDocument.activeElement !== input) paint(saved)
         savedBlur = preferences[definition.blurKey] ?? definition.blurDefault
@@ -127,7 +126,8 @@ export function mountOpacityDials({ section, window, onChange }) {
       const split = preferences.backgroundMode === 'split'
       section.querySelector('[data-prts-opacity-settings]').hidden = preferences.backgroundMode === 'off'
       const conversationImage = full || (split && Boolean(state.conversation))
-      const active = [full || (split && Boolean(state.sidebar)), full,
+      const sidebarImage = full || (split && Boolean(state.sidebar))
+      const active = [sidebarImage, sidebarImage,
         conversationImage && preferences.conversationStyle === 'deck-chat',
         conversationImage && preferences.conversationStyle === 'native']
       controls.forEach((control,i)=>control.update(preferences,active[i]))

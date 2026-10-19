@@ -16,6 +16,8 @@ function cssPixels(value) {
 export function createHostGeometryAdapter({ document, window }) {
   const root = document?.documentElement
   let frame
+  let sidebar
+  let previousSidebarWidth
   let resizeObserver
   let frameRequest
   let resizeSettleTimer
@@ -30,6 +32,10 @@ export function createHostGeometryAdapter({ document, window }) {
     const value = cssPixels(top)
     if (root.style.getPropertyValue(TOP_INSET_PROPERTY) !== value) {
       root.style.setProperty(TOP_INSET_PROPERTY, value)
+    }
+    if (sidebar?.isConnected) {
+      const width = cssPixels(sidebar.getBoundingClientRect().width)
+      if (root.style.getPropertyValue('--prts-sidebar-width') !== width) root.style.setProperty('--prts-sidebar-width', width)
     }
     return top
   }
@@ -62,6 +68,7 @@ export function createHostGeometryAdapter({ document, window }) {
   function onGeometryResize(entries = []) {
     let shouldMeasure = false
     for (const entry of entries) {
+      if (entry.target === sidebar) { shouldMeasure = true; continue }
       if (entry.target !== frame) continue
       const height = Number(entry.contentRect?.height)
       if (!Number.isFinite(height) || height <= 0) {
@@ -91,6 +98,9 @@ export function createHostGeometryAdapter({ document, window }) {
     else root.style.removeProperty(TOP_INSET_PROPERTY)
     previousValue = undefined
     previousPriority = undefined
+    if (previousSidebarWidth) root.style.setProperty('--prts-sidebar-width', previousSidebarWidth)
+    else root.style.removeProperty('--prts-sidebar-width')
+    sidebar = undefined
     frame = undefined
     observedFrameHeight = undefined
     started = false
@@ -105,6 +115,8 @@ export function createHostGeometryAdapter({ document, window }) {
       }
       if (started) dispose()
       frame = nextFrame
+      sidebar = frame.querySelector?.('[data-prts-region="sessions"]')
+      previousSidebarWidth = root.style.getPropertyValue('--prts-sidebar-width')
       previousValue = root.style.getPropertyValue(TOP_INSET_PROPERTY)
       previousPriority = root.style.getPropertyPriority(TOP_INSET_PROPERTY)
       started = true
@@ -112,6 +124,7 @@ export function createHostGeometryAdapter({ document, window }) {
       if (typeof window?.ResizeObserver === 'function') {
         resizeObserver = new window.ResizeObserver(onGeometryResize)
         resizeObserver.observe(frame)
+        if (sidebar) resizeObserver.observe(sidebar)
       }
       window?.addEventListener?.('resize', onWindowResize, { passive: true })
       scheduleSettledMeasure()
