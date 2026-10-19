@@ -37,8 +37,12 @@ test('dial supports exact entry, keyboard, preview without writes and cancel rol
 test('classic user-message opacity is active only with a conversation wallpaper', () => {
   const dom = new JSDOM(opacityDialMarkup()), w = dom.window, section = w.document.body, changes = []
   const dials = mountOpacityDials({section,window:w,onChange:(...args)=>changes.push(args)})
+  const classic = section.querySelector('[data-prts-opacity-control="classicUserOpacity"]')
+  const baker = section.querySelector('[data-prts-opacity-control="bakerOpacity"]')
   const note = section.querySelector('[data-prts-opacity-control="classicUserOpacity"] [data-prts-opacity-note]')
   dials.update({...DEFAULT_PREFERENCES,backgroundMode:'split',conversationStyle:'native'}, {sidebar:{id:'sidebar'}})
+  assert.equal(classic.hidden,false)
+  assert.equal(baker.hidden,true)
   assert.equal(note.textContent,'当前未启用此材质')
   dials.update({...DEFAULT_PREFERENCES,backgroundMode:'split',conversationStyle:'native'}, {conversation:{id:'conversation'}})
   assert.equal(note.textContent,'')
@@ -47,6 +51,8 @@ test('classic user-message opacity is active only with a conversation wallpaper'
   assert.deepEqual(changes.pop(),['classicUserOpacity',.24])
   assert.equal(w.document.documentElement.style.getPropertyValue('--prts-classic-user-opacity'),'24%')
   dials.update({...DEFAULT_PREFERENCES,backgroundMode:'full',conversationStyle:'deck-chat'}, {full:{id:'full'}})
+  assert.equal(classic.hidden,true)
+  assert.equal(baker.hidden,false)
   assert.equal(note.textContent,'当前未启用此材质')
   dials.dispose();dom.window.close()
 })

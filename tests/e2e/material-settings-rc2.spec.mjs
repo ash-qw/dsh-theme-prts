@@ -57,6 +57,16 @@ test('native settings save background material and Baker loading through the hos
   })
   await expect(page.locator('[data-prts-background-upload="full"]')).toHaveAttribute('data-has-image', '')
   await expect(page.locator('[data-prts-background-status]')).toContainText('背景已保存')
+  await expect(page.locator('[data-prts-opacity-control="bakerOpacity"]')).toBeVisible()
+  await expect(page.locator('[data-prts-opacity-control="classicUserOpacity"]')).toBeHidden()
+  const opacityLayout = await page.locator('[data-prts-opacity-grid]').evaluate(grid => ({
+    width: grid.getBoundingClientRect().width,
+    columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+    dialWidth: grid.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().width,
+  }))
+  expect(opacityLayout.width).toBeLessThanOrEqual(432)
+  expect(opacityLayout.columns).toBe(3)
+  expect(opacityLayout.dialWidth).toBeLessThanOrEqual(108)
   const dial = page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')
   await dial.fill('82')
   await dial.press('Tab')
@@ -76,6 +86,14 @@ test('native settings save background material and Baker loading through the hos
   })
   await page.setViewportSize({ width: 390, height: 780 })
   await page.locator('[data-prts-settings-jump="background"]').click()
+  const narrowGrid = await page.locator('[data-prts-opacity-grid]').evaluate(grid => ({
+    width: grid.getBoundingClientRect().width,
+    columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+    overflow: grid.scrollWidth - grid.clientWidth,
+  }))
+  expect(narrowGrid.width).toBeLessThanOrEqual(284)
+  expect(narrowGrid.columns).toBe(2)
+  expect(narrowGrid.overflow).toBe(0)
   const composerRow = await page.locator('[data-prts-composer-glass-setting] [data-prts-setting-row]').evaluate(row => {
     const label = row.querySelector('span').getBoundingClientRect()
     const toggle = row.querySelector('button').getBoundingClientRect()
@@ -138,6 +156,8 @@ test('Classic user messages use the saved wallpaper opacity in dark and light mo
   await expect(echo).toHaveCSS('background-color', 'rgba(23, 29, 33, 0.5)')
   await page.locator('[data-prts-rail-brand]').click()
   await page.locator('[data-prts-settings-jump="background"]').click()
+  await expect(page.locator('[data-prts-opacity-control="classicUserOpacity"]')).toBeVisible()
+  await expect(page.locator('[data-prts-opacity-control="bakerOpacity"]')).toBeHidden()
   const input = page.locator('[data-prts-opacity-control="classicUserOpacity"] input[type="number"]')
   await input.fill('76')
   await input.press('Tab')

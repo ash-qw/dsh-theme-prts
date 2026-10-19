@@ -3,8 +3,8 @@
 export const BACKGROUND_OPACITY_CONTROLS = Object.freeze([
   { key: 'sidebarOpacity', label: '会话列表侧栏', property: '--prts-sidebar-opacity', value: 94 },
   { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70 },
-  { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50 },
-  { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50 },
+  { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50, theme: 'deck-chat' },
+  { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50, theme: 'native' },
 ])
 const dialClamp = value => Math.min(100, Math.max(0, Math.round(value)))
 const dialPoint = angle => [100 + Math.cos(angle * Math.PI / 180) * 80, 100 + Math.sin(angle * Math.PI / 180) * 80]
@@ -78,6 +78,7 @@ export function mountOpacityDials({ section, window, onChange }) {
     paint(value)
     return {
       update(preferences, active) {
+        container.hidden = Boolean(definition.theme && preferences.conversationStyle !== definition.theme)
         saved = 100 - Math.round((preferences[definition.key] ?? (100 - definition.value) / 100) * 100)
         if (!grip && section.ownerDocument.activeElement !== input) paint(saved)
         container.querySelector('[data-prts-opacity-note]').textContent = active ? '' : '当前未启用此材质'
