@@ -135,6 +135,7 @@ const clientModulePaths = [
   'src/client/custom-emblem.js',
   'src/client/avatar-crop.js',
   'src/client/custom-avatar.js',
+  'src/client/opacity-dial.js',
   'src/client/custom-background.js',
   'src/client/emblem-tool-preview.js',
   'src/client/host-geometry-adapter.js',

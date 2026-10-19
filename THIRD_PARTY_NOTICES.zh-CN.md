@@ -63,3 +63,9 @@ P.R.T.S. 头像、阵营标识及衍生徽记仅收录于个人、非商业同�
 - 接入方式：将 JSX 编译后使用宿主 React，限定原样式作用域，在输入框内容后挂载装饰层，通过原组件的 shape 参数适配输入框凹槽，降低折射及分色偏移，设置平稳中央区域并为采样画布留边；使用 5px 模糊，输入框底色不透明度为 50%。
 - 本地修改：尺寸变化、新轮廓加载期间保留有效折射图，轮廓按当前尺寸铺满，不按原图宽高比等比适配。实际边界与描边由 CSS 同步绘制，折射图在缩放稳定后更新，避免异步轮廓影响输入框布局。
 - 输入框附属菜单复用宿主已有背景层，仅调整 CSS 底色和模糊参数，不挂载此组件，不改变菜单布局、描边或阴影。
+
+## React Bits Comet Dial
+
+- 参考：[Comet Dial](https://www.reactbits.dev/micro/comet-dial)，[DavidHDev/react-bits](https://github.com/DavidHDev/react-bits) 中的 `src/content/Micro/CometDial/CometDial.jsx` 与 `CometDial.css`，获取日期为 2026-10-19。
+- `src/client/opacity-dial.js` 将圆环几何与交互设计适配到主题的 DOM 设置界面，采用短方向拖尾、百分比输入与松手保存，不引入 React、Motion 或惯性数值变化。
+- 适配组件遵循上游 MIT + Commons Clause 条款，全文见 `src/vendor/react-bits/LICENSE.md`，不改授本项目的普通 MIT 许可。

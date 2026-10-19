@@ -1,3 +1,4 @@
+import { opacityDialMarkup, mountOpacityDials } from './opacity-dial.js'
 const BACKGROUND_ENDPOINT = '/prts-theme-api/backgrounds'
 const backgroundLabels = { sidebar: '侧边栏', conversation: '会话正文', full: '完整背景' }
 function backgroundImageUrl(entry) {
@@ -70,7 +71,8 @@ export function backgroundMarkup() {
       <button type="button" data-prts-background-upload="${slot}" aria-label="上传或替换${label}"><span data-prts-background-thumbnail="${slot}" aria-hidden="true"></span><span data-prts-background-caption="${slot}">＋ 选择图片</span></button>
       <input type="file" data-prts-background-file="${slot}" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
     </article>`).join('')}</div>
-    <label data-prts-background-shade hidden><span>底色遮罩 <output></output></span><input type="range" min="0" max="90" step="5" aria-label="背景遮罩强度"><small>调高后背景更淡，接近当前主题底色。</small></label>
+    <label data-prts-background-shade hidden><span>背景淡化 <output></output></span><input type="range" min="0" max="90" step="5" aria-label="背景淡化程度"><small>调高后背景更淡，接近当前主题底色。</small></label>
+    ${opacityDialMarkup()}
     <small data-prts-background-help>支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片居中铺满，切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
   </section>`
 }
@@ -80,7 +82,9 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   let disposed = false, busy = false, preferences = {}, state = store.snapshot()
   const status = section.querySelector('[data-prts-background-status]')
   const range = section.querySelector('input[type="range"]')
+  const dials = mountOpacityDials({ section, window, onChange })
   function render() {
+    dials.update(preferences, state)
     const mode = preferences.backgroundMode || 'off'
     section.querySelector('[data-prts-background-images]').hidden = mode === 'off'
     section.querySelector('[data-prts-background-shade]').hidden = mode === 'off'
@@ -131,6 +135,6 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   const unsubscribe = store.subscribe(value => { state = value; render() })
   return {
     update(value) { preferences = value; render() },
-    dispose() { disposed = true; unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
+    dispose() { disposed = true; dials.dispose(); unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
   }
 }

@@ -259,13 +259,13 @@ export function applyPrtsPlugin(ctx, environment) {
     }
     particleField.update(preferences)
     composerGlass.start()
-    if (preferences.conversationStyle === 'deck-chat') assistantGlass.start({ groupAvatars: preferences.bakerGroupAvatars })
+    if (preferences.conversationStyle === 'deck-chat') assistantGlass.start({ groupAvatars: preferences.bakerGroupAvatars, loading: preferences.bakerLoading })
     else assistantGlass.dispose()
     toBottom.start()
     conversationControls.start()
     layoutDiagnostics.start()
     sidebarControls.start(preferences)
-    if (preferences.composerGlass) composerSurface.start()
+    if (preferences.composerGlass || preferences.backgroundMode !== 'off') composerSurface.start()
     else composerSurface.dispose()
     floatingGlass.start()
   }

@@ -763,3 +763,15 @@ test('workbench keeps system overrides contextual and success feedback transient
   assert.equal(document.querySelector('[data-prts-persistence-error]').hidden, false)
   overlay.dispose()
 })
+
+test('conversation theme and background have separate tabs with material controls in background', async () => {
+  const { themeSettingsMarkup } = await import('../src/client/theme-settings-workbench.js')
+  const dom = new JSDOM(themeSettingsMarkup())
+  const doc = dom.window.document
+  assert.equal(doc.querySelector('[data-prts-settings-jump="appearance"]').textContent, '会话主题')
+  assert.equal(doc.querySelector('[data-prts-settings-jump="background"]').textContent, '会话背景')
+  assert.ok(doc.querySelector('[data-prts-settings-section="background"] [data-prts-setting-switch="composerGlass"]'))
+  assert.ok(doc.querySelector('[data-prts-settings-section="appearance"] [data-prts-setting-switch="bakerLoading"]'))
+  assert.equal(doc.querySelector('[data-prts-settings-section="appearance"] [data-prts-background-settings]'), null)
+  dom.window.close()
+})

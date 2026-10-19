@@ -40,6 +40,8 @@ function previewSetting(key, label, description) {
 function settingButtons(key, label, options) {
   const note = key === 'composerGlass'
       ? '<small data-prts-setting-note>增强输入框的背景模糊与轻微折射，关闭时使用原有材质</small>'
+      : key === 'bakerLoading'
+      ? '<small data-prts-setting-note>每轮正文生成时显示三点动画，完成后显示全文；中断时保留已收到的内容</small>'
       : key === 'motion'
       ? '<small data-prts-setting-note>关闭后减少装饰动效，保留运行状态等必要反馈</small><small data-prts-setting-note data-prts-effective-motion hidden>系统当前要求减少动态</small>'
       : key === 'railDefaultHidden'
@@ -57,7 +59,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['composerGlass', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -119,7 +121,8 @@ export function themeSettingsMarkup() {
         <div data-prts-settings-body>
         <div data-prts-settings-sidebar>
         <nav data-prts-settings-nav role="tablist" aria-label="设置分区">
-          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话外观</button>
+          <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话主题</button>
+          <button type="button" data-prts-settings-jump="background" role="tab" id="prts-tab-background" aria-controls="prts-page-background" aria-selected="false" tabindex="-1">会话背景</button>
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子徽记</button>
@@ -149,12 +152,15 @@ export function themeSettingsMarkup() {
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="native" aria-pressed="false"><span data-prts-conversation-sample="classic" aria-hidden="true"><i></i><i></i></span><strong>经典</strong><small>简洁正文，保留熟悉的阅读布局</small></button>
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="deck-chat" aria-pressed="false"><span data-prts-conversation-sample="baker" aria-hidden="true"><i></i><i></i></span><strong>Baker</strong><small>终末地通讯风格，圆形头像与消息气泡</small></button>
             </div>
-            ${settingButtons('composerGlass', '输入框增强毛玻璃', [])}
             <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
-            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}</div>
+            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}<div data-prts-baker-loading-sample aria-hidden="true"><span></span><small>生成时显示，完成后展开正文</small></div></div>
           </section>
+          </section>
+          <section data-prts-settings-section="background" role="tabpanel" id="prts-page-background" aria-labelledby="prts-tab-background" tabindex="0" hidden>
             ${backgroundMarkup()}
+            <div data-prts-composer-glass-setting>${settingButtons('composerGlass', '输入框增强毛玻璃', [])}</div>
+            <small data-prts-composer-glass-required hidden>自定义背景下，输入框增强毛玻璃始终开启。</small>
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
@@ -713,6 +719,9 @@ export function createThemeSettingsOverlay({
       panel.querySelector('[data-prts-classic-options]').hidden = preferences?.conversationStyle === 'deck-chat'
       panel.querySelector('[data-prts-baker-options]').hidden = preferences?.conversationStyle !== 'deck-chat'
       panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
+      const customBackground = preferences.backgroundMode !== 'off'
+      panel.querySelector('[data-prts-composer-glass-setting]').hidden = customBackground
+      panel.querySelector('[data-prts-composer-glass-required]').hidden = !customBackground
       backgroundEditor.update(preferences)
       currentPreferences = preferences
       currentStatus = status

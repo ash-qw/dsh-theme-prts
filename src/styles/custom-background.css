@@ -69,7 +69,7 @@ html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-side
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: color-mix(in srgb, var(--prts-panel) 6%, transparent);
+  background: color-mix(in srgb, var(--prts-panel) var(--prts-sidebar-opacity, 6%), transparent);
   -webkit-backdrop-filter: blur(8px) saturate(1.15);
   backdrop-filter: blur(8px) saturate(1.15);
   box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
@@ -90,7 +90,7 @@ html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full]
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: color-mix(in srgb, var(--prts-panel) 30%, transparent);
+  background: color-mix(in srgb, var(--prts-panel) var(--prts-rail-opacity, 30%), transparent);
   -webkit-backdrop-filter: blur(12px) saturate(1.15);
   backdrop-filter: blur(12px) saturate(1.15);
   box-shadow: inset -1px 0 color-mix(in srgb, var(--prts-ink) 10%, transparent), inset 0 1px rgb(255 255 255 / 8%);
@@ -143,3 +143,132 @@ html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][
 html[data-dsh-prts][data-prts-scheme="light"][data-prts-background-mode="full"][data-prts-background-full] [data-prts-nav-rail]::before {
   box-shadow: inset 0 1px rgb(255 255 255 / 8%);
 }
+
+/* Baker keeps its game palette; only a real conversation wallpaper enables glass. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"]:is(
+  [data-prts-background-mode="full"][data-prts-background-full],
+  [data-prts-background-mode="split"][data-prts-background-conversation]
+) {
+  --prts-chat-user-surface: rgb(239 239 237 / var(--prts-baker-opacity, 50%));
+  --prts-chat-assistant-surface: rgb(69 70 68 / var(--prts-baker-opacity, 50%));
+  &[data-prts-scheme="light"] {
+    --prts-chat-user-surface: rgb(255 255 255 / var(--prts-baker-opacity, 50%));
+    --prts-chat-assistant-surface: rgb(223 227 223 / var(--prts-baker-opacity, 50%));
+  }
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"],
+  & :is([data-prts-ai-surface], [data-message-role="user"], [data-message-role="assistant"]),
+  & [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)) {
+    -webkit-backdrop-filter: blur(8px) saturate(1.08);
+    backdrop-filter: blur(8px) saturate(1.08);
+  }
+  & [data-prts-ai-surface]::before,
+  & [data-message-role="assistant"]::after,
+  & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]::before,
+  & [data-message-role="user"]::before {
+    -webkit-backdrop-filter: blur(8px) saturate(1.08);
+    backdrop-filter: blur(8px) saturate(1.08);
+  }
+}
+
+[data-prts-opacity-settings] { min-width: 0; margin: 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--prts-line); }
+[data-prts-opacity-settings] legend { padding: 0 8px 0 0; font-size: 13px; font-weight: 600; }
+[data-prts-opacity-grid] { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+[data-prts-opacity-control] { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; min-width: 0; }
+[data-prts-opacity-control] > strong { font-size: 12px; }
+[data-prts-opacity-dial] { position: relative; width: min(100%,126px); aspect-ratio: 1; user-select: none; }
+[data-prts-opacity-dial] svg { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; border-radius: 50%; }
+[data-dragging] [data-prts-opacity-dial] svg { cursor: grabbing; }
+[data-prts-opacity-dial] svg:focus-visible { outline: 2px solid var(--prts-cyan); outline-offset: 2px; }
+[data-prts-opacity-dial] path { fill: none; stroke-width: 5; stroke-linecap: round; }
+[data-dial-track] { stroke: var(--prts-muted); opacity: .25; }
+[data-dial-lit], [data-dial-tail] { stroke: var(--prts-cyan); }
+[data-prts-opacity-dial] [data-dial-tail] { stroke-width: 12; transition: opacity 160ms ease; }
+[data-dial-head] { fill: var(--prts-cyan); }
+[data-prts-opacity-number] { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; align-items: baseline; gap: 1px; }
+[data-prts-opacity-number] input { appearance: textfield; width: 3ch; padding: 3px 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; outline-offset: 2px; background: transparent; color: var(--prts-ink); text-align: center; font: 500 22px/1.2 var(--prts-mono); font-variant-numeric: tabular-nums; }
+[data-prts-opacity-number] input:focus { border-bottom-color: var(--prts-cyan); }
+[data-prts-opacity-number] input::-webkit-inner-spin-button, [data-prts-opacity-number] input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+[data-prts-opacity-number] span { font-size: 11px; color: var(--prts-muted); }
+[data-prts-opacity-reset] { background: transparent; border: 0; padding: 4px 6px; color: var(--prts-muted); font-size: 11px; cursor: pointer; }
+[data-prts-opacity-reset]:hover { color: var(--prts-ink); }
+[data-prts-opacity-control] [data-prts-opacity-note] { font-size: 10px; }
+html[data-prts-motion="reduced"] [data-prts-opacity-dial] [data-dial-tail] { display: none; }
+@media (prefers-reduced-motion: reduce) { [data-prts-opacity-dial] [data-dial-tail] { display: none; } }
+
+/* Match the two peer modules without boxing one of them in a second surface. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-section="appearance"] > section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-background-settings] {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--prts-line);
+}
+/* SVG outlines are rectangular in Chromium. Draw keyboard focus inside the ring. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-opacity-dial] svg:focus { outline: none !important; box-shadow: none; }
+[data-dial-focus] { fill: none; stroke: var(--prts-cyan); stroke-width: 2; opacity: 0; }
+[data-prts-opacity-dial] svg:focus-visible [data-dial-focus] { opacity: .8; }
+[data-prts-opacity-control][data-dragging] [data-dial-focus] { opacity: 0; }
+[data-prts-material-preview] {
+  position: relative;
+  width: 100%;
+  height: 84px;
+  overflow: hidden;
+  border: 1px solid var(--prts-line);
+  border-radius: 6px;
+  background: var(--prts-background-full, linear-gradient(135deg, #8bb6c2, #c7b69c)) center / cover;
+  --prts-preview-surface: var(--prts-panel);
+}
+html[data-prts-background-mode="split"] [data-prts-material-preview="sidebarOpacity"] { background-image: var(--prts-background-sidebar, linear-gradient(135deg, #8bb6c2, #c7b69c)); }
+html[data-prts-background-mode="split"] [data-prts-material-preview="bakerOpacity"] { background-image: var(--prts-background-conversation, linear-gradient(135deg, #8bb6c2, #c7b69c)); }
+[data-prts-material-preview]::before { content: ""; position: absolute; inset: 0; background: var(--prts-background-wash); }
+[data-prts-material-preview-surface] { position: absolute; inset: 0; display: grid; align-content: center; gap: 6px; padding: 10px; font-size: 10px; text-align: left; color: var(--prts-ink); background: color-mix(in srgb, var(--prts-preview-surface) var(--prts-sidebar-opacity, 6%), transparent); backdrop-filter: blur(8px) saturate(1.15); }
+[data-prts-material-preview-surface] i { display: block; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--prts-ink) 18%, transparent); }
+[data-prts-material-preview-surface] i:last-child { width: 65%; }
+[data-prts-material-preview="railOpacity"] [data-prts-material-preview-surface] { inset: 0 auto 0 0; width: 40%; padding: 5px; justify-items: center; gap: 2px; background: color-mix(in srgb, var(--prts-preview-surface) var(--prts-rail-opacity, 30%), transparent); backdrop-filter: blur(12px) saturate(1.15); }
+[data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { inset: 16px 10px; border-radius: 0 10px 10px 10px; background: rgb(69 70 68 / var(--prts-baker-opacity, 50%)); backdrop-filter: blur(8px) saturate(1.08); }
+html[data-prts-scheme="light"] [data-prts-material-preview="bakerOpacity"] [data-prts-material-preview-surface] { background: rgb(223 227 223 / var(--prts-baker-opacity, 50%)); }
+
+/* Backgrounds now have their own settings page. */
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-section="background"] > [data-prts-background-settings] { margin: 0; padding: 0; border: 0; }
+html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header { padding: 16px 0 10px; }
+html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-background-settings] > header strong { font-size: 13px; color: var(--prts-muted); }
+[data-prts-composer-glass-setting], [data-prts-composer-glass-required] { display: block; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
+[data-prts-composer-glass-required] { font-size: 12px; color: var(--prts-muted); }
+
+/* Native data-streaming disappears for settled and interrupted responses.
+ * Hide only the current response body, never reasoning, tools or earlier rounds. */
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-baker-loading]
+[data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])
+[data-streaming] > :is([data-prts-ai-surface], [class$="_body"]) {
+  min-width: 78px;
+  width: 78px !important;
+  min-height: 42px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px !important;
+  & > * { display: none !important; }
+  &::after {
+    content: "正在生成回复";
+    font-size: 0;
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    animation: prts-baker-typing 1.2s linear infinite;
+  }
+}
+@keyframes prts-baker-typing {
+  0%, 100% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 currentColor, 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
+  33% { background: currentColor; box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
+  66% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 currentColor; }
+}
+[data-prts-baker-loading-sample] { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+[data-prts-baker-loading-sample] > span { display: grid; place-items: center; width: 78px; height: 42px; background: var(--prts-chat-assistant-surface); color: var(--prts-ink); border-radius: 0 14px 14px 14px; }
+[data-prts-baker-loading-sample] > span::after { content: ""; width: 4px; height: 4px; border-radius: 1px; animation: prts-baker-typing 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { [data-prts-baker-loading-sample] > span::after { animation: none; background: currentColor; box-shadow: -10px 0 currentColor, 10px 0 currentColor; } }
