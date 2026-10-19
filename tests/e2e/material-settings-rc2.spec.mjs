@@ -63,10 +63,29 @@ test('native settings save background material and Baker loading through the hos
     width: grid.getBoundingClientRect().width,
     columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
     dialWidth: grid.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().width,
+    rows: [...grid.querySelectorAll('[data-prts-opacity-control]:not([hidden])')].map(row => ({
+      top: row.getBoundingClientRect().top,
+      left: row.getBoundingClientRect().left,
+      height: row.getBoundingClientRect().height,
+      dialRight: row.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().right,
+      detailLeft: row.querySelector('[data-prts-opacity-detail]').getBoundingClientRect().left,
+      previewLeft: row.querySelector('[data-prts-material-preview]').getBoundingClientRect().left,
+      labelLeft: row.querySelector('strong').getBoundingClientRect().left,
+    })),
   }))
-  expect(opacityLayout.width).toBeLessThanOrEqual(432)
-  expect(opacityLayout.columns).toBe(3)
-  expect(opacityLayout.dialWidth).toBeLessThanOrEqual(108)
+  expect(opacityLayout.width).toBeLessThanOrEqual(420)
+  expect(await page.locator('[data-prts-opacity-settings]').evaluate(fieldset => fieldset.getBoundingClientRect().width)).toBeLessThanOrEqual(420)
+  expect(opacityLayout.columns).toBe(1)
+  expect(opacityLayout.dialWidth).toBe(88)
+  expect(opacityLayout.rows).toHaveLength(3)
+  expect(opacityLayout.rows.map(row => row.left)).toEqual([opacityLayout.rows[0].left, opacityLayout.rows[0].left, opacityLayout.rows[0].left])
+  expect(opacityLayout.rows[0].top).toBeLessThan(opacityLayout.rows[1].top)
+  expect(opacityLayout.rows[1].top).toBeLessThan(opacityLayout.rows[2].top)
+  for (const row of opacityLayout.rows) {
+    expect(row.height).toBeLessThanOrEqual(112)
+    expect(row.detailLeft).toBeGreaterThan(row.dialRight)
+    expect(row.previewLeft).toBeGreaterThan(row.labelLeft)
+  }
   const dial = page.locator('[data-prts-opacity-control="railOpacity"] input[type="number"]')
   await dial.fill('82')
   await dial.press('Tab')
@@ -90,10 +109,12 @@ test('native settings save background material and Baker loading through the hos
     width: grid.getBoundingClientRect().width,
     columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
     overflow: grid.scrollWidth - grid.clientWidth,
+    dialWidth: grid.querySelector('[data-prts-opacity-dial]').getBoundingClientRect().width,
   }))
-  expect(narrowGrid.width).toBeLessThanOrEqual(284)
-  expect(narrowGrid.columns).toBe(2)
+  expect(narrowGrid.width).toBeLessThanOrEqual(420)
+  expect(narrowGrid.columns).toBe(1)
   expect(narrowGrid.overflow).toBe(0)
+  expect(narrowGrid.dialWidth).toBe(80)
   const composerRow = await page.locator('[data-prts-composer-glass-setting] [data-prts-setting-row]').evaluate(row => {
     const label = row.querySelector('span').getBoundingClientRect()
     const toggle = row.querySelector('button').getBoundingClientRect()
