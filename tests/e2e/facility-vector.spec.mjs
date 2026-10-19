@@ -319,6 +319,31 @@ test('@facility-vector keeps a pending session title aligned with idle rows', as
   await expect.poll(async () => (await row.locator('[data-prts-row-title]').boundingBox()).x).toBe(idleTitleX)
 })
 
+test('@facility-vector keeps the native pinned marker inside the session face', async ({ page }) => {
+  await enable(page)
+  const row = page.locator('[data-prts-session-row]')
+  await row.evaluate(node => {
+    node.setAttribute('aria-selected', 'false')
+    const pin = document.createElement('span')
+    pin.className = 'fixture_pinIndicator'
+    pin.setAttribute('aria-label', 'Pinned')
+    pin.style.cssText = 'display:flex;flex:0 0 16px;width:16px;height:16px'
+    node.insertBefore(pin, node.querySelector('[data-prts-session-actions]'))
+  })
+
+  const geometry = await row.evaluate(node => {
+    const box = selector => node.querySelector(selector).getBoundingClientRect()
+    const face = box('[data-prts-facility-face]')
+    const title = box('[data-prts-row-title]')
+    const time = box('[data-prts-session-time]')
+    const pin = box('[aria-label="Pinned"]')
+    return { faceRight: face.right, titleRight: title.right, timeLeft: time.left, timeRight: time.right, pinLeft: pin.left, pinRight: pin.right }
+  })
+  expect(geometry.pinRight).toBeLessThanOrEqual(geometry.faceRight - 4)
+  expect(geometry.pinLeft).toBeGreaterThanOrEqual(geometry.timeRight + 8)
+  expect(geometry.timeLeft).toBeGreaterThanOrEqual(geometry.titleRight)
+})
+
 for (const scheme of ['dark', 'light']) {
   for (const dpr of [1, 2]) {
     test(`@facility-vector has continuous facility strokes at DPR ${dpr} in ${scheme} mode`, async ({ browser }) => {

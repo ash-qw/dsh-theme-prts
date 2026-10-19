@@ -150,6 +150,15 @@ html[data-dsh-prts] [data-prts-session-time] {
   transition: opacity 120ms ease, transform 220ms var(--prts-ease-spring);
 }
 
+/* DSH keeps its pin in the row's trailing slot; move that slot inside our face. */
+html[data-dsh-prts] [data-prts-session-row] > :is([aria-label="Pinned"], [class*="_pinIndicator"]) {
+  margin-right: calc(var(--prts-row-end-reserve) + 6px);
+}
+
+html[data-dsh-prts] [data-prts-session-row]:has(> :is([aria-label="Pinned"], [class*="_pinIndicator"])) [data-prts-session-time] {
+  margin-right: 8px;
+}
+
 html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-session-time] {
   opacity: 0;
 }
