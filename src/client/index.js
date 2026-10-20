@@ -1,3 +1,4 @@
+import { createThemeTransfer } from './theme-transfer.js'
 import { createBackgroundStore } from './custom-background.js'
 import { createNativePreferences } from './native-preferences.js'
 import { createComposerGlassSurface } from './composer-glass-surface.js'
@@ -111,6 +112,7 @@ export function applyPrtsPlugin(ctx, environment) {
   const adapter = createRc7Adapter({ document })
   const hostGeometry = createHostGeometryAdapter({ document, window })
   const connection = contextService(ctx, 'connection')
+  let themeTransfer
   let operations
   let mountObserver
   let mountFrame
@@ -201,6 +203,9 @@ export function applyPrtsPlugin(ctx, environment) {
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
       document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore, backgroundStore,
+      themeTransfer: themeTransfer ||= createThemeTransfer({ window, getPreferences: () => nativePreferences.value,
+        savePreferences: (value, revision) => nativePreferences.replace(value, revision),
+        checkWritable: () => nativePreferences.checkWritable(), checkExport: () => nativePreferences.checkReadable(), themeVersion: version }),
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
       },

@@ -2,25 +2,26 @@ import {test,expect} from '@playwright/test'
 
 for(const width of [1280,390])test(`sidebar reset stays outside scrolling pages at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:700})
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
-  await page.goto('/tests/fixtures/rc2-harness.html')
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false}})))
+  await page.goto('/tests/fixtures/rc2-harness.html?native-forms')
   if(width<640)await page.locator('[data-prts-rail-launcher]').click()
   await page.locator('[data-prts-rail-brand]').click()
   const footer=page.locator('[data-prts-settings-actions]')
   const scroll=page.locator('[data-prts-theme-settings-scroll]')
-  const reset=page.getByRole('button',{name:'恢复全部外观设置',exact:true})
+  const reset=page.getByRole('button',{name:'恢复全部主题设置',exact:true})
   await expect(footer).toHaveCount(1)
   expect(await footer.evaluate(e=>!!e.closest('[data-prts-theme-settings-scroll]'))).toBe(false)
   await page.waitForTimeout(350) // Let the dialog entrance animation finish before measuring.
   const original=await footer.boundingBox()
-  for(const key of ['appearance','interaction','flow','particles','assistance']){
+  for(const key of ['appearance','background','interaction','flow','particles','assistance','ai-tools']){
     await page.locator(`[data-prts-settings-jump="${key}"]`).click()
     await scroll.evaluate(e=>e.scrollTop=e.scrollHeight)
     await expect(reset).toBeInViewport()
+    await expect(page.locator('[data-prts-transfer-open]')).toBeInViewport()
     const box=await footer.boundingBox(),content=await scroll.boundingBox()
     expect(box.y).toBeCloseTo(original.y,0)
     if(width>720)expect(box.x+box.width).toBeLessThanOrEqual(content.x+1)
-    else expect(box.y+box.height).toBeLessThanOrEqual(content.y+1)
+    else expect(box.y).toBeGreaterThanOrEqual(content.y+content.height-1)
   }
   await reset.click()
   await expect(page.locator('[data-prts-reset-confirm]')).toContainText('保留主题开关、启动动画和徽记配置')
@@ -33,7 +34,7 @@ for(const width of [1280,390])test(`sidebar reset stays outside scrolling pages 
   await expect(page.locator('[data-prts-reset-confirm]')).toBeHidden()
   const after=await page.evaluate(()=>fetch('/prts-theme-api/emblems/configuration').then(r=>r.json()))
   expect(after).toEqual(before)
-  const preferences=await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')))
+  const preferences=await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value)
   expect(preferences.enabled).toBe(true)
   expect(preferences.bootAnimation).toBe(false)
   expect(await footer.evaluate(e=>e.scrollWidth-e.clientWidth)).toBe(0)

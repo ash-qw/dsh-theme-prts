@@ -136,3 +136,22 @@ test('a concurrent first migration wins without being overwritten by older local
   assert.deepEqual(revisions,[1])
   assert.equal(x.data.has(PRTS_STORAGE_KEY),false)
 })
+
+test('bulk import waits for durable Host acceptance and rejects stale revisions',async()=>{
+  const x=setup();x.store.bind(x.form)
+  const revision=x.store.checkWritable()
+  x.remote({cursor:'system'})
+  await assert.rejects(x.store.replace({...x.store.value,glass:'soft'},revision),/其他页面/)
+  assert.equal(x.writes.length,0)
+  await x.store.replace({...x.store.value,glass:'soft'},x.store.checkWritable())
+  assert.equal(x.store.value.glass,'soft')
+  x.reject()
+  await assert.rejects(x.store.replace({...x.store.value,glass:'clear'},x.store.checkWritable()),/未接受/)
+  assert.equal(x.store.value.glass,'soft')
+})
+
+test('read-only Host settings can be exported but not imported',()=>{
+  const x=setup();x.store.bind(x.form);x.state({writable:false})
+  assert.equal(typeof x.store.checkReadable(),'number')
+  assert.throws(()=>x.store.checkWritable(),/无法保存/)
+})

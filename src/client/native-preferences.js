@@ -69,6 +69,37 @@ export function createNativePreferences({ storage, onChange }) {
   }
   return {
     get value() { return current },
+    checkReadable() {
+      const s = snapshot()
+      if (disposed || s?.status !== 'ready') throw Error('请等待 DSH 设置加载完成')
+      if (busy || Object.keys(pending).length || Object.keys(failed).length) throw Error('请先等待当前设置保存成功')
+      return s.revision
+    },
+    checkWritable() {
+      const revision = this.checkReadable()
+      if (!writable(snapshot())) throw Error('当前连接无法保存主题设置')
+      return revision
+    },
+    async replace(next, expectedRevision) {
+      this.checkWritable()
+      const s = snapshot()
+      if (s.revision !== expectedRevision) throw Error('设置已在其他页面更新，请重新导入')
+      const normalized = normalizePreferences(next)
+      busy = true
+      phase = 'saving'; emit()
+      try {
+        const ops = Object.entries(normalized).map(([key, value]) => ({ op: 'set', path: [key], value }))
+        ops.push({ op: 'set', path: ['preferencesInitialized'], value: true })
+        if (await form.mutate(ops, s.revision) !== true) throw Error('DSH 未接受导入设置，请重试')
+        phase = 'saved'
+      } catch (error) {
+        phase = 'error'
+        throw error
+      } finally {
+        busy = false
+        receive()
+      }
+    },
     bind(next) {
       unsubscribe?.(); form = next
       unsubscribe = form.subscribe(receive)

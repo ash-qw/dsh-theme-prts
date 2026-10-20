@@ -1,3 +1,4 @@
+import { themeTransferMarkup, mountThemeTransfer } from './theme-transfer-panel.js'
 import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
 import { customEmblemMarkup, mountCustomEmblemEditor } from './custom-emblem.js'
@@ -134,9 +135,10 @@ export function themeSettingsMarkup() {
               <span><strong>设置未保存</strong><small>未能保存到 DSH，可能存在连接中断、配置冲突或当前访问不支持持久保存。重试将重新提交本次修改。</small></span>
               <button type="button" data-prts-retry-save>重试保存</button>
             </div>
+            <button type="button" data-prts-transfer-open data-prts-footer-action aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 14V3m-3 3 3-3 3 3M14 6v11m-3-3 3 3 3-3"/></svg><span>导入与导出</span></button>
             <div data-prts-reset-zone>
 
-              <button type="button" data-prts-reset-visual title="恢复全部主题设置" aria-label="恢复全部主题设置">恢复默认</button>
+              <button type="button" data-prts-reset-visual data-prts-footer-action title="恢复全部主题设置" aria-label="恢复全部主题设置"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7a6.5 6.5 0 1 1-.4 5M4 3v4h4"/></svg><span>恢复默认</span></button>
               <div data-prts-reset-confirm hidden role="group" aria-label="确认恢复全部主题设置">
                 <span>重置全部分类的主题设置，保留主题开关、启动动画和徽记配置。</span>
                 <button type="button" data-prts-reset-confirm-action>确认恢复</button>
@@ -144,6 +146,7 @@ export function themeSettingsMarkup() {
               </div>
             </div>
           </footer>
+          ${themeTransferMarkup()}
         </div>
         <div data-prts-theme-settings-scroll>
           <section data-prts-settings-section="appearance" role="tabpanel" id="prts-page-appearance" aria-labelledby="prts-tab-appearance" tabindex="0">
@@ -262,7 +265,7 @@ export function createThemeSettingsOverlay({
   trigger,
   panel,
   backdrop,
-  customEmblemStore, avatarStore, backgroundStore,
+  customEmblemStore, avatarStore, backgroundStore, themeTransfer,
   onOpen = () => {},
   onPreferenceChange = () => {},
   onPreferencePreview = () => {},
@@ -270,6 +273,7 @@ export function createThemeSettingsOverlay({
   onRetrySave = () => {},
 }) {
   const window = document?.defaultView
+  const transferEditor = mountThemeTransfer({ panel, window, transfer: themeTransfer })
   const backgroundEditor = mountBackgroundSettings({panel,window,store:backgroundStore,onChange:onPreferenceChange})
   const avatarEditor = mountAvatarSettings({panel,window,store:avatarStore})
   const customEditor = mountCustomEmblemEditor({ panel, window, store: customEmblemStore })
@@ -766,6 +770,7 @@ export function createThemeSettingsOverlay({
     close: () => setOpen(false),
     toggle,
     dispose() {
+      transferEditor.dispose()
       customEditor.dispose()
       avatarEditor.dispose()
       backgroundEditor.dispose()

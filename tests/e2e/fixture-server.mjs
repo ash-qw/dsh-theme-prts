@@ -1,3 +1,4 @@
+import { createBackgroundService, registerBackgroundApi, BACKGROUND_API } from '../../src/server/backgrounds.js'
 import { createAvatarService, registerAvatarApi, AVATAR_API } from '../../src/server/avatars.js'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
@@ -9,6 +10,7 @@ import { extname, resolve, sep } from 'node:path'
 
 const emblemFixtures = new Map()
 const avatarFixtures = new Map()
+const backgroundFixtures = new Map()
 const root = process.cwd()
 const port = Number(process.env.PORT || 4173)
 const fixturePath = '/tests/fixtures/rc7-harness.html'
@@ -407,6 +409,17 @@ const mime = {
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://127.0.0.1:${port}`)
+    if (url.pathname.startsWith(BACKGROUND_API)) {
+      let id=request.headers.cookie?.match(/prtsBackgroundFixture=([a-z0-9-]+)/)?.[1]
+      if(!id){id=randomUUID();response.setHeader('set-cookie',`prtsBackgroundFixture=${id}; Path=/; SameSite=Strict`)}
+      if(!backgroundFixtures.has(id))backgroundFixtures.set(id,(async()=>{
+        const service=await createBackgroundService(await mkdtemp(`${tmpdir()}/prts-background-fixture-`))
+        let handler
+        registerBackgroundApi({connection:{admit:()=>({peer:{}})},webServer:{register:route=>{handler=route.handler;return()=>{}}}},service)
+        return handler
+      })())
+      await (await backgroundFixtures.get(id))(request,response);return
+    }
     if (url.pathname.startsWith(AVATAR_API)) {
       let id=request.headers.cookie?.match(/prtsAvatarFixture=([a-z0-9-]+)/)?.[1]
       if(!id){id=randomUUID();response.setHeader('set-cookie',`prtsAvatarFixture=${id}; Path=/; SameSite=Strict`)}
