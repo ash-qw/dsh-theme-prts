@@ -350,8 +350,8 @@ test('double click navigation can be disabled while keeping the preview',async({
   expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual([])
 })
 test('preview switches persist independently in assistance settings',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
-  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced'}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
   await page.locator('[data-prts-rail-brand]').click()
   await page.locator('[data-prts-settings-jump="assistance"]').click()
   for(const key of ['previewOngoing','previewWarning','previewDone','previewDoubleClick']){
@@ -359,13 +359,13 @@ test('preview switches persist independently in assistance settings',async({page
     await expect(control).toHaveAttribute('aria-checked','true')
     await control.click()
     await expect(control).toHaveAttribute('aria-checked','false')
-    expect(await page.evaluate(key=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1'))[key],key)).toBe(false)
+    await expect.poll(()=>page.evaluate(key=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value[key],key)).toBe(false)
   }
 })
 
 test('master preview switch removes the whole feature and hides details without resetting choices',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewDone:false})))
-  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced',previewDone:false}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
   await expect(page.locator('[data-prts-session-summary-trigger="ongoing"]')).toBeVisible()
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
   await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
@@ -383,7 +383,7 @@ test('master preview switch removes the whole feature and hides details without 
   await expect(page.locator('[data-prts-owned-session-summary]')).toHaveCount(0)
   await expect(page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')).toHaveCount(0)
   expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(0)
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).sessionPreview)).toBe(false)
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.sessionPreview)).toBe(false)
   await master.click()
   await expect(page.locator('[data-prts-preview-options]')).toBeVisible()
   await expect(page.locator('[data-prts-setting-switch="previewDone"]')).toHaveAttribute('aria-checked','false')
@@ -493,14 +493,16 @@ for(const limit of [5,10,0]) test(`running preview retains latest replies with l
 })
 
 test('reply limit setting persists and follows the running preview switch',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
-  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced'}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
   await page.locator('[data-prts-rail-brand]').click()
   await page.locator('[data-prts-settings-jump="assistance"]').click()
   const row=page.locator('[data-prts-setting-row="previewReplyLimit"]')
   await expect(row.locator('select')).toHaveValue('5')
+  await row.locator('select').selectOption('10')
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewReplyLimit)).toBe(10)
   await row.locator('select').selectOption('5')
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).previewReplyLimit)).toBe(5)
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewReplyLimit)).toBe(5)
   await page.locator('[data-prts-setting-switch="previewOngoing"]').click()
   await expect(row).toBeHidden()
   await page.locator('[data-prts-setting-switch="previewOngoing"]').click()
@@ -531,8 +533,8 @@ test('new sessions inserted under a stationary pointer do not steal the active p
 })
 
 test('state following can be disabled while reopening uses the latest state',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewFollowState:false})))
-  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced',previewFollowOngoing:false}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
   await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
   const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
@@ -554,7 +556,7 @@ test('state following can be disabled while reopening uses the latest state',asy
   const toggle=page.locator('[data-prts-setting-switch="previewFollowOngoing"]')
   await expect(toggle).toHaveAttribute('aria-checked','false')
   await toggle.click()
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).previewFollowOngoing)).toBe(true)
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewFollowOngoing)).toBe(true)
 })
 
 for(const next of ['ongoing','question','other']) test(`answer submission with following off does not advance to ${next}`,async({page})=>{
