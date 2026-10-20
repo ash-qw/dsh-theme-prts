@@ -366,3 +366,40 @@ test('tool history collects calls after settled prose and summarizes only key ar
   snapshot.nodes.get('stream').data.status='settled'
   assert.deepEqual(previewToolCalls(snapshot),[])
 })
+
+test('preview acquires and coalesces updates on the next frame without fixed timer delays',async()=>{
+  const {dom,panel}=fixture();const frames=new Map();let frameId=0,retained=0,notify,released=0
+  dom.window.requestAnimationFrame=fn=>{frames.set(++frameId,fn);return frameId}
+  dom.window.cancelAnimationFrame=id=>frames.delete(id)
+  const flush=async()=>{const batch=[...frames.values()];frames.clear();for(const fn of batch)fn();await Promise.resolve()}
+  const snapshot=chat(['first']);snapshot.nodes.get('0').data.status='settled'
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:()=>{retained++;return {ready:Promise.resolve({}),release:()=>released++}}},
+    getSessionStatus:()=>({getSnapshot:()=>new Map([['a',{running:true}]]),subscribe:()=>()=>{}}),
+    getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>snapshot,subscribe:fn=>{notify=fn;return()=>{}}})})})})
+  preview.show('a',panel,'a');assert.equal(retained,0)
+  await flush();assert.equal(retained,1);assert.match(panel.textContent,/first/)
+  await flush()
+  snapshot.nodes.get('0').data.blocks[0].text='second'
+  notify();notify();notify()
+  assert.equal(frames.size,1)
+  assert.ok(!panel.textContent.includes('second'))
+  await flush();assert.match(panel.textContent,/second/)
+  notify();preview.stop();await flush()
+  assert.equal(released,1);assert.equal(panel.hidden,true)
+  preview.show('a',panel,'a');preview.stop();await flush()
+  assert.equal(retained,1)
+  dom.window.close()
+})
+
+test('tool summary cache follows mutable argument changes',async()=>{
+  const {previewToolCalls}=await import('../src/client/session-summary-preview.js')
+  const root={name:'exec',phase:'start',argsRaw:'{"command":"first"}'}
+  const snapshot={order:['tool'],nodes:new Map([['tool',{kind:'tool-call',data:{root}}]])}
+  assert.equal(previewToolCalls(snapshot)[0].summary,'first')
+  root.argsRaw='{"command":"second"}'
+  assert.equal(previewToolCalls(snapshot)[0].summary,'second')
+  root.kind='tool-result';root.call={argsRaw:root.argsRaw};delete root.argsRaw;root.isError=true
+  assert.equal(previewToolCalls(snapshot)[0].status,'失败')
+  assert.equal(previewToolCalls(snapshot)[0].summary,'second')
+})

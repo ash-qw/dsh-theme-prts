@@ -39,6 +39,22 @@ export function latestAssistantReply(snapshot) {
   return ''
 }
 
+// Call objects may be mutable on older hosts; compare raw arguments before reuse.
+const toolSummaryCache = new WeakMap()
+function toolSummary(call) {
+  const raw = call.argsRaw ?? call.call?.argsRaw ?? ''
+  const cached = toolSummaryCache.get(call)
+  if (cached?.raw === raw) return cached.text
+  let args
+  try { args = JSON.parse(raw) } catch {}
+  const summary = ['description', 'command', 'cmd', 'file_path', 'filePath', 'path', 'query', 'pattern', 'url']
+    .map(field => args?.[field]).find(value => typeof value === 'string' && value.trim())
+  const normalized = summary?.replace(/\s+/g, ' ').trim()
+  const text = normalized ? normalized.slice(0, 160) + (normalized.length > 160 ? '…' : '') : ''
+  toolSummaryCache.set(call, {raw, text})
+  return text
+}
+
 // Only calls after the latest settled prose belong to the current progress preview.
 export function previewToolCalls(snapshot) {
   const turn = snapshot?.timeline?.turnOrder?.at(-1)
@@ -60,17 +76,13 @@ export function previewToolCalls(snapshot) {
     if (node?.kind === 'tool-call') visit(node.data?.root, order[i])
   }
   return calls.sort((a, b) => (b.call.callTime ?? b.call.time ?? 0) - (a.call.callTime ?? a.call.time ?? 0)).map(({call, key}) => {
-    let args
-    try { args = JSON.parse(call.argsRaw ?? call.call?.argsRaw ?? '') } catch {}
-    const summary = ['description', 'command', 'cmd', 'file_path', 'filePath', 'path', 'query', 'pattern', 'url']
-      .map(field => args?.[field]).find(value => typeof value === 'string' && value.trim())
-    const text = summary?.replace(/\s+/g, ' ').trim()
+    const text = toolSummary(call)
     return {
       key,
       name: call.name || call.call?.name || '工具调用',
       status: call.kind === 'tool-result' ? call.isError ? '失败' : '已完成'
         : call.phase === 'preparing' ? '准备中' : '执行中',
-      summary: text ? text.slice(0, 160) + (text.length > 160 ? '…' : '')
+      summary: text ? text
         : call.phase === 'preparing' ? '正在准备调用…' : '暂无操作摘要',
     }
   })
@@ -184,8 +196,8 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     active = undefined
     if (!old) return
     window.clearTimeout(old.leaveTimer)
-    window.clearTimeout(old.delay)
-    window.clearTimeout(old.refresh)
+    window.cancelAnimationFrame(old.delay)
+    window.cancelAnimationFrame(old.refresh)
     old.unsubscribe?.()
     old.unsubscribeStatus?.()
     if (keepWarm && old.reference && old.source) {
@@ -746,7 +758,8 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     })
     render()
     body.scrollTop = 0
-    current.delay = window.setTimeout(async () => {
+    current.delay = window.requestAnimationFrame(async () => {
+      current.delay = undefined
       try {
         const service = getUiConversation?.()
         const controller = getSessions?.() ?? sessions
@@ -758,13 +771,13 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         current.source = source
         current.unsubscribe = source.subscribe(() => {
           if (active !== current || current.refresh !== undefined) return
-          current.refresh = window.setTimeout(() => {
+          current.refresh = window.requestAnimationFrame(() => {
             current.refresh = undefined
             if (current.state === 'ongoing' && !current.editor
               && selectReplies(source.getSnapshot(), replyLimit()) === historyKeys
               && JSON.stringify(getPreviewPreferences?.().previewTools === false ? undefined : latestToolCall(source.getSnapshot())) === previousTool) return
             render()
-          }, 120)
+          })
         })
         render()
       } catch {
@@ -776,7 +789,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         render()
         if (body.textContent.trim() === '正在读取…') body.textContent = '暂时无法读取回复，可点击会话查看'
       }
-    }, cached ? 0 : 80)
+    })
   }
   function leave() {
     if (!active || active.sticky) return
