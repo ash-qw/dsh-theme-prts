@@ -362,7 +362,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     document.addEventListener('pointerdown', interruptSelectionTarget, true)
   }
 
-  let pendingReveal, revealTimer, revealFrame, revealSettleTimer, revealHeightFrame
+  let pendingReveal, revealTimer, revealFrame, revealHeightFrame
   let navigationFrame, navigationGeneration = 0
   function cancelPendingNavigation() {
     navigationGeneration++
@@ -371,7 +371,6 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function cancelReveal() {
     pendingReveal = undefined
     window.clearTimeout(revealTimer)
-    window.clearTimeout(revealSettleTimer)
     window.cancelAnimationFrame?.(revealFrame)
     window.cancelAnimationFrame?.(revealHeightFrame)
     document?.removeEventListener('wheel', interruptReveal, true)
@@ -395,17 +394,15 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
   // Navigating from a preview mounts rows and re-sorts the list at the same time: expanding
   // the Workspace, raising its watermark and switching the current Session all change the
-  // height above the target. One scrollIntoView raced that layout, and a smooth animation
-  // that starts before it settles lands on an offset the row no longer occupies. Position
-  // the scroller ourselves, wait for the height to stop moving, then keep the row in view
-  // until the smooth animation has finished.
-  const REVEAL_STABLE_FRAMES = 2
-  const REVEAL_CORRECTION_LIMIT = 3
-  const REVEAL_SETTLE_FRAMES = 12
-  // A smooth scroll does not move on every frame; leave it alone for its whole run.
-  const REVEAL_SMOOTH_GRACE_MS = 350
-  // Give up only after a real time budget: frame counts vary wildly between hosts.
-  const REVEAL_HOLD_BUDGET_MS = 1500
+  // height above the target. A scroll animation started before that settles is stranded at an
+  // offset the row no longer occupies, which reads as a reveal that bounces back or stops
+  // short - and it costs a visible beat before the conversation switches. So the card is
+  // jumped to its offset immediately and re-jumped whenever the list resizes under it; an
+  // instant jump cannot be stranded, and repeating one is invisible.
+  const REVEAL_STABLE_FRAMES = 3
+  const REVEAL_CORRECTION_LIMIT = 8
+  // Corrections cover the Host's mount plus row-glide window, and never run longer.
+  const REVEAL_TRACK_BUDGET_MS = 700
   const now = () => (typeof window?.performance?.now === 'function' ? window.performance.now() : Date.now())
 
   function scrollingAncestor(row, root) {
@@ -426,66 +423,53 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     if (!view) return true
     return view.top >= -1 && view.bottom <= view.height + 1
   }
-  // Returns true when this call started or moved the scroller.
-  function positionReveal(row, scroller, smooth) {
+  // `instant` is the only value that ignores a `scroll-behavior` inherited from the page;
+  // older engines reject the enum, so fall back to a direct assignment.
+  function jumpTo(scroller, top) {
+    try {
+      scroller.scrollTo({top, behavior: 'instant'})
+      return
+    } catch {}
+    scroller.scrollTop = top
+  }
+  // Jumps straight to the offset that brings the card into view, with no animation.
+  function positionReveal(row, scroller) {
     if (!scroller) {
-      row.scrollIntoView?.({block: 'nearest', inline: 'nearest', behavior: smooth ? 'smooth' : 'instant'})
-      return true
+      row.scrollIntoView?.({block: 'nearest', inline: 'nearest', behavior: 'instant'})
+      return
     }
     const view = rowViewport(row, scroller)
-    if (!view) return false
+    if (!view) return
     const current = scroller.scrollTop
     const next = view.top < 0 ? current + view.top
       : view.bottom > view.height ? current + view.bottom - view.height
         : current
-    if (Math.round(next) === Math.round(current)) return false
-    if (typeof scroller.scrollTo === 'function') scroller.scrollTo({top: next, behavior: smooth ? 'smooth' : 'auto'})
+    if (Math.round(next) === Math.round(current)) return
+    if (typeof scroller.scrollTo === 'function') jumpTo(scroller, next)
     else scroller.scrollTop = next
-    return true
   }
-  // Two unchanged heights mean the mounted rows have stopped resizing the list.
-  function whenRevealSettled(request, row, root, run) {
-    const scroller = scrollingAncestor(row, root)
-    if (!scroller) { run(undefined); return }
-    let previous, frames = 0
-    const step = () => {
-      revealHeightFrame = undefined
-      if (pendingReveal !== request) return
-      // The Host may replace the node while re-rendering; let the next scan adopt the new one.
-      if (!row.isConnected) { request.scrolling = false; return }
-      const height = scroller.scrollHeight
-      const steady = height === previous
-      previous = height
-      frames += 1
-      if (steady || frames >= REVEAL_SETTLE_FRAMES) { run(scroller); return }
-      revealHeightFrame = window.requestAnimationFrame(step)
-    }
-    revealHeightFrame = window.requestAnimationFrame(step)
-  }
-  // Correct only once the smooth animation stops, so it is never restarted mid-flight.
-  function holdRevealInView(request, row, scroller, smooth) {
-    let lastTop = scroller.scrollTop, still = 0, corrections = 0
+  // Jumps now, then re-jumps while the list resizes, until the card has stayed in view.
+  function trackReveal(request, row, root) {
     const startedAt = now()
+    let previousHeight, settledFrames = 0, corrections = 0
     const step = () => {
       if (pendingReveal !== request) return
       // A remount drops this node; a later scan resumes the reveal with the replacement.
       if (!row.isConnected) { request.scrolling = false; return }
-      if (smooth && now() - startedAt < REVEAL_SMOOTH_GRACE_MS) {
-        lastTop = scroller.scrollTop
-        revealFrame = window.requestAnimationFrame(step)
-        return
-      }
-      if (scroller.scrollTop === lastTop) still += 1
-      else { still = 0; lastTop = scroller.scrollTop }
-      if (still >= REVEAL_STABLE_FRAMES) {
-        if (rowVisible(row, scroller) || corrections >= REVEAL_CORRECTION_LIMIT) { cancelReveal(); return }
+      const scroller = scrollingAncestor(row, root)
+      const height = scroller?.scrollHeight ?? 0
+      const visible = scroller ? rowVisible(row, scroller) : true
+      if (!visible && corrections < REVEAL_CORRECTION_LIMIT) {
         corrections += 1
-        positionReveal(row, scroller, false)
-        still = 0
-      }
-      if (now() - startedAt > REVEAL_HOLD_BUDGET_MS) { cancelReveal(); return }
+        settledFrames = 0
+        positionReveal(row, scroller)
+      } else if (visible && height === previousHeight) settledFrames += 1
+      else settledFrames = 0
+      previousHeight = height
+      if (settledFrames >= REVEAL_STABLE_FRAMES || now() - startedAt > REVEAL_TRACK_BUDGET_MS) { cancelReveal(); return }
       revealFrame = window.requestAnimationFrame(step)
     }
+    positionReveal(row, scrollingAncestor(row, root))
     revealFrame = window.requestAnimationFrame(step)
   }
   function syncSessionReveal(root) {
@@ -498,34 +482,12 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (pendingReveal.scrolling) return
       const request = pendingReveal
       request.scrolling = true
-      // Let React finish mounting and let the host's row glide settle before scrolling.
-      revealFrame = window.requestAnimationFrame(async () => {
-        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-        const animations = []
-        if (!reduced) for (let node = row; node && node !== root; node = node.parentElement) {
-          for (const animation of node.getAnimations?.() ?? []) {
-            const timing = animation.effect?.getComputedTiming?.()
-            if (animation.playState === 'running' && Number.isFinite(timing?.endTime)) animations.push(animation.finished)
-          }
-        }
-        if (animations.length) await Promise.race([
-          Promise.allSettled(animations),
-          new Promise(resolve => { revealSettleTimer = window.setTimeout(resolve, 300) }),
-        ])
+      // One frame of paint first, so the click and the jump land together instead of the
+      // Host mounting another conversation in between.
+      revealFrame = window.requestAnimationFrame(() => {
         if (pendingReveal !== request || !adapterActive) return
         if (!row.isConnected) { request.scrolling = false; return }
-        const smooth = !reduced
-        whenRevealSettled(request, row, root, scroller => {
-          if (pendingReveal !== request) return
-          if (!scroller) {
-            // No scrollable ancestor (or no measurable geometry): keep the native single-shot reveal.
-            positionReveal(row, undefined, smooth)
-            cancelReveal()
-            return
-          }
-          positionReveal(row, scroller, smooth)
-          holdRevealInView(request, row, scroller, smooth)
-        })
+        trackReveal(request, row, root)
       })
       return
     }

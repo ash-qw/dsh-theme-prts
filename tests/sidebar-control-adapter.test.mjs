@@ -448,7 +448,7 @@ test('preview navigation reveals its nested workspace and hidden session card', 
   for(let i=0;i<8 && (!scrolled.length || !opened.length);i++)await flush(dom.window)
   assert.deepEqual(opened,['target'])
   assert.deepEqual(expanded,['parent','owner','overflow'])
-  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'smooth'}])
+  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'instant'}])
   adapter.dispose()
   dom.window.close()
 })
@@ -548,8 +548,15 @@ function createScrollingSidebar({ rowHeight = 32, viewport = 100 } = {}) {
     </div><\/aside>
   <\/body><\/html>`, { pretendToBeVisual: true })
   const { document } = dom.window
-  dom.window.requestAnimationFrame = callback => dom.window.setTimeout(callback, 0)
-  dom.window.cancelAnimationFrame = id => dom.window.clearTimeout(id)
+  // Deterministic frames: the reveal is a frame-driven loop, so the test drives it.
+  const frames = []
+  dom.window.requestAnimationFrame = callback => frames.push(callback)
+  dom.window.cancelAnimationFrame = id => {}
+  const pump = (count = 1) => {
+    for (let index = 0; index < count; index += 1) {
+      for (const callback of frames.splice(0)) callback(dom.window.performance.now())
+    }
+  }
   const tree = document.querySelector('[role="tree"]')
   const state = { scrollTop: 0, scrollHeight: 600, clientHeight: viewport, calls: [] }
   Object.defineProperty(tree, 'clientHeight', { configurable: true, get: () => state.clientHeight })
@@ -559,20 +566,9 @@ function createScrollingSidebar({ rowHeight = 32, viewport = 100 } = {}) {
     get: () => state.scrollTop,
     set: value => { state.scrollTop = value },
   })
-  // A real scroller animates `smooth` over frames and jumps for `auto`; the hold loop
-  // depends on that difference, so the stub has to reproduce it.
   tree.scrollTo = options => {
     state.calls.push(options)
-    const target = options?.top
-    if (target === undefined) return
-    if (options.behavior !== 'smooth') { state.scrollTop = target; return }
-    const from = state.scrollTop
-    const steps = 5
-    for (let step = 1; step <= steps; step += 1) {
-      dom.window.setTimeout(() => {
-        state.scrollTop = Math.round(from + (target - from) * (step / steps))
-      }, step * 20)
-    }
+    if (options?.top !== undefined) state.scrollTop = options.top
   }
   tree.getBoundingClientRect = () => ({ top: 0, bottom: state.clientHeight, left: 0, right: 280, width: 280, height: state.clientHeight })
   // rowTop is the card's offset inside the scroller; tests move it to simulate a reflow.
@@ -585,7 +581,7 @@ function createScrollingSidebar({ rowHeight = 32, viewport = 100 } = {}) {
       return { top, bottom: top + rowHeight, left: 0, right: 260, width: 260, height: rowHeight }
     }
   }
-  return { dom, document, ...scroller }
+  return { dom, document, pump, ...scroller }
 }
 
 function visibleInScroller(row, tree) {
@@ -595,7 +591,7 @@ function visibleInScroller(row, tree) {
 
 test('preview navigation scrolls the list itself and re-checks a card the reflow moved', async () => {
   const page = createScrollingSidebar()
-  const { document, dom, tree, state, geometry } = page
+  const { document, dom, tree, state, geometry, pump } = page
   const opened = []
   const row = document.createElement('div')
   row.setAttribute('role', 'treeitem')
@@ -614,20 +610,22 @@ test('preview navigation scrolls the list itself and re-checks a card the reflow
   })
   adapter.start()
   document.querySelector('[data-prts-session-summary-item="target"]').click()
-  for (let i = 0; i < 2; i++) await flush(dom.window)
+  pump(4)
   assert.deepEqual(opened, ['target'])
-  // Positioned by the adapter, not by scrollIntoView on the row.
+  // Positioned by the adapter, not by scrollIntoView on the row, and never animated:
+  // an instant jump is what keeps it from being stranded mid-flight.
   assert.equal(state.calls.length, 1)
-  assert.equal(state.calls[0].behavior, 'smooth')
+  assert.equal(state.calls[0].behavior, 'instant')
   assert.equal(state.calls[0].top, 480 + 32 - 100)
+  assert.ok(visibleInScroller(row, tree))
 
-  // The host raises the watermark mid-animation: content above the card grew by 40px.
+  // The host raises the watermark right after the jump: content above the card grew 40px.
   geometry.rowTop = 520
   state.scrollHeight = 640
-  for (let i = 0; i < 20; i++) await flush(dom.window)
-  // One unattended correction that does not restart the smooth animation.
+  pump(1)
   assert.equal(state.calls.length, 2)
-  assert.equal(state.calls[1].behavior, 'auto')
+  assert.equal(state.calls[1].behavior, 'instant')
+  assert.equal(state.calls[1].top, 520 + 32 - 100)
   assert.ok(visibleInScroller(row, tree))
   adapter.dispose()
   dom.window.close()
@@ -635,7 +633,7 @@ test('preview navigation scrolls the list itself and re-checks a card the reflow
 
 test('preview navigation resumes when the host remounts the target card', async () => {
   const page = createScrollingSidebar()
-  const { document, dom, tree, state, geometry } = page
+  const { document, dom, tree, state, geometry, pump } = page
   const makeRow = () => {
     const node = document.createElement('div')
     node.setAttribute('role', 'treeitem')
@@ -658,13 +656,16 @@ test('preview navigation resumes when the host remounts the target card', async 
   })
   adapter.start()
   document.querySelector('[data-prts-session-summary-item="target"]').click()
-  await flush(dom.window)
-  // React replaces the node before the scroll lands.
+  pump(2)
+  // React replaces the node while the reveal is still tracking it.
   const second = makeRow()
   first.replaceWith(second)
   geometry.rowTop = 460
+  pump(1)
   sessions.update({ ids: ['target'], byId: { target: { id: 'target', displayTitle: 'Target', running: true } } })
-  for (let i = 0; i < 10; i++) await flush(dom.window)
+  pump(4)
+  await flush(dom.window)
+  pump(4)
   assert.ok(state.calls.length >= 1, 'reveal must not be dropped when the row is remounted')
   assert.ok(visibleInScroller(second, tree))
   adapter.dispose()
