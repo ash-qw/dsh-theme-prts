@@ -65,8 +65,12 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
         // Rows below the target may change scrollHeight without invalidating that destination.
         const base = destination ?? current
         const offset = next[0], bottomOffset = offset + card.height
-        const target = Math.max(0, Math.min(Math.max(0, next[3] - height),
-          offset < base ? offset : bottomOffset > base + height ? bottomOffset - height : base))
+        const limit = Math.max(0, next[3] - height)
+        const nearest = position => Math.max(0, Math.min(limit,
+          offset < position ? offset : bottomOffset > position + height ? bottomOffset - height : position))
+        // A stale endpoint can lie on the other side of a card that is already visible.
+        // Preserve valid endpoints, but correct invalid ones from the actual viewport.
+        const target = Math.abs(nearest(base) - base) > 1 ? nearest(current) : base
         if (Math.abs(target - base) > 1) {
           destination = target
           if (!reduced && typeof scroller.scrollTo === 'function') scroller.scrollTo({top: target, behavior: 'smooth'})

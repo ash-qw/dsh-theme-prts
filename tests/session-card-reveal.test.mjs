@@ -85,3 +85,21 @@ test('growth below the target and unchanged remounts leave an in-flight destinat
     assert.equal(f.scroller.scrollTop,100)
   }finally{f.close()}
 })
+
+test('reflow stops at the current visible card instead of pulling back to its top edge',async()=>{
+  const f=fixture()
+  try{
+    f.select();await f.pump();f.progress(200)
+    f.move(220);await f.pump()
+    assert.deepEqual(f.calls.at(-1),{top:200,behavior:'smooth'})
+    assert.equal(f.scroller.scrollTop,200)
+  }finally{f.close()}
+})
+test('invalid endpoints are corrected with the shortest remaining forward scroll',async()=>{
+  const f=fixture()
+  try{
+    f.select();await f.pump();f.progress(100)
+    f.move(220);await f.pump()
+    assert.deepEqual(f.calls.at(-1),{top:152,behavior:'smooth'})
+  }finally{f.close()}
+})
