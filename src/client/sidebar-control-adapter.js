@@ -976,7 +976,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
   return {
     start(preferences = {}) {
-      const keys = ['sessionPreview','previewOngoing','previewWarning','previewDone','previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']
+      const keys = ['sessionPreview','previewOngoing','previewTools','previewWarning','previewDone','previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']
       if (keys.some(key => previewPreferences[key] !== preferences[key])) preview.stop()
       previewPreferences = Object.fromEntries(keys.map(key => [key, preferences[key]]))
       if (!document) return

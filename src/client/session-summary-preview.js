@@ -39,6 +39,48 @@ export function latestAssistantReply(snapshot) {
   return ''
 }
 
+// Only calls after the latest settled prose belong to the current progress preview.
+export function previewToolCalls(snapshot) {
+  const turn = snapshot?.timeline?.turnOrder?.at(-1)
+  const order = snapshot?.order ?? []
+  const calls = [], seen = new Set()
+  const visit = (call, key) => {
+    if (!call) return
+    const id = call.callId ?? key
+    if (!seen.has(id)) { seen.add(id); calls.push({call, key: id}) }
+    for (const [index, child] of (call.subCalls ?? []).entries()) visit(child, key + ':' + index)
+  }
+  for (let i = order.length - 1; i >= 0; i--) {
+    const node = snapshot.nodes?.get?.(order[i])
+    if (['user', 'steering', 'turn-trigger'].includes(node?.kind)) break
+    if (turn !== undefined && node?.location?.turn?.turn !== turn) continue
+    if (node?.visibility === 'hidden') continue
+    if (node?.kind === 'assistant-step' && node.data?.status === 'settled'
+      && node.data.blocks?.some(block => block.kind === 'text' && block.text?.trim())) break
+    if (node?.kind === 'tool-call') visit(node.data?.root, order[i])
+  }
+  return calls.sort((a, b) => (b.call.callTime ?? b.call.time ?? 0) - (a.call.callTime ?? a.call.time ?? 0)).map(({call, key}) => {
+    let args
+    try { args = JSON.parse(call.argsRaw ?? call.call?.argsRaw ?? '') } catch {}
+    const summary = ['description', 'command', 'cmd', 'file_path', 'filePath', 'path', 'query', 'pattern', 'url']
+      .map(field => args?.[field]).find(value => typeof value === 'string' && value.trim())
+    const text = summary?.replace(/\s+/g, ' ').trim()
+    return {
+      key,
+      name: call.name || call.call?.name || '工具调用',
+      status: call.kind === 'tool-result' ? call.isError ? '失败' : '已完成'
+        : call.phase === 'preparing' ? '准备中' : '执行中',
+      summary: text ? text.slice(0, 160) + (text.length > 160 ? '…' : '')
+        : call.phase === 'preparing' ? '正在准备调用…' : '暂无操作摘要',
+    }
+  })
+}
+
+export function latestToolCall(snapshot) {
+  const records = previewToolCalls(snapshot)
+  return records.length ? {...records[0], records} : undefined
+}
+
 export function completedPreviewReplies(snapshot) {
   const replies = []
   const latestTurn = snapshot?.timeline?.turnOrder?.at(-1)
@@ -311,6 +353,39 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       body.setAttribute('data-prts-preview-body', '')
       panel.querySelector('p').replaceWith(body)
     }
+    panel.querySelector('[data-prts-preview-tool]')?.remove()
+    const toolSection = panel.ownerDocument.createElement('div')
+    toolSection.setAttribute('data-prts-preview-tool', '')
+    toolSection.hidden = true
+    body.before(toolSection)
+    let previousTool, currentTool
+    const toolEntry = panel.ownerDocument.createElement('button')
+    toolEntry.type = 'button'
+    toolEntry.setAttribute('data-prts-tool-entry', '')
+    const toolHeading = panel.ownerDocument.createElement('small')
+    const toolName = panel.ownerDocument.createElement('span')
+    toolEntry.append(toolHeading, toolName)
+    toolSection.append(toolEntry)
+    const openToolDetail = (refresh = false) => {
+      if (currentTool) showDetail({key: 'latest-tool', tool: currentTool}, 0, toolEntry, refresh)
+    }
+    toolEntry.addEventListener('pointermove', () => openToolDetail())
+    toolEntry.addEventListener('focus', () => openToolDetail())
+    toolEntry.addEventListener('click', () => openToolDetail())
+    const renderTool = tool => {
+      const signature = JSON.stringify(tool)
+      if (signature === previousTool) return
+      previousTool = signature
+      currentTool = tool
+      toolSection.hidden = !tool
+      if (!tool) {
+        if (detailKey === 'latest-tool') hideDetail()
+        return
+      }
+      toolHeading.textContent = '工具 · ' + tool.status + ' · ' + tool.records.length + ' 次'
+      toolName.textContent = tool.name
+      if (detailKey === 'latest-tool') openToolDetail(true)
+    }
     const choices = panel.ownerDocument.createElement('div')
     choices.setAttribute('data-prts-preview-choices', '')
     panel.querySelector('[data-prts-preview-choices]')?.remove()
@@ -450,9 +525,9 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       detailEntry?.removeAttribute('data-prts-reply-active')
       detailEntry = undefined
     }
-    const showDetail = (reply, index, item) => {
+    const showDetail = (reply, index, item, refresh = false) => {
       keep()
-      if (detailKey === reply.key && current.detail && !current.detail.hidden) return
+      if (!refresh && detailKey === reply.key && current.detail && !current.detail.hidden) return
       if (!current.detail) {
         const detail = panel.ownerDocument.createElement('section')
         detail.setAttribute('data-prts-summary-reply', '')
@@ -472,10 +547,36 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       detailEntry?.removeAttribute('data-prts-reply-active')
       detailEntry = item
       item?.setAttribute('data-prts-reply-active', '')
-      detail.querySelector('strong').textContent = '回复 ' + (reply.ordinal ?? index + 1)
+      detail.toggleAttribute('data-prts-tool-history', Boolean(reply.tool))
+      detail.querySelector('strong').textContent = reply.tool ? '本段工具记录 · ' + reply.tool.records.length + ' 次' : '回复 ' + (reply.ordinal ?? index + 1)
       const content = detail.querySelector('[data-prts-preview-body]')
-      content.innerHTML = current.contentCache(reply.text).html
-      content.scrollTop = 0
+      const scrollTop = refresh ? content.scrollTop : 0
+      let anchorKey, anchorOffset
+      if (refresh && scrollTop > 0) {
+        const anchor = [...content.children].find(row => row.getBoundingClientRect().bottom > content.getBoundingClientRect().top)
+        anchorKey = anchor?.dataset.toolKey
+        anchorOffset = anchor?.getBoundingClientRect().top
+      }
+      if (reply.tool) {
+        content.replaceChildren(...reply.tool.records.map(record => {
+          const row = panel.ownerDocument.createElement('article')
+          row.setAttribute('data-prts-tool-record', '')
+          row.dataset.toolKey = record.key
+          const heading = panel.ownerDocument.createElement('div')
+          const name = panel.ownerDocument.createElement('b')
+          name.textContent = record.name
+          const status = panel.ownerDocument.createElement('small')
+          status.textContent = record.status
+          heading.append(name, status)
+          const summary = panel.ownerDocument.createElement('p')
+          summary.textContent = record.summary
+          row.append(heading, summary)
+          return row
+        }))
+      } else content.innerHTML = current.contentCache(reply.text).html
+      content.scrollTop = scrollTop
+      const retainedAnchor = anchorKey && [...content.children].find(row => row.dataset.toolKey === anchorKey)
+      if (retainedAnchor) content.scrollTop += retainedAnchor.getBoundingClientRect().top - anchorOffset
       detail.hidden = false
       const rect = panel.getBoundingClientRect()
       const width = Math.min(340, window.innerWidth - 16)
@@ -548,11 +649,18 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         }))
       }
       choices.hidden = !labels.length
+      const tool = state === 'ongoing' && !question && getPreviewPreferences?.().previewTools !== false ? latestToolCall(source?.getSnapshot()) : undefined
+      renderTool(tool)
+      if (tool) label.textContent = '运行中 · 最新活动'
       panel.setAttribute('aria-label', title + '：' + label.textContent)
       if (state === 'ongoing' && source) {
         const replies = selectReplies(source.getSnapshot(), replyLimit())
-        if (replies === historyKeys) return
-        panel.toggleAttribute('data-prts-preview-empty', !replies.length)
+        panel.toggleAttribute('data-prts-preview-empty', !replies.length && !tool)
+        if (replies === historyKeys) {
+          const emptyText = tool ? '' : '正在处理…'
+          if (!replies.length && body.textContent !== emptyText) body.textContent = emptyText
+          return
+        }
         const previousTop = body.scrollTop
         const scrollAnchor = previousTop > 0 ? [...body.children].find(entry => entry.getBoundingClientRect().bottom > body.getBoundingClientRect().top) : undefined
         const anchorTop = scrollAnchor?.getBoundingClientRect().top
@@ -568,7 +676,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
           }
         }
         if (!historyKeys.length) body.replaceChildren()
-        if (!replies.length) body.textContent = '正在处理，等待本轮正文输出完成…'
+        if (!replies.length) body.textContent = tool ? '' : '正在处理…'
         for (let index = 0; index < replies.length; index++) {
           const reply = replies[index]
           if (retained.has(reply.key)) continue
@@ -580,6 +688,13 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
           item.setAttribute('data-prts-reply-entry', '')
           const heading = panel.ownerDocument.createElement('small')
           heading.textContent = '回复 ' + reply.ordinal
+          const icon = panel.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg')
+          icon.setAttribute('viewBox', '0 0 16 16')
+          icon.setAttribute('aria-hidden', 'true')
+          const outline = panel.ownerDocument.createElementNS(icon.namespaceURI, 'path')
+          outline.setAttribute('d', 'M3 2.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7l-4 2v-2a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z')
+          icon.append(outline)
+          heading.prepend(icon)
           const summary = panel.ownerDocument.createElement('span')
           summary.textContent = current.contentCache(reply.text).summary
           item.append(heading, summary)
@@ -610,7 +725,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         ? approval
           ? [pending.toolName, pending.displayReason?.['zh-CN'] || pending.displayReason?.zh || pending.reason || pending.displayReason?.en || '请进入会话查看操作详情'].filter(Boolean).join('：')
           : first?.question || pendingQuestionPreview(pending)
-        : source ? excerpt || (state === 'ongoing' ? '正在处理，尚未输出正文…' : '暂无正文回复，可进入会话查看执行记录。') : '正在读取…'
+        : source ? excerpt || (state === 'ongoing' ? '正在处理…' : '暂无正文回复，可进入会话查看执行记录。') : '正在读取…'
       if (previousText !== text || previousQuestion !== question) {
         const extendsReply = previousQuestion === question && previousText && text.startsWith(previousText)
         if (question) body.textContent = text
@@ -645,7 +760,9 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
           if (active !== current || current.refresh !== undefined) return
           current.refresh = window.setTimeout(() => {
             current.refresh = undefined
-            if (current.state === 'ongoing' && !current.editor && selectReplies(source.getSnapshot(), replyLimit()) === historyKeys) return
+            if (current.state === 'ongoing' && !current.editor
+              && selectReplies(source.getSnapshot(), replyLimit()) === historyKeys
+              && JSON.stringify(getPreviewPreferences?.().previewTools === false ? undefined : latestToolCall(source.getSnapshot())) === previousTool) return
             render()
           }, 120)
         })
@@ -673,6 +790,8 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
     if (!active) return
     const anchor = [...root.querySelectorAll('[data-prts-session-summary-item]')]
       .find(item => item.getAttribute('data-prts-session-summary-item') === active.id)
+    // A read completion (or removed session) has no status row to own a preview.
+    if (!anchor) { stop(); return }
     active.group?.removeAttribute('data-prts-preview-open')
     active.anchor?.removeAttribute('data-prts-preview-active')
     active.anchor = anchor

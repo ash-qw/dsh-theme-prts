@@ -259,7 +259,7 @@ test('new user input clears previous reply until the current turn produces prose
     const old=r.previewChat.getSnapshot()
     r.previewChat.set({...old,order:[...old.order,'new-input'],nodes:new Map([...old.nodes,['new-input',{kind:'user'}]])})
   })
-  await expect(reply).toContainText('正在处理，等待本轮正文输出完成')
+  await expect(reply).toContainText('正在处理…')
   await expect(reply).not.toContainText('当前进度正常')
   await page.evaluate(()=>{
     const r=window.__PRTS_FIXTURE_RUNTIME__,old=r.previewChat.getSnapshot()
@@ -915,4 +915,138 @@ test('collapsed workspace begins rendering before another conversation navigatio
   await expect(target).not.toHaveAttribute('data-prts-selection-target')
   await page.mouse.move(900, 700)
   await expect(target.locator('[data-prts-session-lifeline]')).toHaveCSS('opacity','0.98')
+})
+
+test('running hover previews latest tool calls while no prose is emitted',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['tool'],nodes:new Map([
+    ['tool',{kind:'tool-call',data:{root:{callId:'one',name:'exec_command',phase:'start',argsRaw:JSON.stringify({command:'npm test',cwd:'/workspace'})}}}]
+  ])}))
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const tool=page.locator('[data-prts-preview-tool]:visible')
+  await expect(tool).toContainText('执行中')
+  expect((await tool.locator('button').boundingBox()).height).toBe(32)
+  await expect(page.locator('[data-prts-summary-reply]:visible')).not.toContainText('正在处理')
+  await expect(tool).not.toContainText('npm test')
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  const initialBox=await panel.boundingBox()
+  await tool.locator('button').hover()
+  const detail=page.locator('[data-prts-reply-detail]:visible')
+  await expect(detail).toContainText('npm test')
+  await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['tool'],nodes:new Map([
+    ['tool',{kind:'tool-call',data:{root:{callId:'two',name:'read_file',phase:'start',argsRaw:JSON.stringify({path:'/workspace/README.md',content:'long parameter\n'.repeat(300)})}}}]
+  ])}))
+  await expect(tool).toContainText('read_file')
+  await expect(tool).not.toContainText('npm test')
+  await expect(tool).not.toContainText('/workspace/README.md')
+  await expect(detail).toContainText('/workspace/README.md')
+  const updatedBox=await panel.boundingBox()
+  expect(updatedBox).toEqual(initialBox)
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual([])
+})
+
+for(const unreadFirst of [false,true]) test(`current session completion removes its open previews when read: unreadFirst=${unreadFirst}`,async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await panel.locator('[data-prts-reply-entry]').first().hover()
+  await expect(page.locator('[data-prts-reply-detail]:visible')).toBeVisible()
+  await page.evaluate(unreadFirst=>{
+    const r=window.__PRTS_FIXTURE_RUNTIME__
+    for(const el of document.querySelectorAll('[data-state="ongoing"]')) el.removeAttribute('data-state')
+    r.sessionStatus.set(new Map([['fixture-session',{running:false,completionUnread:unreadFirst}]]))
+  },unreadFirst)
+  if(unreadFirst){
+    await expect(panel).toContainText('已完成 · 最后回复')
+    await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.sessionStatus.set(new Map([['fixture-session',{running:false,completionUnread:false}]])))
+  }
+  await expect(page.locator('[data-prts-session-summary-item="fixture-session"]')).toHaveCount(0)
+  await expect(page.locator('[data-prts-summary-reply]:visible')).toHaveCount(0)
+  await expect(page.locator('[data-prts-reply-detail]')).toHaveCount(0)
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewReferences.size)).toBe(0)
+})
+
+test('tool preview setting defaults on, persists through host settings and applies immediately',async({page})=>{
+  await page.addInitScript(()=>{
+    if(!localStorage.getItem('prtsFixtureNativeConfig')) localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced'}}))
+  })
+  const seedTool=()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['tool'],nodes:new Map([
+    ['tool',{kind:'tool-call',data:{root:{callId:'one',name:'exec_command',phase:'start',argsRaw:'{"command":"npm test"}'}}}]
+  ])}))
+  const openSettings=async()=>{
+    await page.locator('[data-prts-rail-brand]').click()
+    await page.locator('[data-prts-settings-jump="assistance"]').click()
+  }
+  const hoverPreview=async()=>{
+    await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+    await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  }
+  const toggle=page.locator('[data-prts-setting-switch="previewTools"]')
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await seedTool()
+  await openSettings()
+  await expect(toggle).toHaveAttribute('aria-checked','true')
+  await toggle.click()
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewTools)).toBe(false)
+  await page.getByRole('button',{name:'关闭主题设置',exact:true}).click()
+  await hoverPreview()
+  await expect(page.locator('[data-prts-preview-tool]:visible')).toHaveCount(0)
+  await expect(page.locator('[data-prts-summary-reply]:visible')).toContainText('正在处理…')
+  await page.reload()
+  await seedTool()
+  await openSettings()
+  await expect(toggle).toHaveAttribute('aria-checked','false')
+  await toggle.click()
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewTools)).toBe(true)
+  await page.getByRole('button',{name:'关闭主题设置',exact:true}).click()
+  await hoverPreview()
+  await expect(page.locator('[data-prts-preview-tool]:visible')).toContainText('exec_command')
+})
+
+test('tool detail lists the current segment with fixed geometry and preserves scroll',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const nodes=new Map([['reply',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'开始检查'}]}}]])
+    for(let i=0;i<12;i++)nodes.set('tool'+i,{kind:'tool-call',data:{root:{callId:'call'+i,name:'exec_command',phase:'start',time:i,argsRaw:JSON.stringify({command:'echo step '+i,extra:'must-not-show'})}}})
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:[...nodes.keys()],nodes})
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const entry=page.locator('[data-prts-tool-entry]:visible')
+  await expect(entry).toContainText('12 次')
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  const primaryBox=await panel.boundingBox()
+  await entry.hover()
+  const detail=page.locator('[data-prts-tool-history]:visible')
+  await expect(detail.locator('[data-prts-tool-record]')).toHaveCount(12)
+  await expect(detail.locator('[data-prts-tool-record]').first()).toContainText('echo step 11')
+  await expect(detail).not.toContainText('must-not-show')
+  const detailBox=await detail.boundingBox()
+  const body=detail.locator('[data-prts-preview-body]')
+  await body.evaluate(el=>el.scrollTop=100)
+  const before=await body.evaluate(el=>{const row=[...el.children].find(row=>row.getBoundingClientRect().bottom>el.getBoundingClientRect().top);return {key:row.dataset.toolKey,top:row.getBoundingClientRect().top}})
+  await page.evaluate(()=>{
+    const store=window.__PRTS_FIXTURE_RUNTIME__.previewChat,s=store.getSnapshot(),nodes=new Map(s.nodes)
+    nodes.set('new',{kind:'tool-call',data:{root:{callId:'new',name:'read_file',phase:'start',time:99,argsRaw:'{"path":"/workspace/new"}'}}})
+    store.set({...s,order:[...s.order,'new'],nodes})
+  })
+  await expect(entry).toContainText('13 次')
+  await expect(detail.locator('[data-prts-tool-record]')).toHaveCount(13)
+  expect(await panel.boundingBox()).toEqual(primaryBox)
+  expect(await detail.boundingBox()).toEqual(detailBox)
+  const after=await body.evaluate((el,key)=>[...el.children].find(row=>row.dataset.toolKey===key).getBoundingClientRect().top,before.key)
+  expect(Math.abs(after-before.top)).toBeLessThan(1)
+  await page.evaluate(()=>{
+    const store=window.__PRTS_FIXTURE_RUNTIME__.previewChat,s=store.getSnapshot(),nodes=new Map(s.nodes)
+    nodes.set('next-reply',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'检查完成'}]}})
+    store.set({...s,order:[...s.order,'next-reply'],nodes})
+  })
+  await expect(page.locator('[data-prts-tool-entry]:visible')).toHaveCount(0)
+  await expect(detail).toHaveCount(0)
+  await expect(panel).toContainText('检查完成')
 })

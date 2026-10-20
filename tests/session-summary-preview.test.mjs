@@ -269,3 +269,100 @@ for (const [running,waiting] of [[true,false],[false,true]]) test(`follow switch
   assert.equal(panel.getAttribute('data-prts-preview-state'),running?'warning':'ongoing')
   preview.stop();dom.window.close()
 })
+
+test('running preview updates tool calls without prose and preserves completed replies', async()=>{
+  const {dom,panel}=fixture(); let listener
+  const snapshot=chat(['已完成的说明'])
+  snapshot.nodes.get('0').data.status='settled'
+  snapshot.order.push('tool')
+  const root={callId:'call',name:'exec_command',phase:'start',argsRaw:'{"command":"<script>echo hello</script>"}'}
+  snapshot.nodes.set('tool',{kind:'tool-call',data:{root}})
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    getSessionStatus:()=>({getSnapshot:()=>new Map([['test',{running:true}]]),subscribe:()=>()=>{}}),
+    sessions:{retain:()=>({ready:Promise.resolve({}),release(){}})},
+    getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>snapshot,subscribe:fn=>{listener=fn;return()=>{}}})})})})
+  preview.show('test',panel,'test');await wait(dom.window)
+  const tool=panel.querySelector('[data-prts-preview-tool]')
+  assert.match(tool.textContent,/exec_command/)
+  assert.match(tool.textContent,/执行中/)
+  assert.ok(!tool.textContent.includes('echo hello'))
+  tool.querySelector('button').focus()
+  const detail=panel.querySelector('[data-prts-reply-detail]')
+  assert.match(detail.textContent,/<script>echo hello<\/script>/)
+  assert.equal(detail.querySelector('script'),null)
+  const reply=panel.querySelector('[data-prts-preview-message]')
+  root.kind='tool-result';root.isError=true;root.call={argsRaw:root.argsRaw};delete root.argsRaw
+  listener();await wait(dom.window,150)
+  assert.match(tool.textContent,/失败/)
+  assert.match(detail.textContent,/失败/)
+  assert.equal(panel.querySelector('[data-prts-preview-message]'),reply)
+  snapshot.order.push('input');snapshot.nodes.set('input',{kind:'user'})
+  listener();await wait(dom.window,150)
+  assert.equal(tool.hidden,true)
+  assert.equal(panel.querySelector('[data-prts-preview-body]').textContent,'正在处理…')
+  assert.equal(panel.querySelector('[data-prts-preview-message]'),null)
+  snapshot.order.push('next');snapshot.nodes.set('next',{kind:'tool-call',data:{root:{name:'read_file',phase:'preparing'}}})
+  listener();await wait(dom.window,150)
+  assert.equal(tool.hidden,false)
+  assert.match(tool.textContent,/准备中/)
+  assert.equal(panel.hasAttribute('data-prts-preview-empty'),false)
+  assert.equal(panel.querySelector('[data-prts-preview-body]').textContent,'')
+  preview.stop();dom.window.close()
+})
+
+test('latest tool respects turn and visibility and includes nested dispatches', async()=>{
+  const {latestToolCall}=await import('../src/client/session-summary-preview.js')
+  const snapshot={timeline:{turnOrder:[2]},order:['old','current','hidden'],nodes:new Map([
+    ['old',{kind:'tool-call',location:{turn:{turn:1}},data:{root:{name:'old',time:99}}}],
+    ['current',{kind:'tool-call',location:{turn:{turn:2}},data:{root:{name:'parent',time:1,subCalls:[{name:'child',time:2,phase:'start',argsRaw:'partial'}]}}}],
+    ['hidden',{kind:'tool-call',visibility:'hidden',location:{turn:{turn:2}},data:{root:{name:'hidden',time:100}}}],
+  ])}
+  assert.equal(latestToolCall(snapshot).name,'child')
+  assert.equal(latestToolCall(snapshot).summary,'暂无操作摘要')
+  assert.equal(latestToolCall(undefined),undefined)
+})
+
+test('removing the summary anchor closes sticky previews and releases ownership',async()=>{
+  const {dom,panel}=fixture();let notify,released=0,unsubscribed=0
+  let status={running:true}
+  const snapshot=chat(['完成']);snapshot.nodes.get('0').data.status='settled'
+  const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
+    sessions:{retain:()=>({ready:Promise.resolve({}),release:()=>released++})},
+    getSessionStatus:()=>({getSnapshot:()=>new Map([['a',status]]),subscribe:fn=>{notify=fn;return()=>unsubscribed++}}),
+    getUiConversation:()=>({binding:()=>({target:()=>({getSnapshot:()=>snapshot,subscribe:()=>()=>unsubscribed++})})})})
+  preview.show('a',panel,'a');await wait(dom.window,100)
+  panel.querySelector('[data-prts-reply-entry]').focus()
+  assert.ok(panel.querySelector('[data-prts-reply-detail]'))
+  status={running:false,completionUnread:false};notify()
+  const root=dom.window.document.createElement('div')
+  root.innerHTML='<button data-prts-session-summary-item="other"></button>'
+  preview.reanchor(root)
+  assert.equal(preview.isOpen(),false)
+  assert.equal(panel.hidden,true)
+  assert.equal(panel.querySelector('[data-prts-reply-detail]'),null)
+  assert.equal(released,1)
+  assert.equal(unsubscribed,2)
+  preview.stop();assert.equal(released,1)
+  dom.window.close()
+})
+
+test('tool history collects calls after settled prose and summarizes only key arguments',async()=>{
+  const {previewToolCalls}=await import('../src/client/session-summary-preview.js')
+  const snapshot=chat(['正文'])
+  snapshot.nodes.get('0').data.status='settled'
+  snapshot.order.unshift('old')
+  snapshot.nodes.set('old',{kind:'tool-call',data:{root:{name:'old',callId:'old',phase:'start'}}})
+  snapshot.order.push('first','second','stream')
+  snapshot.nodes.set('first',{kind:'tool-call',data:{root:{callId:'first',name:'exec',kind:'tool-result',time:30,callTime:1,isError:false,call:{argsRaw:'{"command":"npm test","extra":"omit-me"}'}}}})
+  snapshot.nodes.set('second',{kind:'tool-call',data:{root:{callId:'second',name:'read',phase:'start',time:2,argsRaw:JSON.stringify({path:'/workspace/file',content:'omit-content'}),subCalls:[{callId:'child',name:'search',phase:'start',time:3,argsRaw:JSON.stringify({query:'x'.repeat(300)})}]}}})
+  snapshot.nodes.set('stream',{kind:'assistant-step',data:{status:'running',blocks:[{kind:'text',text:'正在输出'}]}})
+  let records=previewToolCalls(snapshot)
+  assert.deepEqual(records.map(row=>row.key),['child','second','first'])
+  assert.equal(records[0].summary.length,161)
+  assert.equal(records[1].summary,'/workspace/file')
+  assert.equal(records[2].summary,'npm test')
+  assert.equal(records[2].status,'已完成')
+  assert.ok(!JSON.stringify(records).includes('omit-'))
+  snapshot.nodes.get('stream').data.status='settled'
+  assert.deepEqual(previewToolCalls(snapshot),[])
+})

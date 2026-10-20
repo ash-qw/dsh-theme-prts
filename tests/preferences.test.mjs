@@ -99,6 +99,7 @@ test('loads and migrates a complete version-one payload without losing independe
     conversationEmblem: true,
     sessionPreview: true,
     previewOngoing: true,
+    previewTools: true,
     previewWarning: true,
     previewDone: true,
     previewDoubleClick: true, previewFollowOngoing: true, previewFollowWarning: false, previewReplyLimit: 5,
@@ -354,3 +355,10 @@ test('Baker loading is opt-in and persists independently of conversation theme',
   assert.equal(api.normalizePreferences({ bakerLoading: true, conversationStyle: 'native' }).bakerLoading, true)
   assert.equal(api.normalizePreferences({ bakerLoading: 'true' }).bakerLoading, false)
 })
+
+ test('tool previews default on and preserve an explicit opt-out',()=>{
+  assert.equal(api.normalizePreferences({}).previewTools,true)
+  assert.equal(api.normalizePreferences({previewTools:'false'}).previewTools,true)
+  const changed=api.updatePreferenceValue(api.DEFAULT_PREFERENCES,'previewTools',false)
+  assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(changed))).previewTools,false)
+ })

@@ -59,7 +59,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -177,6 +177,7 @@ export function themeSettingsMarkup() {
                   <header><strong>悬停预览</strong><small>选择哪些状态显示详细浮窗</small></header>
                   ${previewSetting('previewOngoing', '运行中预览', '逐轮查看已完成的回复，最新内容置顶')}
                   <div data-prts-preview-details="previewOngoing">
+                  ${previewSetting('previewTools', '显示工具调用', '显示工具进度，悬停查看最新正文之后的调用记录')}
                   <label data-prts-setting-row="previewReplyLimit"><span><strong>回复条数</strong><small data-prts-preview-setting-description>仅保留最新回复</small></span><select data-prts-preview-reply-limit aria-label="最多显示回复"><option value="5">最新 5 条</option><option value="10">最新 10 条</option><option value="0">不限制</option></select></label>
                   ${previewSetting('previewFollowOngoing', '运行结束后跟随', '转为待处理或已完成时，自动切换预览')}
                   </div>

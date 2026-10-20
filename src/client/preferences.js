@@ -43,6 +43,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   railDefaultHidden: false,
   sessionPreview: true,
   previewOngoing: true,
+  previewTools: true,
   previewWarning: true,
   previewDone: true,
   previewFollowOngoing: true,
@@ -101,7 +102,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
-  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
+  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
 })
 
@@ -238,6 +239,7 @@ export function normalizePreferences(value) {
     sessionFlowSpeed: sessionFlowSpeedOr(input.sessionFlowSpeed, DEFAULT_PREFERENCES.sessionFlowSpeed),
     sessionPreview: booleanOr(input.sessionPreview, DEFAULT_PREFERENCES.sessionPreview),
     previewOngoing: booleanOr(input.previewOngoing, DEFAULT_PREFERENCES.previewOngoing),
+    previewTools: booleanOr(input.previewTools, DEFAULT_PREFERENCES.previewTools),
     previewWarning: booleanOr(input.previewWarning, DEFAULT_PREFERENCES.previewWarning),
     previewDone: booleanOr(input.previewDone, DEFAULT_PREFERENCES.previewDone),
     previewReplyLimit: [0, 5, 10, '0', '5', '10'].includes(input.previewReplyLimit) ? Number(input.previewReplyLimit) : 5,
