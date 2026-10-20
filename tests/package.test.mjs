@@ -154,7 +154,7 @@ test('build embeds local CSS, emblems, and particle-field assets', async () => {
   assert.match(client, /function findOrthogonalLayout\(/)
   assert.doesNotMatch(client, /createBlueNoiseTargets|createLatticeTargets/)
   assert.equal((client.match(/data:image\/png;base64,/g) || []).length, 49, 'only the avatar, active hand/link frames, static text, resize, grab and unavailable cursors should be embedded')
-  assert.ok(Buffer.byteLength(client) < 1.08 * 1024 * 1024, 'browser bundle should remain below 1.08 mebibytes with history navigation, focus contrast, and opt-in layout diagnostics')
+  assert.ok(Buffer.byteLength(client) < 1.09 * 1024 * 1024, 'browser bundle should remain below 1.09 mebibytes including mixed-input navigation, interactive scheme HUD and shared wallpaper geometry')
   assert.doesNotMatch(client, /createRhodesFallbackTargets/)
   assert.doesNotMatch(client, /topographic-map\.svg|topographic-tech\.svg|data-prts-terrain-layer/)
   assert.doesNotMatch(client, /Amiya|阿米娅|dossier|data-prts-details-toggle/i)
