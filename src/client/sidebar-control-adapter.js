@@ -1,3 +1,4 @@
+import { createSessionCardReveal } from './session-card-reveal.js'
 import { createSessionSummaryPreview, scrollSummaryTitle } from './session-summary-preview.js'
 import { ensureFacilityGraphic, ensureFacilityTextureDefs, renderFacilityGraphic } from './facility-vector.js'
 import { createSessionLifelineAnimator } from './session-lifeline.js'
@@ -362,22 +363,30 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     document.addEventListener('pointerdown', interruptSelectionTarget, true)
   }
 
-  let pendingReveal, revealTimer, revealFrame, revealSettleTimer
+  let pendingReveal, revealTimer
   let navigationFrame, navigationGeneration = 0
   function cancelPendingNavigation() {
     navigationGeneration++
     window.cancelAnimationFrame?.(navigationFrame)
   }
   function cancelReveal() {
+    pendingReveal?.tracker?.cancel()
     pendingReveal = undefined
     window.clearTimeout(revealTimer)
-    window.clearTimeout(revealSettleTimer)
-    window.cancelAnimationFrame?.(revealFrame)
+    for (const type of ['wheel','touchmove','pointerdown','keydown']) document.removeEventListener(type, interruptReveal, true)
+  }
+  function interruptReveal(event) {
+    if (!event.target?.closest?.('[data-prts-region="sessions"]')) return
+    if (event.type === 'keydown' && !['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key)) return
+    pendingReveal?.tracker?.interrupt()
+    cancelReveal()
   }
   function revealSessionCard(sessionId) {
+    pendingReveal?.tracker?.interrupt()
     cancelReveal()
-    pendingReveal = {sessionId, attempts: 0}
+    pendingReveal = {sessionId}
     revealTimer = window.setTimeout(cancelReveal, 4000)
+    for (const type of ['wheel','touchmove','pointerdown','keydown']) document.addEventListener(type, interruptReveal, {capture:true, passive:true})
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     syncSessionReveal(root)
     queueScan()
@@ -390,30 +399,14 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     const row = rows.find(el => el.getAttribute('data-row-key') === `session:${sessionId}`
       || el.getAttribute('data-session-id') === sessionId)
     if (row) {
-      if (pendingReveal.scrolling) return
-      const request = pendingReveal
-      request.scrolling = true
-      // Let React finish mounting and let the host's row glide settle before scrolling.
-      revealFrame = window.requestAnimationFrame(async () => {
-        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-        const animations = []
-        if (!reduced) for (let node = row; node && node !== root; node = node.parentElement) {
-          for (const animation of node.getAnimations?.() ?? []) {
-            const timing = animation.effect?.getComputedTiming?.()
-            if (animation.playState === 'running' && Number.isFinite(timing?.endTime)) animations.push(animation.finished)
-          }
-        }
-        if (animations.length) await Promise.race([
-          Promise.allSettled(animations),
-          new Promise(resolve => { revealSettleTimer = window.setTimeout(resolve, 300) }),
-        ])
-        if (pendingReveal !== request || !row.isConnected) return
-        row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:reduced ? 'instant' : 'smooth'})
-        cancelReveal()
-      })
+      if (!pendingReveal.tracker) {
+        const request = pendingReveal
+        request.tracker = createSessionCardReveal({window, root, sessionId, onStart: () => window.clearTimeout(revealTimer), onDone: () => {
+          if (pendingReveal === request) cancelReveal()
+        }})
+      }
       return
     }
-    if (++pendingReveal.attempts > 40) { cancelReveal(); return }
     const items = snapshotOf(workspaces?.list)?.items ?? []
     const owner = items.find(item => item.sessionIds?.includes(sessionId))
     const key = owner?.workspaceId ?? ''
