@@ -919,3 +919,13 @@ html[data-dsh-prts] [data-prts-preview-settings] {
   & [data-prts-setting-row] { gap:12px; }
 }
 }
+
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-ai-tools] { padding:0 20px 20px;font:12px/1.75 var(--prts-body);overflow-wrap:anywhere; }
+html[data-dsh-prts] [data-prts-ai-tools] > section { padding:16px 0;border-top:1px solid var(--prts-line); }
+html[data-dsh-prts] [data-prts-ai-tools] h3 { margin:0 0 8px;font-size:14px; }
+html[data-dsh-prts] [data-prts-ai-tools] :is(p,dd,small) { color:var(--prts-muted); }
+html[data-dsh-prts] [data-prts-ai-tools] h3 small { margin-left:8px;font-size:11px;font-weight:400; }
+html[data-dsh-prts] [data-prts-ai-tools] blockquote { margin:12px 0;padding:8px 12px;border-left:2px solid var(--prts-cyan);background:color-mix(in srgb,var(--prts-cyan) 5%,transparent); }
+html[data-dsh-prts] [data-prts-ai-tools] summary { cursor:pointer; }
+html[data-dsh-prts] [data-prts-ai-tools] dt { margin-top:12px; }
+html[data-dsh-prts] [data-prts-ai-tools] dd { margin:3px 0 0; }

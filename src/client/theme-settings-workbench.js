@@ -59,7 +59,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'aiToolsEnabled', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -127,6 +127,7 @@ export function themeSettingsMarkup() {
           <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子徽记</button>
           <button type="button" data-prts-settings-jump="assistance" role="tab" id="prts-tab-assistance" aria-controls="prts-page-assistance" aria-selected="false" tabindex="-1">辅助功能</button>
+          <button type="button" data-prts-settings-jump="ai-tools" role="tab" id="prts-tab-ai-tools" aria-controls="prts-page-ai-tools" aria-selected="false" tabindex="-1">AI 工具</button>
         </nav>
           <footer data-prts-settings-actions aria-label="全局主题设置操作">
             <div data-prts-persistence-error hidden role="alert">
@@ -166,6 +167,33 @@ export function themeSettingsMarkup() {
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
             </div>
+          </section>
+          <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
+            <div data-prts-preview-settings><div data-prts-preview-master>
+            ${previewSetting('aiToolsEnabled', '允许 AI 定制主题', '默认开启 · 共 5 个工具 · 影响此 DSH 实例的所有会话')}
+            </div></div>
+            <p>开启后，AI 可以通过工具调整粒子徽记和 Baker 头像。关闭后，后续模型请求不再提供这些工具，手动设置不受影响；已有对话中的工具记录不会删除。</p>
+            <section>
+              <h3>粒子徽记 <small>3 个工具</small></h3>
+              <p>将会话中的图片制作成粒子徽记，用于新会话页面或正文轮换。</p>
+              <ol><li>上传图片，或让 AI 读取已生成的图片。</li><li>让 AI 制作草稿，调整轮廓、位置和缩放，先查看预览。</li><li>满意后明确要求应用到新会话徽记，或加入正文轮换。</li></ol>
+              <blockquote>“把这张图片做成粒子徽记，先给我看看效果。”</blockquote>
+              <details><summary>工具说明与限制</summary><dl>
+                <dt><code>prts_emblem_inspect</code></dt><dd>查看徽记配置、版本与当前会话的可用图片，不修改设置。</dd>
+                <dt><code>prts_emblem_preview</code></dt><dd>制作或调整粒子徽记草稿，只生成预览，不直接应用。</dd>
+                <dt><code>prts_emblem_apply</code></dt><dd>经你确认后，替换新会话徽记，或添加、替换正文轮换徽记。</dd>
+              </dl><p>单张来源图片最大 8 MB。徽记设置跨工作区和会话共享。粒子预览不等同于原图；配置发生变化时，AI 需要重新核对后再应用。</p></details>
+            </section>
+            <section>
+              <h3>Baker 头像 <small>2 个工具</small></h3>
+              <p>为用户和 AI 设置头像，调整圆形裁剪，或恢复默认头像。仅在 Baker 会话样式下显示。</p>
+              <ol><li>上传图片，说明要修改用户头像还是 AI 头像。</li><li>让 AI 查看当前配置，再按你的要求替换、裁剪或恢复默认。</li></ol>
+              <blockquote>“把这张图片设为 AI 头像，居中裁剪。”</blockquote>
+              <details><summary>工具说明与限制</summary><dl>
+                <dt><code>prts_avatar_inspect</code></dt><dd>查看头像配置、原图尺寸、裁剪参数及会话图片，不修改设置。</dd>
+                <dt><code>prts_avatar_apply</code></dt><dd>替换用户或 AI 头像、基于现有原图重新裁剪，或恢复默认头像。</dd>
+              </dl><p>单图最大 5 MB、2500 万像素；裁剪支持 1～4 倍缩放。修改立即影响此实例所有会话，不会自动切换会话样式。替换后不保留旧原图；恢复默认会删除自定义原图。</p></details>
+            </section>
           </section>
           <section data-prts-settings-section="assistance" role="tabpanel" id="prts-page-assistance" aria-labelledby="prts-tab-assistance" tabindex="0" hidden>
             <section data-prts-preview-settings>

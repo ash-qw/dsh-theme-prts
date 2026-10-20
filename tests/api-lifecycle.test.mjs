@@ -35,7 +35,7 @@ test('plugin registers route and worker cleanup with Cordis effects',async()=>{
     await apply({inject(names, fn) { assert.deepEqual(names, ['settings']); },attachments:{},tools:{register:()=>()=>removed.push('tool')},connection:{admit:()=>({})},
       webServer:{register:route=>()=>removed.push(route.path)},
       effect:body=>{cleanups.push(body());return()=>{}},
-      on(){throw Error('Legacy disposal events must not be used')}})
+      on(name){assert.equal(name,'app-boot/config-reload');return()=>{}}})
     assert.equal(cleanups.length,1)
     await cleanups[0]()
     assert.ok(removed.includes(AVATAR_API));assert.ok(removed.includes(API))
@@ -44,3 +44,43 @@ test('plugin registers route and worker cleanup with Cordis effects',async()=>{
     await rm(directory,{recursive:true,force:true})
   }
 })
+
+for(const enabled of [undefined,false,true])test(`AI tool registration follows the instance switch: ${enabled}`,async()=>{
+  const old=process.env.DSH_HOME,directory=await mkdtemp(tmpdir()+'/prts-tool-switch-')
+  process.env.DSH_HOME=directory
+  const cleanups=[],registered=new Set(),routes=new Set()
+  try{
+    await apply({inject(){},on(){return()=>{}},attachments:{},tools:{register:tool=>{registered.add(tool.name);return()=>registered.delete(tool.name)}},connection:{admit:()=>({})},
+      webServer:{register:route=>{routes.add(route.path);return()=>routes.delete(route.path)}},
+      effect:body=>{cleanups.push(body());return()=>{}}},enabled===undefined?undefined:{aiToolsEnabled:enabled})
+    assert.equal(registered.size,enabled===false?0:5)
+    if(enabled!==false)assert.deepEqual([...registered].sort(),['prts_avatar_apply','prts_avatar_inspect','prts_emblem_apply','prts_emblem_inspect','prts_emblem_preview'])
+    assert.ok(routes.has(AVATAR_API));assert.ok(routes.has(API));assert.equal(routes.size,3)
+    for(const dispose of cleanups)await dispose()
+    assert.equal(registered.size,0);assert.equal(routes.size,0)
+  }finally{
+    if(old===undefined)delete process.env.DSH_HOME;else process.env.DSH_HOME=old
+    await rm(directory,{recursive:true,force:true})
+  }
+})
+
+ test('volatile AI switch unregisters and restores tools without removing manual APIs',async()=>{
+  const old=process.env.DSH_HOME,directory=await mkdtemp(tmpdir()+'/prts-tool-live-')
+  process.env.DSH_HOME=directory
+  let enabled=true,notify,unsubscribed=false
+  const cleanups=[],tools=new Set(),routes=new Set()
+  try{
+    await apply({inject(){},attachments:{},on(name,fn){assert.equal(name,'app-boot/config-reload');notify=fn;return()=>{unsubscribed=true}},
+      tools:{register(tool){assert.ok(!tools.has(tool.name));tools.add(tool.name);return()=>tools.delete(tool.name)}},connection:{admit:()=>({})},
+      webServer:{register:route=>{routes.add(route.path);return()=>routes.delete(route.path)}},effect:body=>{cleanups.push(body());return()=>{}}},
+      {aiToolsEnabled:{get:()=>enabled}})
+    assert.equal(tools.size,5);notify();assert.equal(tools.size,5)
+    enabled=false;notify();assert.equal(tools.size,0);assert.equal(routes.size,3)
+    enabled=true;notify();assert.equal(tools.size,5);assert.equal(routes.size,3)
+    for(const dispose of cleanups)await dispose()
+    assert.equal(tools.size,0);assert.equal(routes.size,0);assert.equal(unsubscribed,true)
+  }finally{
+    if(old===undefined)delete process.env.DSH_HOME;else process.env.DSH_HOME=old
+    await rm(directory,{recursive:true,force:true})
+  }
+ })

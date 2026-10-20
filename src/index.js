@@ -19,7 +19,7 @@ export const Config = Schema.object(Object.fromEntries([
   ['preferencesInitialized', Schema.boolean().default(false).volatile()],
 ]))
 
-export async function apply(ctx) {
+export async function apply(ctx, config = {}) {
   ctx.inject(['settings'], settingsCtx => {
     settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
   })
@@ -27,7 +27,24 @@ export async function apply(ctx) {
   const service=await createEmblemService(directory)
   const backgrounds=await createBackgroundService(join(directory,'..','backgrounds'))
   const avatars=await createAvatarService(join(directory,'..','avatars'))
-  const disposers=[...emblemTools(service,ctx.attachments),...avatarTools(avatars,ctx.attachments)].map(tool=>ctx.tools.register(tool))
-  disposers.push(registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars),registerBackgroundApi(ctx,backgrounds))
-  ctx.effect(()=>async()=>{for(const dispose of disposers.reverse())dispose();await service.dispose();await backgrounds.dispose()})
+  const definitions=[...emblemTools(service,ctx.attachments),...avatarTools(avatars,ctx.attachments)]
+  let toolDisposers=[]
+  const syncTools=()=>{
+    const enabled=(config.aiToolsEnabled?.get?.() ?? config.aiToolsEnabled) !== false
+    if(enabled && !toolDisposers.length) {
+      for(const tool of definitions)toolDisposers.push(ctx.tools.register(tool))
+    } else if(!enabled) {
+      for(const dispose of toolDisposers.splice(0).reverse())dispose()
+    }
+  }
+  syncTools()
+  // Host volatile fields are updated before this notification; they expose get(), not subscribe().
+  const stopConfig=ctx.on('app-boot/config-reload',syncTools)
+  const disposers=[registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars),registerBackgroundApi(ctx,backgrounds)]
+  ctx.effect(()=>async()=>{
+    stopConfig()
+    for(const dispose of toolDisposers.splice(0).reverse())dispose()
+    for(const dispose of disposers.reverse())dispose()
+    await service.dispose();await backgrounds.dispose()
+  })
 }

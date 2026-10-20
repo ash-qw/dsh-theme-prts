@@ -98,6 +98,7 @@ test('loads and migrates a complete version-one payload without losing independe
     bakerLoading: false,
     conversationEmblem: true,
     sessionPreview: true,
+    aiToolsEnabled: true,
     previewOngoing: true,
     previewTools: true,
     previewWarning: true,
@@ -362,3 +363,11 @@ test('Baker loading is opt-in and persists independently of conversation theme',
   const changed=api.updatePreferenceValue(api.DEFAULT_PREFERENCES,'previewTools',false)
   assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(changed))).previewTools,false)
  })
+
+test('AI tools default on and can be disabled independently of visual settings',()=>{
+  assert.equal(api.normalizePreferences({}).aiToolsEnabled,true)
+  const changed=api.updatePreferenceValue(api.DEFAULT_PREFERENCES,'aiToolsEnabled',false)
+  assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(changed))).aiToolsEnabled,false)
+  assert.equal(api.resetPreferenceGroup(changed,'navigation').aiToolsEnabled,false)
+  assert.equal(api.resetPreferenceGroup(changed,'aiTools').aiToolsEnabled,true)
+})
