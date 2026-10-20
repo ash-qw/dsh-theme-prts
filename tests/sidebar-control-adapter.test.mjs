@@ -534,3 +534,166 @@ test('preview waits for missing services without needing a sidebar DOM mutation'
   adapter.dispose()
   dom.window.close()
 })
+
+// A reveal must survive the list resizing under it. The Host raises the Workspace
+// watermark and mounts rows in separate frames, so a scroll started before they
+// settle lands where the target no longer is.
+function createScrollingSidebar({ rowHeight = 32, viewport = 100 } = {}) {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div class="workspaceSectionHeader"><span>工作区</span><button type="button">搜索</button></div>
+      <div role="tree" style="overflow-y:auto">
+        <div role="treeitem" aria-expanded="true" data-row-key="workspace:owner"><span>Owner</span></div>
+      </div>
+    </div><\/aside>
+  <\/body><\/html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  dom.window.requestAnimationFrame = callback => dom.window.setTimeout(callback, 0)
+  dom.window.cancelAnimationFrame = id => dom.window.clearTimeout(id)
+  const tree = document.querySelector('[role="tree"]')
+  const state = { scrollTop: 0, scrollHeight: 600, clientHeight: viewport, calls: [] }
+  Object.defineProperty(tree, 'clientHeight', { configurable: true, get: () => state.clientHeight })
+  Object.defineProperty(tree, 'scrollHeight', { configurable: true, get: () => state.scrollHeight })
+  Object.defineProperty(tree, 'scrollTop', {
+    configurable: true,
+    get: () => state.scrollTop,
+    set: value => { state.scrollTop = value },
+  })
+  // A real scroller animates `smooth` over frames and jumps for `auto`; the hold loop
+  // depends on that difference, so the stub has to reproduce it.
+  tree.scrollTo = options => {
+    state.calls.push(options)
+    const target = options?.top
+    if (target === undefined) return
+    if (options.behavior !== 'smooth') { state.scrollTop = target; return }
+    const from = state.scrollTop
+    const steps = 5
+    for (let step = 1; step <= steps; step += 1) {
+      dom.window.setTimeout(() => {
+        state.scrollTop = Math.round(from + (target - from) * (step / steps))
+      }, step * 20)
+    }
+  }
+  tree.getBoundingClientRect = () => ({ top: 0, bottom: state.clientHeight, left: 0, right: 280, width: 280, height: state.clientHeight })
+  // rowTop is the card's offset inside the scroller; tests move it to simulate a reflow.
+  const geometry = { rowTop: 0 }
+  const scroller = { tree, state, geometry, rowHeight }
+  scroller.attachRow = row => {
+    // Model a real scroller: the card's viewport offset follows scrollTop.
+    row.getBoundingClientRect = () => {
+      const top = geometry.rowTop - state.scrollTop
+      return { top, bottom: top + rowHeight, left: 0, right: 260, width: 260, height: rowHeight }
+    }
+  }
+  return { dom, document, ...scroller }
+}
+
+function visibleInScroller(row, tree) {
+  const box = row.getBoundingClientRect()
+  return box.top >= -1 && box.bottom <= tree.clientHeight + 1
+}
+
+test('preview navigation scrolls the list itself and re-checks a card the reflow moved', async () => {
+  const page = createScrollingSidebar()
+  const { document, dom, tree, state, geometry } = page
+  const opened = []
+  const row = document.createElement('div')
+  row.setAttribute('role', 'treeitem')
+  row.setAttribute('aria-selected', 'false')
+  row.setAttribute('data-row-key', 'session:target')
+  row.innerHTML = '<span data-state="ongoing"></span><span class="title">Target</span><span class="time">刚刚</span><span><span><button type="button">…</button></span></span>'
+  page.attachRow(row)
+  tree.append(row)
+  geometry.rowTop = 480
+  const adapter = createSidebarControlAdapter({
+    document,
+    window: dom.window,
+    sessions: { list: createStore({ ids: ['target'], byId: { target: { id: 'target', displayTitle: 'Target', running: true } } }) },
+    workspaces: { list: createStore({ items: [{ workspaceId: 'owner', path: '/root/project', sessionIds: ['target'] }] }) },
+    getUiWorkspace: () => ({ openSession: id => opened.push(id) }),
+  })
+  adapter.start()
+  document.querySelector('[data-prts-session-summary-item="target"]').click()
+  for (let i = 0; i < 2; i++) await flush(dom.window)
+  assert.deepEqual(opened, ['target'])
+  // Positioned by the adapter, not by scrollIntoView on the row.
+  assert.equal(state.calls.length, 1)
+  assert.equal(state.calls[0].behavior, 'smooth')
+  assert.equal(state.calls[0].top, 480 + 32 - 100)
+
+  // The host raises the watermark mid-animation: content above the card grew by 40px.
+  geometry.rowTop = 520
+  state.scrollHeight = 640
+  for (let i = 0; i < 20; i++) await flush(dom.window)
+  // One unattended correction that does not restart the smooth animation.
+  assert.equal(state.calls.length, 2)
+  assert.equal(state.calls[1].behavior, 'auto')
+  assert.ok(visibleInScroller(row, tree))
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('preview navigation resumes when the host remounts the target card', async () => {
+  const page = createScrollingSidebar()
+  const { document, dom, tree, state, geometry } = page
+  const makeRow = () => {
+    const node = document.createElement('div')
+    node.setAttribute('role', 'treeitem')
+    node.setAttribute('aria-selected', 'false')
+    node.setAttribute('data-row-key', 'session:target')
+    node.innerHTML = '<span data-state="ongoing"></span><span class="title">Target</span><span class="time">刚刚</span><span><span><button type="button">…</button></span></span>'
+    page.attachRow(node)
+    return node
+  }
+  const first = makeRow()
+  tree.append(first)
+  geometry.rowTop = 420
+  const sessions = createStore({ ids: ['target'], byId: { target: { id: 'target', displayTitle: 'Target', running: true } } })
+  const adapter = createSidebarControlAdapter({
+    document,
+    window: dom.window,
+    sessions: { list: sessions },
+    workspaces: { list: createStore({ items: [{ workspaceId: 'owner', path: '/root/project', sessionIds: ['target'] }] }) },
+    getUiWorkspace: () => ({ openSession: () => {} }),
+  })
+  adapter.start()
+  document.querySelector('[data-prts-session-summary-item="target"]').click()
+  await flush(dom.window)
+  // React replaces the node before the scroll lands.
+  const second = makeRow()
+  first.replaceWith(second)
+  geometry.rowTop = 460
+  sessions.update({ ids: ['target'], byId: { target: { id: 'target', displayTitle: 'Target', running: true } } })
+  for (let i = 0; i < 10; i++) await flush(dom.window)
+  assert.ok(state.calls.length >= 1, 'reveal must not be dropped when the row is remounted')
+  assert.ok(visibleInScroller(second, tree))
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('pointer scrolling in the sidebar cancels a pending reveal instead of fighting it', async () => {
+  const page = createScrollingSidebar()
+  const { document, dom, tree, state, geometry } = page
+  const row = document.createElement('div')
+  row.setAttribute('role', 'treeitem')
+  row.setAttribute('aria-selected', 'false')
+  row.setAttribute('data-row-key', 'session:target')
+  row.innerHTML = '<span data-state="ongoing"></span><span class="title">Target</span><span class="time">刚刚</span><span><span><button type="button">…</button></span></span>'
+  page.attachRow(row)
+  tree.append(row)
+  geometry.rowTop = 500
+  const adapter = createSidebarControlAdapter({
+    document,
+    window: dom.window,
+    sessions: { list: createStore({ ids: ['target'], byId: { target: { id: 'target', displayTitle: 'Target', running: true } } }) },
+    workspaces: { list: createStore({ items: [{ workspaceId: 'owner', path: '/root/project', sessionIds: ['target'] }] }) },
+    getUiWorkspace: () => ({ openSession: () => {} }),
+  })
+  adapter.start()
+  document.querySelector('[data-prts-session-summary-item="target"]').click()
+  tree.dispatchEvent(new dom.window.WheelEvent('wheel', { bubbles: true }))
+  for (let i = 0; i < 8; i++) await flush(dom.window)
+  assert.deepEqual(state.calls, [])
+  adapter.dispose()
+  dom.window.close()
+})
