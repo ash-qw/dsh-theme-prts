@@ -1,7 +1,7 @@
 // Follow one navigation through native selection and subsequent list reflow.
-// A smooth scroll runs once; only a changed destination can interrupt it.
+// Keep the destination stable through unrelated reflow; retarget smoothly only when needed.
 export function createSessionCardReveal({window, root, sessionId, onDone, onStart}) {
-  let row, scroller, frame, timer, started = false, disposed = false, geometry
+  let row, scroller, frame, timer, started = false, disposed = false, geometry, destination
   const findRow = () => [...root.querySelectorAll('[data-row-key], [data-session-id]')].find(el =>
     el.getAttribute('data-row-key') === `session:${sessionId}` || el.getAttribute('data-session-id') === sessionId)
   const instant = top => {
@@ -17,7 +17,11 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
     mutations.disconnect()
     root.removeEventListener('transitionend', schedule)
     root.removeEventListener('animationend', schedule)
-    scroller?.removeEventListener('scrollend', schedule)
+    scroller?.removeEventListener('scrollend', scrollEnded)
+  }
+  function scrollEnded() {
+    if (destination !== undefined && Math.abs(scroller.scrollTop - destination) <= 1) destination = undefined
+    schedule()
   }
   function schedule() {
     if (!disposed && frame === undefined) frame = window.requestAnimationFrame(() => { frame = undefined; check() })
@@ -29,12 +33,14 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
     const remounted = nextRow !== row
     if (remounted) {
       row = nextRow
-      scroller?.removeEventListener('scrollend', schedule)
+      const previousScroller = scroller
+      scroller?.removeEventListener('scrollend', scrollEnded)
       resize?.disconnect()
       scroller = undefined
       for (let node = row.parentElement; node && node !== root.parentElement; node = node.parentElement) {
         if (/^(auto|scroll)$/.test(window.getComputedStyle(node).overflowY) && node.clientHeight > 0) { scroller = node; break }
       }
+      if (scroller !== previousScroller) destination = undefined
       for (let node = row; node && node !== root.parentElement; node = node.parentElement) {
         for (const animation of node.getAnimations?.() ?? []) {
           const timing = animation.effect?.getComputedTiming?.()
@@ -42,7 +48,7 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
         }
       }
       resize?.observe(root)
-      if (scroller) { resize?.observe(scroller); scroller.addEventListener('scrollend', schedule) }
+      if (scroller) { resize?.observe(scroller); scroller.addEventListener('scrollend', scrollEnded) }
     }
     const first = !started
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -54,18 +60,22 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
       const top = card.top - box.top - scroller.clientTop, bottom = card.bottom - box.top - scroller.clientTop
       const next = [top + current, card.height, height, scroller.scrollHeight]
       const changed = remounted || !geometry || next.some((v, i) => Math.abs(v - geometry[i]) > 1)
-      const visible = top >= -1 && bottom <= height + 1
       if (first || changed || final) {
-        const target = Math.max(0, Math.min(next[3] - height, top < 0 ? current + top : bottom > height ? current + bottom - height : current))
-        // Even when currently visible, a changed destination must cancel the old animation.
-        if (!visible || (!first && changed)) {
-          if (first && !reduced && typeof scroller.scrollTo === 'function') scroller.scrollTo({top: target, behavior: 'smooth'})
+        // Evaluate visibility at the pending destination, not at an intermediate animation frame.
+        // Rows below the target may change scrollHeight without invalidating that destination.
+        const base = destination ?? current
+        const offset = next[0], bottomOffset = offset + card.height
+        const target = Math.max(0, Math.min(Math.max(0, next[3] - height),
+          offset < base ? offset : bottomOffset > base + height ? bottomOffset - height : base))
+        if (Math.abs(target - base) > 1) {
+          destination = target
+          if (!reduced && typeof scroller.scrollTo === 'function') scroller.scrollTo({top: target, behavior: 'smooth'})
           else instant(target)
         }
       }
       geometry = next
     } else if (first || remounted) {
-      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:first && !reduced ? 'smooth' : 'instant'})
+      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:!reduced ? 'smooth' : 'instant'})
     }
     if (first) {
       started = true

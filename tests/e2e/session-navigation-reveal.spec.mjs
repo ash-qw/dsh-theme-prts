@@ -21,7 +21,7 @@ async function setup(page) {
   return row
 }
 
-test('navigation waits for native selection, scrolls smoothly once and corrects a later viewport resize',async({page})=>{
+test('navigation waits for native selection, preserves smooth motion through a later viewport resize',async({page})=>{
   const row=await setup(page)
   expect(await page.evaluate(()=>window.__revealScrolls)).toEqual([])
   await row.evaluate(el=>el.setAttribute('aria-selected','true'))
@@ -31,12 +31,12 @@ test('navigation waits for native selection, scrolls smoothly once and corrects 
     return r.top>=box.top && r.bottom<=box.top+tree.clientHeight+1
   })).toBe(true)
   await row.evaluate(el=>Object.assign(el.closest('[role="tree"]').style,{height:'180px',maxHeight:'180px'}))
-  await expect.poll(()=>page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='instant').length)).toBeGreaterThan(0)
+  await expect.poll(()=>page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='smooth').length)).toBe(2)
   await expect.poll(()=>row.evaluate(el=>{
     const r=el.getBoundingClientRect(),tree=el.closest('[role="tree"]'),box=tree.getBoundingClientRect()
     return r.top>=box.top && r.bottom<=box.top+tree.clientHeight+1
   })).toBe(true)
-  expect(await page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='smooth').length)).toBe(1)
+  expect(await page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='instant').length)).toBe(0)
 })
 
 test('manual sidebar scrolling cancels a reveal that is awaiting native selection',async({page})=>{
