@@ -48,7 +48,7 @@ P.R.T.S. 头像、阵营标识及衍生徽记仅收录于个人、非商业同�
 
 ## Markdown 预览渲染
 
-会话悬停预览使用 [markdown-it](https://github.com/markdown-it/markdown-it) 14.3.2（MIT）。
+会话悬停预览使用 [markdown-it](https://github.com/markdown-it/markdown-it) 14.3.3（MIT）。
 构建时将其浏览器版本及所包含的 entities、linkify-it、mdurl、punycode.js、uc.micro 一并打包；
 对应版权与许可全文保留在生成的 lib/client.js 中。该依赖仅用于构建，不要求 DSH 在运行时另行安装。
 预览禁用原始 HTML 和远程图片加载。

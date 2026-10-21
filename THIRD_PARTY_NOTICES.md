@@ -48,7 +48,7 @@ After receiving a verifiable request, the project maintainer will review it prom
 
 ## Markdown preview rendering
 
-Session hover previews use [markdown-it](https://github.com/markdown-it/markdown-it) 14.3.2 (MIT).
+Session hover previews use [markdown-it](https://github.com/markdown-it/markdown-it) 14.3.3 (MIT).
 The browser build includes entities, linkify-it, mdurl, punycode.js, and uc.micro.
 Their copyright and license notices are retained in the generated lib/client.js.
 This is a build-time dependency; DSH does not need to install it separately at runtime.
