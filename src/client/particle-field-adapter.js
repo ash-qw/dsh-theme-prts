@@ -1134,12 +1134,25 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     resizeTimer = window.setTimeout?.(finishResizeTransaction, RESIZE_SETTLE_MS)
   }
 
+  function resizeHeroTransition(nextSize) {
+    // Keep live positions and velocities; the spring follows the new destination.
+    // Snapping to particle.target here would restore the old hero mid-explosion.
+    clearResizeState()
+    pointerActive = false
+    resizeCommits += applyFieldSize(nextSize) ? 1 : 0
+  }
+
   function onOperationResize(entries = []) {
     if (!operation || !canvas) return
     resizeObservations += 1
     const entry = entries.find(candidate => candidate.target === operation) ?? entries[0]
     const contentRect = entry?.contentRect
     pendingResizeSize = contentRect ? sizeFromRect(contentRect) : readOperationSize()
+    if (transition?.fromHero && !phoneStatic()) {
+      resizeHeroTransition(pendingResizeSize)
+      updateFrameGate()
+      return
+    }
     if (phoneStatic()) {
       const nextSize = pendingResizeSize
       clearResizeState()
@@ -1572,7 +1585,15 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     }
     transitionStartedAt = undefined
     pointerActive = false
-    scheduleFrame()
+    // The initial message may have paused hydration before syncHeroState ran.
+    // Let this short exit finish uninterrupted by subsequent response updates.
+    cancelHydrationResume()
+    hydrationPaused = false
+    mutationBurstScore = 0
+    if (mutationBurstTimer !== undefined) window.clearTimeout?.(mutationBurstTimer)
+    mutationBurstTimer = undefined
+    if (pendingResizeSize) resizeHeroTransition(pendingResizeSize)
+    updateFrameGate()
   }
 
   function syncHeroState() {
@@ -1634,7 +1655,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   }
 
   function registerContentMutations(mutations) {
-    if (!fieldEnabled() || phoneStatic()) return
+    if (!fieldEnabled() || phoneStatic() || transition?.fromHero) return
     let weight = mutations.length
     for (const mutation of mutations) {
       for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
@@ -1802,6 +1823,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     if (context && particles.length) {
       syncCanvasBackingStore()
       geometryDirty = false
+      cancelFrame()
       draw(Number(window.performance?.now?.()) || 0)
     } else {
       canvas.setAttribute('data-prts-particle-ready', '')

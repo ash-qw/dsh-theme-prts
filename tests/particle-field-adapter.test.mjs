@@ -246,6 +246,115 @@ test('pauses particle frames for a scheme transition and resumes them afterward'
   adapter.dispose()
 })
 
+test('keeps the hero exit drawing through initial and streamed content updates, then restores hydration protection', async () => {
+  const { dom, scroller, step } = fixture()
+  let paints = 0
+  dom.window.CanvasRenderingContext2D = class {}
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({
+    setTransform() {}, clearRect() { paints += 1 }, beginPath() {}, arc() {}, fill() {},
+    set fillStyle(value) {},
+  })
+  scroller.innerHTML = '<span data-slot="conversation.hero.brand.mark"></span>'
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
+  adapter.update({ enabled: true, motion: 'full', heroParticleDensity: 'standard', conversationParticleDensity: 'light' })
+  const addContent = () => {
+    for (let i = 0; i < 6; i++) scroller.appendChild(dom.window.document.createTextNode('response chunk'))
+  }
+  try {
+    assert.ok(adapter.inspect().particles > 0)
+    scroller.replaceChildren()
+    addContent()
+    await Promise.resolve()
+    assert.equal(adapter.inspect().hero, false)
+    assert.ok(adapter.inspect().transition)
+    assert.equal(adapter.inspect().hydrationPaused, false, 'the first send must release an initial mutation pause')
+    for (let i = 0; i < 60; i++) {
+      addContent()
+      await Promise.resolve()
+      const before = paints
+      step(16)
+      assert.ok(paints > before, 'content updates must not cancel the active hero exit frame')
+      if (!adapter.inspect().transition) break
+    }
+    assert.equal(adapter.inspect().transition, null, 'the exit must finish within its normal animation duration')
+    addContent()
+    await Promise.resolve()
+    assert.equal(adapter.inspect().hydrationPaused, true, 'ordinary body content retains hydration protection')
+  } finally {
+    adapter.dispose(); dom.window.close()
+  }
+})
+
+test('runs only one particle frame per browser frame after mounting a hero', async () => {
+  const { dom, scroller, step, pendingFrames } = fixture()
+  let paints = 0
+  dom.window.CanvasRenderingContext2D = class {}
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({
+    setTransform() {}, clearRect() { paints++ }, beginPath() {}, arc() {}, fill() {},
+    set fillStyle(value) {},
+  })
+  scroller.innerHTML = '<span data-slot="conversation.hero.brand.mark"></span>'
+  const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
+  try {
+    adapter.update({ enabled: true, motion: 'full' })
+    assert.equal(pendingFrames(), 1)
+    scroller.replaceChildren()
+    await Promise.resolve()
+    for (let i = 0; i < 30; i++) {
+      const before = paints
+      step()
+      assert.equal(paints - before, 1)
+      assert.equal(pendingFrames(), 1)
+    }
+    adapter.dispose()
+    const before = paints
+    step()
+    assert.equal(paints, before)
+    assert.equal(pendingFrames(), 0)
+  } finally { adapter.dispose(); dom.window.close() }
+})
+
+test('hero exit preserves scattered positions and continues through container resizes', async () => {
+  for (const initialResize of [false, true]) {
+    const { dom, scroller, step } = fixture()
+    const operation = dom.window.document.querySelector('main')
+    operation.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1440, height: 800 })
+    let resize, paints = 0, points = []
+    dom.window.ResizeObserver = class { constructor(callback) { resize = callback } observe() {} disconnect() {} }
+    dom.window.CanvasRenderingContext2D = class {}
+    dom.window.HTMLCanvasElement.prototype.getContext = () => ({
+      setTransform() {}, clearRect() { paints++; points = [] }, beginPath() {},
+      arc(x, y) { points.push([x, y]) }, fill() {}, set fillStyle(value) {},
+    })
+    scroller.innerHTML = '<span data-slot="conversation.hero.brand.mark"></span>'
+    const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
+    try {
+      adapter.update({ enabled: true, motion: 'full' })
+      if (initialResize) resize([{ target: operation, contentRect: { width: 1400, height: 800 } }])
+      scroller.replaceChildren()
+      await Promise.resolve()
+      assert.equal(adapter.inspect().resizing, false)
+      for (let i = 0; i < 12; i++) step()
+      for (const width of [1350, 1280, 1200]) {
+        const beforePositions = points
+        resize([{ target: operation, contentRect: { width, height: 760 } }])
+        assert.equal(adapter.inspect().suspended, false)
+        assert.equal(adapter.inspect().resizing, false)
+        adapter.repaintScheme()
+        assert.deepEqual(points, beforePositions, 'resizing must not snap scattered particles back to a mark')
+        assert.equal(adapter.inspect().canvasWidth, width)
+        const beforePaints = paints
+        step()
+        assert.equal(paints - beforePaints, 1)
+      }
+      for (let i = 0; i < 45; i++) step()
+      assert.equal(adapter.inspect().transition, null)
+      resize([{ target: operation, contentRect: { width: 1100, height: 760 } }])
+      assert.equal(adapter.inspect().resizing, true, 'normal body resizing still uses the existing freeze transaction')
+    } finally { adapter.dispose(); dom.window.close() }
+  }
+})
+
 test('pauses particle rendering during bulk hydration and resumes after stable frames', async () => {
   const { dom, scroller, step } = fixture()
   const adapter = createParticleFieldAdapter({
