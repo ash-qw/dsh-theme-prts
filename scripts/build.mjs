@@ -153,6 +153,7 @@ const clientModulePaths = [
   'src/client/facility-vector.js',
   'src/client/preview-markdown.js',
   'src/client/session-summary-preview.js',
+  'src/client/session-card-reveal.js',
   'src/client/sidebar-control-adapter.js',
   'src/client/rc7-adapter.js',
   'src/client/cursor-adapter.js',
