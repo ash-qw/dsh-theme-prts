@@ -1915,10 +1915,13 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
 
       findMount()
       if (!fieldEnabled()) resetTraversal()
-      const previousActiveDensity = heroActive
+      const previousRequestedDensity = heroActive
         ? previousPreferences.heroParticleDensity
         : previousPreferences.conversationParticleDensity
-      const activeDensityChanged = previousActiveDensity !== undefined && previousActiveDensity !== activeDensity()
+      // Compare effective densities on both sides: sparse/light hero settings
+      // already render at standard density, including after a focus refresh.
+      const previousActiveDensity = heroActive ? effectiveHeroDensity(previousRequestedDensity) : previousRequestedDensity
+      const activeDensityChanged = previousRequestedDensity !== undefined && previousActiveDensity !== activeDensity()
       reportState({ requestedPattern: 'orthogonal' })
       if (particles.length && activeDensityChanged) scheduleDensityReassembly(targetParticleCount(), true)
       if (preservedTraversalCoordinate !== undefined && scroller && !heroActive) reanchorTraversal(preservedTraversalCoordinate)

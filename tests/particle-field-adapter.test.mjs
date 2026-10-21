@@ -5,6 +5,7 @@ import test from 'node:test'
 
 import { PARTICLE_DENSITY_PROFILES, createOrthogonalTargets, createParticleFieldAdapter, findAlphaBounds, inspectOrthogonalCoverage, pointerRadiusForFieldSize } from '../src/client/particle-field-adapter.js'
 import { createExactEmblemMask } from '../scripts/png-alpha.mjs'
+import { createBackgroundStore } from '../src/client/custom-background.js'
 
 function fixture(width = 1440, reduced = false) {
   const dom = new JSDOM(`<!doctype html><html><body>
@@ -674,6 +675,42 @@ test('pins a fresh conversation hero to a large Rhodes Island mark and resets tr
   assert.equal(adapter.inspect().emblemKey, 'rhodes-island')
   assert.equal(adapter.inspect().layoutPhase, null)
   adapter.dispose()
+})
+
+test('refocusing the browser with unchanged background settings does not reassemble the hero', async () => {
+  for (const density of ['sparse', 'light', 'standard', 'dense', 'ultra']) {
+    const { dom, scroller, step } = fixture()
+    scroller.innerHTML = '<span data-slot="conversation.hero.brand.mark"></span>'
+    let reads = 0
+    dom.window.fetch = async () => {
+      reads += 1
+      return { ok: true, json: async () => ({ revision: 0, sidebar: null, conversation: null, full: null }) }
+    }
+    const adapter = createParticleFieldAdapter({ document: dom.window.document, window: dom.window, emblem: '<svg />', emblemMasks: masksFor() })
+    const preferences = { enabled: true, motion: 'full', heroParticleDensity: density, conversationParticleDensity: 'light' }
+    adapter.update(preferences)
+    const store = createBackgroundStore({ window: dom.window, document: dom.window.document })
+    const stop = store.subscribe(() => adapter.update(preferences))
+    try {
+      await store.refresh()
+      await new Promise(resolve => dom.window.setTimeout(resolve, 210))
+      for (let i = 0; i < 80; i++) step()
+      const count = adapter.inspect().particles
+      assert.ok(count > 0, 'the regression must exercise a populated particle field')
+      const readsBeforeFocus = reads
+      dom.window.dispatchEvent(new dom.window.Event('focus'))
+      await store.refresh()
+      await new Promise(resolve => dom.window.setTimeout(resolve, 210))
+      assert.ok(reads > readsBeforeFocus, 'tab focus must exercise the background refresh subscription')
+      assert.equal(adapter.inspect().pointer.active, false)
+      assert.equal(adapter.inspect().hero, true)
+      assert.equal(adapter.inspect().particles, count)
+      assert.equal(adapter.inspect().densityTransition, null, `${density}: unchanged effective density must not scatter the emblem`)
+      assert.equal(adapter.inspect().densityPending, false)
+    } finally {
+      stop(); store.dispose(); adapter.dispose(); dom.window.close()
+    }
+  }
 })
 
 test('debounces density changes and reassembles the current emblem without changing scene', async () => {
