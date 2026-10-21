@@ -11,6 +11,8 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
   function cancel() {
     if (disposed) return
     disposed = true
+    if (scroller && destination !== undefined) instant(scroller.scrollTop)
+    destination = undefined
     window.cancelAnimationFrame(frame)
     window.clearTimeout(timer)
     resize?.disconnect()
@@ -71,15 +73,19 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
         // A stale endpoint can lie on the other side of a card that is already visible.
         // Preserve valid endpoints, but correct invalid ones from the actual viewport.
         const target = Math.abs(nearest(base) - base) > 1 ? nearest(current) : base
-        if (Math.abs(target - base) > 1) {
+        if (final) {
+          // End any native animation at the nearest visible position before disconnecting.
+          instant(nearest(current))
+          destination = undefined
+        } else if (Math.abs(target - base) > 1) {
           destination = target
           if (!reduced && typeof scroller.scrollTo === 'function') scroller.scrollTo({top: target, behavior: 'smooth'})
           else instant(target)
         }
       }
       geometry = next
-    } else if (first || remounted) {
-      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:!reduced ? 'smooth' : 'instant'})
+    } else if (first || remounted || final) {
+      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:!reduced && !final ? 'smooth' : 'instant'})
     }
     if (first) {
       started = true
@@ -94,5 +100,5 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
   root.addEventListener('transitionend', schedule)
   root.addEventListener('animationend', schedule)
   schedule()
-  return {cancel, interrupt() { if (started && scroller) instant(scroller.scrollTop); cancel() }}
+  return {cancel, interrupt: cancel}
 }

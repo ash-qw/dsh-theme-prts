@@ -69,7 +69,8 @@ test('expiry checks changed geometry even when its scheduled frame has not run',
   try{
     f.select();await f.pump();f.progress(332)
     f.resize(70);f.finish()
-    assert.deepEqual(f.calls.at(-1),{top:362,behavior:'smooth'})
+    assert.deepEqual(f.calls.at(-1),{top:362,behavior:'instant'})
+    assert.equal(f.scroller.scrollTop,362)
     const count=f.calls.length;await f.pump();assert.equal(f.calls.length,count)
   }finally{f.close()}
 })
@@ -101,5 +102,32 @@ test('invalid endpoints are corrected with the shortest remaining forward scroll
     f.select();await f.pump();f.progress(100)
     f.move(220);await f.pump()
     assert.deepEqual(f.calls.at(-1),{top:152,behavior:'smooth'})
+  }finally{f.close()}
+})
+
+
+test('expiry completes an unfinished scroll without starting another animation',async()=>{
+  const f=fixture()
+  try{
+    f.select();await f.pump();f.progress(100);f.finish()
+    assert.deepEqual(f.calls,[{top:332,behavior:'smooth'},{top:332,behavior:'instant'}])
+    assert.equal(f.scroller.scrollTop,332)
+  }finally{f.close()}
+})
+test('expiry preserves the current viewport when reflow already made the card visible',async()=>{
+  const f=fixture()
+  try{
+    f.select();await f.pump();f.progress(200);f.move(220);f.finish()
+    assert.deepEqual(f.calls.at(-1),{top:200,behavior:'instant'})
+    assert.equal(f.scroller.scrollTop,200)
+  }finally{f.close()}
+})
+test('cancellation stops an owned animation even after the target disappears',async()=>{
+  const f=fixture()
+  try{
+    f.select();await f.pump();f.progress(100);f.row.remove();f.finish()
+    assert.deepEqual(f.calls.at(-1),{top:100,behavior:'instant'})
+    const count=f.calls.length;f.tracker.cancel();await f.pump()
+    assert.equal(f.calls.length,count)
   }finally{f.close()}
 })
