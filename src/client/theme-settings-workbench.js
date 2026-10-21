@@ -39,7 +39,9 @@ function previewSetting(key, label, description) {
 }
 
 function settingButtons(key, label, options) {
-  const note = key === 'composerGlass'
+  const note = key === 'heroContrast'
+      ? '<small data-prts-setting-note>为新会话徽记添加柔光衬底，使它在背景图片上更清晰。</small>'
+      : key === 'composerGlass'
       ? '<small data-prts-setting-note>增强输入框的背景模糊与轻微折射，关闭时使用原有材质</small>'
       : key === 'bakerLoading'
       ? '<small data-prts-setting-note>每轮正文生成时显示三点动画，完成后显示全文；中断时保留已收到的内容</small>'
@@ -60,7 +62,7 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'aiToolsEnabled', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['heroContrast', 'composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'aiToolsEnabled', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
@@ -162,7 +164,7 @@ export function themeSettingsMarkup() {
           </section>
           </section>
           <section data-prts-settings-section="background" role="tabpanel" id="prts-page-background" aria-labelledby="prts-tab-background" tabindex="0" hidden>
-            ${backgroundMarkup()}
+            ${backgroundMarkup(settingButtons('heroContrast', '新会话徽记增强', []))}
             <div data-prts-composer-glass-setting>${settingButtons('composerGlass', '输入框增强毛玻璃', [])}</div>
             <small data-prts-composer-glass-required hidden>自定义背景下，输入框增强毛玻璃始终开启。</small>
           </section>
@@ -753,6 +755,7 @@ export function createThemeSettingsOverlay({
       panel.querySelector('[data-prts-baker-options]').hidden = preferences?.conversationStyle !== 'deck-chat'
       panel.querySelector('[data-prts-avatars]').hidden = preferences?.conversationStyle !== 'deck-chat'
       const customBackground = preferences.backgroundMode !== 'off'
+      panel.querySelector('[data-prts-background-hero-setting]').hidden = !customBackground
       panel.querySelector('[data-prts-composer-glass-setting]').hidden = customBackground
       panel.querySelector('[data-prts-composer-glass-required]').hidden = !customBackground
       backgroundEditor.update(preferences)

@@ -72,7 +72,7 @@ function resolveScheme(value) {
   return identity.includes('dark') || identity.includes('night') ? 'dark' : 'light'
 }
 
-export function createThemeController({ document, window, cssText, service, cursorAssets, onTransitionStateChange = () => {} }) {
+export function createThemeController({ document, window, cssText, service, cursorAssets, onTransitionStateChange = () => {}, onSchemeChange = () => {} }) {
   if (!document || !window) {
     const gesture = { update() {}, finish() {}, cancel() {} }
     return { apply() {}, sync() {}, refresh() {}, setTheme() {}, beginThemeTransition() { return gesture }, toggle() {}, dispose() {} }
@@ -153,6 +153,7 @@ export function createThemeController({ document, window, cssText, service, curs
     if (disposed) return
     const next = resolveScheme(value)
     root.dataset.prtsScheme = next
+    onSchemeChange(next)
     return next
   }
 

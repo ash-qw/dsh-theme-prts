@@ -72,6 +72,7 @@ test('loads and migrates a complete version-one payload without losing independe
     composerGlass: false,
     backgroundMode: 'off',
     backgroundDim: .45,
+    heroContrast: true,
     sidebarOpacity: .06,
     railOpacity: .3,
     bakerOpacity: .5,

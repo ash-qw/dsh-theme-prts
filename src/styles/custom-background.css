@@ -329,3 +329,17 @@ animation: prts-baker-typing 1.2s linear infinite;
 33% { background: currentColor; box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 color-mix(in srgb,currentColor 30%,transparent); }
 66% { background: color-mix(in srgb,currentColor 30%,transparent); box-shadow: -10px 0 0 color-mix(in srgb,currentColor 30%,transparent), 10px 0 0 currentColor; }
 }
+
+/* Keep the hero treatment beside the background readability controls. */
+html[data-dsh-prts] [data-prts-background-hero-setting] {
+  padding:16px 0 2px; border-top:1px solid var(--prts-line);
+  & [data-prts-setting-row] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:20px; margin:0; padding:0; border:0; background:none; }
+  & [data-prts-setting-row] > span { display:grid; gap:5px; min-width:0; }
+  & strong { font:500 13px/1.5 var(--prts-body); color:var(--prts-ink); }
+  & small { max-width:36em; font:400 12px/1.6 var(--prts-body); color:var(--prts-muted); }
+  & [data-prts-setting-switch] { justify-self:end; align-self:center; margin:0; }
+}
+html[data-dsh-prts] [data-prts-background-hero-setting][hidden] { display:none; }
+
+/* Windows chrome must not clip a different canvas color into the conversation. */
+html[data-dsh-prts][data-windows-titlebar] [data-prts-region="operation"] { border-radius: 0; }

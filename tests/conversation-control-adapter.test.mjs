@@ -20,6 +20,7 @@ test('classifies only stable conversation controls without depending on localize
         <button aria-label="copy"><svg></svg></button>
         <div data-presented-file><button class="host_cardPreview" aria-label="Preview file"></button></div>
       </article>
+      <article data-chat-flow-kind="turn-trigger"><section data-turn-trigger><button id="notice-header">收到任务消息</button></section></article>
       <section data-approval-key="approval-1">
         <button class="fixture_reject">任意语言</button>
         <button>任意语言</button>
@@ -37,6 +38,7 @@ test('classifies only stable conversation controls without depending on localize
     .sort()
   assert.deepEqual(kinds, ['cta', 'danger', 'file', 'header', 'inspect', 'micro', 'utility', 'utility'])
   assert.equal(document.querySelector('.host_cardPreview').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
+  assert.equal(document.querySelector('#notice-header').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
   assert.equal(document.querySelector('a').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
   assert.equal(document.querySelector('.outside_sessionLogButton').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
 

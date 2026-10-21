@@ -92,6 +92,7 @@ export function applyPrtsPlugin(ctx, environment) {
     cssText,
     service: themeService,
     cursorAssets: assets.cursor,
+    onSchemeChange() { particleField.repaintScheme() },
     onTransitionStateChange(active) {
       particleField.setSchemeTransitionActive(active)
     },
@@ -352,6 +353,7 @@ export function applyPrtsPlugin(ctx, environment) {
   } else {
     applyVisualState()
   }
+  const stopBackgroundRedraw = backgroundStore.subscribe(() => { if (!safeMode) particleField.update(preferences) })
   const bindNativePreferences = settingsCtx => {
     const forms = contextService(settingsCtx, 'configForms')
     if (forms) settingsCtx.effect(() => nativePreferences.bind(forms.get('theme-prts')))
@@ -364,6 +366,7 @@ export function applyPrtsPlugin(ctx, environment) {
     statusSource.dispose()
     customEmblemStore.dispose()
     avatarStore.dispose()
+    stopBackgroundRedraw()
     backgroundStore.dispose()
     particleField.dispose()
     startup.dispose({ restoreFocus: false })

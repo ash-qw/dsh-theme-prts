@@ -27,6 +27,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   composerGlass: false,
   backgroundMode: 'off',
   backgroundDim: .45,
+  heroContrast: true,
   sidebarOpacity: .06,
   railOpacity: .3,
   bakerOpacity: .5,
@@ -99,7 +100,7 @@ export const PARTICLE_DETAIL_LEVELS = Object.freeze({
   precise: Object.freeze({ conversationParticleDensity: 'dense', heroParticleDensity: 'ultra' }),
 })
 export const PREFERENCE_GROUPS = Object.freeze({
-  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity', 'sidebarBlur', 'railBlur', 'bakerBlur', 'classicUserBlur']),
+  background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'heroContrast', 'sidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity', 'sidebarBlur', 'railBlur', 'bakerBlur', 'classicUserBlur']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor']),
@@ -220,6 +221,7 @@ export function normalizePreferences(value) {
     railBlur: materialBlurOr(input.railBlur, DEFAULT_PREFERENCES.railBlur),
     bakerBlur: materialBlurOr(input.bakerBlur, DEFAULT_PREFERENCES.bakerBlur),
     classicUserBlur: materialBlurOr(input.classicUserBlur, DEFAULT_PREFERENCES.classicUserBlur),
+    heroContrast: booleanOr(input.heroContrast, DEFAULT_PREFERENCES.heroContrast),
     backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
     composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),

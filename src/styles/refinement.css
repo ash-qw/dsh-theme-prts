@@ -482,3 +482,25 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([class$="_bubb
   padding:2px 7px!important;border-radius:6px!important;
   &:is(:hover,:focus-visible){border-color:var(--prts-cyan)!important}
 }
+
+/* Notification cards own one surface across the disclosure and its content. */
+html[data-dsh-prts] [data-turn-trigger] {
+  background:var(--prts-glass-soft-surface);
+  border:1px solid var(--prts-line);
+  border-radius:var(--dsw-radius-xl,16px);
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+  color:var(--prts-ink);
+  & > button {
+    background:transparent;
+    border:0;
+    border-radius:inherit;
+    color:inherit;
+    &:hover { background:color-mix(in srgb,var(--prts-ink) 5%,transparent); }
+    &:focus-visible { outline:2px solid var(--prts-cyan); outline-offset:-3px; }
+    & time { color:var(--prts-muted); }
+  }
+  & > div { border-top:1px solid var(--prts-line); }
+  & > div > p { color:var(--prts-muted); }
+  & [data-context-text] { color:var(--prts-ink); }
+}

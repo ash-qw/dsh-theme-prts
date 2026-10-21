@@ -63,7 +63,7 @@ export function createBackgroundStore({ window, document }) {
     },
   }
 }
-export function backgroundMarkup() {
+export function backgroundMarkup(heroContrastControl = '') {
   return `<section data-prts-background-settings>
     <header><strong>会话背景</strong><small>分区使用不同图片，或让一张完整背景贯穿侧边栏与正文。</small></header>
     <div data-prts-background-modes role="group" aria-label="背景模式">
@@ -75,6 +75,7 @@ export function backgroundMarkup() {
       <input type="file" data-prts-background-file="${slot}" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
     </article>`).join('')}</div>
     <label data-prts-background-shade hidden><span>背景淡化 <output></output></span><input type="range" min="0" max="90" step="5" aria-label="背景淡化程度"><small>调高后背景更淡，接近当前主题底色。</small></label>
+    <div data-prts-background-hero-setting hidden>${heroContrastControl}</div>
     ${opacityDialMarkup()}
     <small data-prts-background-help>支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片居中铺满，切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
   </section>`

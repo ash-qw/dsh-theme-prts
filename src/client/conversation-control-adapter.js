@@ -14,6 +14,8 @@ function closestWithClassSuffix(node, suffix) {
 function classify(button, operation) {
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
+  // Notification headers belong to the card surface, not standalone buttons.
+  if (button.parentElement?.matches('[data-turn-trigger]')) return null
   // Changed-file cards own one outer surface; their header and rows stay native.
   if (button.closest('[data-changed-files]')) return null
   // File previews are transparent hit targets; the enclosing card owns its material and outline.

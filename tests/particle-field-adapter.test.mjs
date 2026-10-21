@@ -1438,3 +1438,48 @@ test('hides the reused hero canvas when navigating to a disabled body field', as
     adapter.dispose();dom.window.close()
   }
 })
+
+test('hero contrast requires a visible conversation background and follows the hero exit', async () => {
+  const { dom, scroller, step } = fixture()
+  const root = dom.window.document.documentElement
+  scroller.innerHTML = '<section data-phase="hero"><span data-slot="conversation.hero.brand.mark"></span><div data-composer-seat></div></section>'
+  const adapter = createParticleFieldAdapter({document:dom.window.document,window:dom.window,emblemMasks:masksFor()})
+  const prefs = {enabled:true,texture:'full',motion:'system',backgroundMode:'split',heroContrast:true}
+  try {
+    root.setAttribute('data-prts-background-sidebar','')
+    adapter.update(prefs)
+    assert.equal(adapter.inspect().heroContrast,0)
+    root.setAttribute('data-prts-background-conversation','')
+    adapter.update(prefs)
+    assert.equal(adapter.inspect().heroContrast,1)
+    adapter.update({...prefs,heroContrast:false})
+    assert.equal(adapter.inspect().heroContrast,0)
+    adapter.update(prefs)
+    scroller.innerHTML='<div>正文</div>'
+    await new Promise(resolve=>setTimeout(resolve,0))
+    step(0); step(300)
+    assert.ok(adapter.inspect().heroContrast < 1)
+    step(2000)
+    assert.equal(adapter.inspect().heroContrast,0)
+  } finally { adapter.dispose(); dom.window.close() }
+})
+
+test('scheme repaint recolors a paused canvas without restarting particle motion', () => {
+  const {dom,scroller,pendingFrames}=fixture()
+  const fills=[]
+  dom.window.CanvasRenderingContext2D=class {}
+  dom.window.HTMLCanvasElement.prototype.getContext=()=>({setTransform(){},clearRect(){},beginPath(){},arc(){},fill(){},set fillStyle(v){fills.push(v)}})
+  const adapter=createParticleFieldAdapter({document:dom.window.document,window:dom.window,emblems:[{key:'rhodes-island',label:'罗德岛'}],emblemMasks:masksFor()})
+  try {
+    dom.window.document.documentElement.dataset.prtsScheme='dark'
+    adapter.update({enabled:true,texture:'full',motion:'system',conversationParticleDensity:'sparse',heroParticleDensity:'light'})
+    const dark=fills.at(-1)
+    adapter.setSchemeTransitionActive(true)
+    assert.equal(pendingFrames(),0)
+    dom.window.document.documentElement.dataset.prtsScheme='light'
+    adapter.repaintScheme()
+    assert.notEqual(fills.at(-1),dark)
+    assert.equal(adapter.inspect().schemeTransitionPaused,true)
+    assert.equal(pendingFrames(),0)
+  } finally {adapter.dispose();dom.window.close()}
+})

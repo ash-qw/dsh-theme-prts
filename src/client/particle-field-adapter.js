@@ -432,7 +432,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
   const densityProfile = density => PARTICLE_DENSITY_PROFILES[density] ?? PARTICLE_DENSITY_PROFILES.standard
   const particleRadius = density => densityProfile(density ?? activeDensity()).radius
   const fieldEnabled = () => heroActive || (preferences.conversationStyle !== 'deck-chat' && preferences.conversationEmblem !== false)
-  const canRenderFrame = () => fieldEnabled() && !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && !schemeTransitionPaused && !resizing
+  const canRenderFrame = (paintOnly = false) => fieldEnabled() && !disposed && documentVisible && canvasVisible && !hydrationPaused && !startupPaused && (paintOnly || !schemeTransitionPaused) && !resizing
   const layoutWidth = () => width
   const layoutHeight = () => height
   const layoutShiftX = () => 0
@@ -1289,21 +1289,30 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     if (queuedDensity !== undefined && (queuedDensity !== particles.length || force)) startDensityReassembly(queuedDensity, force)
   }
 
-  function draw(timestamp) {
+  function heroContrastStrength() {
+    const root = document.documentElement
+    const imageVisible = preferences.backgroundMode === 'full'
+      ? root.hasAttribute('data-prts-background-full')
+      : preferences.backgroundMode === 'split' && root.hasAttribute('data-prts-background-conversation')
+    if (preferences.heroContrast === false || !imageVisible) return 0
+    return heroActive ? 1 : transition?.fromHero ? 1 - easeInOut(transition.progress) : 0
+  }
+
+  function draw(timestamp, paintOnly = false) {
     frame = undefined
     if (!ambient || !canvas) return
-    if (!canRenderFrame()) return
+    if (!canRenderFrame(paintOnly)) return
     if (geometryDirty) {
       syncCanvasBackingStore()
       geometryDirty = false
     }
-    if (transition) {
+    if (transition && !paintOnly) {
       transitionStartedAt ??= timestamp
       transition.progress = clamp((timestamp - transitionStartedAt) / TRANSITION_MS, 0, 1)
       if (transition.progress >= 1) completeTransition()
     }
 
-    advanceDensity(timestamp)
+    if (!paintOnly) advanceDensity(timestamp)
     const reducedMotion = motionReduced()
     const staticPhone = phoneStatic()
     const staticField = reducedMotion || staticPhone
@@ -1322,7 +1331,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
     }
     const frameGeometry = { activeLayout, staticField, transitionLayout }
     const { center, size: fieldSize } = activeLayout
-    const follow = reducedMotion ? 1 : 0.035
+    const follow = paintOnly ? 0 : reducedMotion ? 1 : 0.035
     glowX += (center.x - glowX) * follow
     glowY += (center.y - glowY) * follow
     if (glow) glow.style.transform = 'translate3d(calc(' + glowX.toFixed(2) + 'px - 50%), calc(' + glowY.toFixed(2) + 'px - 50%), 0)'
@@ -1337,19 +1346,31 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       const damping = heroPhysics ? 0.86 : 0.84
       const pointerForce = heroPhysics ? 2.2 : 2.7
       const lightScheme = document.documentElement.dataset.prtsScheme === 'light'
-      const baseAlpha = lightScheme ? 0.66 : 0.72
-      const radiusScale = lightScheme ? 1.12 : 1
+      const contrast = heroContrastStrength()
+      if (contrast > 0 && context.createRadialGradient) {
+        const origin = heroActive ? center : transition.fromCenter
+        const radius = (heroActive ? fieldSize : transition.fromSize) * .78
+        const shade = lightScheme ? '248,250,252' : '7,14,22'
+        const gradient = context.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, radius)
+        gradient.addColorStop(0, `rgba(${shade},${.58 * contrast})`)
+        gradient.addColorStop(.42, `rgba(${shade},${.42 * contrast})`)
+        gradient.addColorStop(1, `rgba(${shade},0)`)
+        context.fillStyle = gradient
+        context.fillRect(origin.x - radius, origin.y - radius, radius * 2, radius * 2)
+      }
+      const baseAlpha = (lightScheme ? 0.66 : 0.72) + .16 * contrast
+      const radiusScale = (lightScheme ? 1.12 : 1) * (1 + .08 * contrast)
       const particleBatches = typeof context.moveTo === 'function' ? new Map() : null
 
       for (const particle of particles) {
         const target = targetPosition(particle, frameGeometry)
-        if (staticField) {
+        if (staticField && !paintOnly) {
           particle.x = target.x
           particle.y = target.y
           particle.vx = 0
           particle.vy = 0
         }
-        if (!staticField) {
+        if (!staticField && !paintOnly) {
           particle.vx += (target.x - particle.x) * spring
           particle.vy += (target.y - particle.y) * spring
 
@@ -1412,6 +1433,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       canvas.setAttribute('data-prts-particle-ready', '')
       canvas.style.visibility = ''
     }
+    if (paintOnly) return
     const explicitMotion = Boolean(densityTransition || transition)
     const animatedField = !staticField && context && particles.length
     if (explicitMotion) {
@@ -1847,6 +1869,11 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
       startupPaused = next
       updateFrameGate()
     },
+    repaintScheme() {
+      cancelFrame()
+      draw(Number(window.performance?.now?.()) || 0, true)
+      if (!schemeTransitionPaused) scheduleFrame()
+    },
     setSchemeTransitionActive(active) {
       const next = Boolean(active)
       if (schemeTransitionPaused === next) return
@@ -1929,6 +1956,7 @@ export function createParticleFieldAdapter({ document, window, emblem = '', embl
         enabled: fieldEnabled(),
         mounted: Boolean(ambient?.isConnected && canvas?.isConnected),
         hero: heroActive,
+        heroContrast: heroContrastStrength(),
         side,
         emblemKey: (heroActive || transition?.fromHero ? heroEmblem() : emblemForSegment(segment))?.key,
         nextEmblemKey: transition ? emblemForSegment(transition.targetSegment)?.key : null,
