@@ -10,7 +10,7 @@ import { createAvatarService, registerAvatarApi } from '../src/server/avatars.js
 import { createEmblemService } from '../src/server/emblems.js'
 import { registerEmblemApi } from '../src/server/api.js'
 import { DEFAULT_PREFERENCES } from '../src/client/preferences.js'
-import { createThemeTransfer, validateThemePackage, mergeThemePreferences } from '../src/client/theme-transfer.js'
+import { createThemeTransfer, validateThemePackage, mergeThemePreferences, ignoredThemePackageFields } from '../src/client/theme-transfer.js'
 
 const pack = () => ({format:'prts-theme',version:1,preferences:{...DEFAULT_PREFERENCES}})
 test('packages reject future versions and malformed settings without mutating the input',()=>{
@@ -21,6 +21,23 @@ test('packages reject future versions and malformed settings without mutating th
   assert.throws(()=>validateThemePackage({...value,preferences:{version:12,motion:'unknown'}}))
   assert.throws(()=>validateThemePackage({...value,assets:{}}))
   assert.equal(mergeThemePreferences({...DEFAULT_PREFERENCES,previewTools:false},{version:11,glass:'soft'}).previewTools,false)
+})
+
+test('import preview identifies fields this version will discard',()=>{
+  const value=pack()
+  assert.deepEqual(ignoredThemePackageFields(value),[])
+  value.preferences.futureMotion='gentle'
+  value.assets={
+    backgrounds:{full:null,sidebar:null,conversation:null,futureSlot:null},
+    backgroundRegions:{full:null,sidebar:null,conversation:null},
+    avatars:{user:null,assistant:null},
+    emblems:{items:[],hero:null,conversation:[{kind:'builtin',key:'rhodes-island',label:'罗德岛',futureEffect:true}]},
+    futureAssets:{enabled:true},
+  }
+  assert.equal(validateThemePackage(value),value)
+  assert.deepEqual(ignoredThemePackageFields(value),[
+    '设置.futureMotion','素材.futureAssets','背景.futureSlot','徽记.conversation[0].futureEffect',
+  ])
 })
 
 async function fixture(t) {
@@ -67,6 +84,7 @@ test('full package restores backgrounds, editable avatars, custom emblems and or
   const draft=await f.emblems.preview({bytes:image,label:'徽记',params:{mode:'alpha'}})
   await f.emblems.save({version:2,hero:null,conversation:[{kind:'custom',key:'custom-one',label:'徽记',draftId:draft.id},{kind:'builtin',key:'rhodes-island'}]},0)
   const value=await f.transfer.export(true)
+  assert.deepEqual(ignoredThemePackageFields(value),[])
   assert.equal(value.assets.emblems.items.length,1)
   assert.deepEqual(value.assets.avatars.user.crop,crop)
   assert.ok(value.assets.backgrounds.sidebar)

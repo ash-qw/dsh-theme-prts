@@ -1,4 +1,4 @@
-import { THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage } from './theme-transfer.js'
+import { THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage, ignoredThemePackageFields } from './theme-transfer.js'
 
 export function themeTransferMarkup() {
   return `<dialog data-prts-transfer-dialog aria-labelledby="prts-transfer-title">
@@ -20,6 +20,7 @@ export function themeTransferMarkup() {
       </div>
       <div data-prts-transfer-preview hidden>
         <strong>确认导入</strong><p data-prts-transfer-summary></p>
+        <p data-prts-transfer-compatibility hidden role="alert"></p>
         <small>应用前会下载当前配置备份，请保留备份文件。</small>
         <div data-prts-transfer-buttons><button type="button" data-prts-transfer-apply>确认导入</button><button type="button" data-prts-transfer-cancel>取消</button></div>
       </div>
@@ -43,6 +44,7 @@ export function mountThemeTransfer({ panel, window, transfer }) {
   const render = () => {
     if (disposed) return
     get('preview').hidden = !pending
+    if (!pending) get('compatibility').hidden = true
     get('recovery').hidden = !transfer.hasBackup
     for (const control of section.querySelectorAll('button,input')) control.disabled = busy
     // Prevent local editors from racing a multi-service import; other clients use revision checks.
@@ -72,6 +74,12 @@ export function mountThemeTransfer({ panel, window, transfer }) {
       if (disposed || selected !== generation) return ''
       pending = value
       get('summary').textContent = describeThemePackage(value)
+      const ignored = ignoredThemePackageFields(value)
+      const compatibility = get('compatibility')
+      compatibility.hidden = ignored.length === 0
+      compatibility.textContent = ignored.length
+        ? `当前版本不支持以下配置，导入后将丢失：${ignored.join('、')}。请保留原文件。`
+        : ''
       return '已读取文件，请确认导入内容。'
     })
   }

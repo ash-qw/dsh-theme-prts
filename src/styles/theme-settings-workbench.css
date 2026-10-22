@@ -970,6 +970,7 @@ html[data-dsh-prts] [data-prts-transfer] {
   & [data-prts-transfer-file-hint] { display:grid; place-items:center; flex:1; gap:6px; padding:12px; border:1px dashed var(--prts-line-strong); }
   & [data-prts-transfer-file-hint] > span { font-size:24px; color:var(--prts-muted); }
   & [data-prts-transfer-buttons] { display:flex; gap:8px; }
+  & [data-prts-transfer-compatibility] { margin:0; padding:10px 12px; border:1px solid var(--prts-yellow); overflow-wrap:anywhere; }
   & [data-prts-transfer-recovery] { border:0; border-top:1px solid var(--prts-line); padding:16px 0 0; }
   & [data-prts-transfer-status]:empty { display:none; }
 }

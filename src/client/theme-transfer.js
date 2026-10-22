@@ -7,6 +7,33 @@ const transferRoles = ['user', 'assistant']
 const transferBuiltins = ['rhodes-island', 'lungmen', 'penguin-logistics', 'rhine-lab', 'reunion']
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 const encodedImage = (value, limit) => typeof value === 'string' && value.length > 0 && value.length <= Math.ceil(limit / 3) * 4 && value.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(value)
+const unknownFields = (value, known, prefix) => record(value)
+  ? Object.keys(value).filter(key => !known.includes(key)).map(key => `${prefix}.${key}`)
+  : []
+
+export function ignoredThemePackageFields(value) {
+  const ignored = unknownFields(value.preferences, Object.keys(DEFAULT_PREFERENCES), '设置')
+  const assets = value.assets
+  if (!assets) return ignored
+  ignored.push(...unknownFields(assets, ['backgrounds', 'backgroundRegions', 'avatars', 'emblems'], '素材'))
+  ignored.push(...unknownFields(assets.backgrounds, transferSlots, '背景'))
+  ignored.push(...unknownFields(assets.backgroundRegions, transferSlots, '背景保护区域'))
+  for (const slot of transferSlots) ignored.push(...unknownFields(assets.backgroundRegions?.[slot], ['x', 'y', 'width', 'height'], `背景保护区域.${slot}`))
+  ignored.push(...unknownFields(assets.avatars, transferRoles, '头像'))
+  for (const role of transferRoles) {
+    ignored.push(...unknownFields(assets.avatars?.[role], ['image', 'crop'], `头像.${role}`))
+    ignored.push(...unknownFields(assets.avatars?.[role]?.crop, ['zoom', 'x', 'y'], `头像.${role}.crop`))
+  }
+  const emblems = assets.emblems
+  ignored.push(...unknownFields(emblems, ['items', 'hero', 'conversation'], '徽记'))
+  for (const [index, item] of (emblems?.items ?? []).entries()) {
+    ignored.push(...unknownFields(item, ['format', 'version', 'label', 'params', 'image'], `徽记.items[${index}]`))
+    ignored.push(...unknownFields(item?.params, ['mode', 'lineSource', 'cleanup', 'threshold', 'zoom', 'x', 'y'], `徽记.items[${index}].params`))
+  }
+  ignored.push(...unknownFields(emblems?.hero, ['kind', 'key', 'label', 'asset'], '徽记.hero'))
+  for (const [index, entry] of (emblems?.conversation ?? []).entries()) ignored.push(...unknownFields(entry, ['kind', 'key', 'label', 'asset'], `徽记.conversation[${index}]`))
+  return ignored
+}
 
 export function validateThemePackage(value) {
   if (!record(value) || value.format !== 'prts-theme' || value.version !== 1) throw Error('不支持的主题文件格式或版本')

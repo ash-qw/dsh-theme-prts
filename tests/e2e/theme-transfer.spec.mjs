@@ -37,6 +37,11 @@ for(const width of [1440,480])test(`theme configuration export, import and recov
   await page.getByRole('button',{name:'恢复导入前配置',exact:true}).click()
   await expect(status).toContainText('已恢复导入前配置')
   expect(await setting()).toBe(true)
+  value.preferences.futureMotion='gentle'
+  await page.locator('[data-prts-transfer-file]').setInputFiles({name:'future.prts-theme.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))})
+  await expect(page.locator('[data-prts-transfer-compatibility]')).toContainText('设置.futureMotion')
+  await page.locator('[data-prts-transfer-cancel]').click()
+  await expect(page.locator('[data-prts-transfer-compatibility]')).toBeHidden()
   await page.locator('[data-prts-transfer-file]').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('{"format":"prts-theme","version":999}')})
   await expect(status).toContainText('不支持')
   await expect(page.locator('[data-prts-transfer-preview]')).toBeHidden()
