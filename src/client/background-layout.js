@@ -35,7 +35,12 @@ export function createBackgroundLayout({window,document}) {
     }
   }
   function schedule(){if(!disposed && observing && frame===undefined)frame=raf(update)}
-  const resize=window.ResizeObserver?new window.ResizeObserver(schedule):null
+  // ResizeObserver runs after layout, before paint. Deferring again to rAF
+  // paints the new container with the previous image bounds for one frame.
+  const resize=window.ResizeObserver?new window.ResizeObserver(()=>{
+    if(frame!==undefined)caf(frame)
+    update()
+  }):null
   const mutations=new window.MutationObserver(()=>{
     if(!operation?.isConnected || !sessions?.isConnected)schedule()
   })

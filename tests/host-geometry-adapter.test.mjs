@@ -37,7 +37,6 @@ test('projects host inset and shared sidebar wallpaper width and restores the pr
 
   width = 340
   resizeCallback([{ target: sidebar, contentRect: { width } }])
-  await new Promise(resolve => dom.window.setTimeout(resolve, 8))
   assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '340px')
   adapter.dispose()
   assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '')

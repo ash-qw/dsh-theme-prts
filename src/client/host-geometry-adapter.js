@@ -78,7 +78,12 @@ export function createHostGeometryAdapter({ document, window }) {
         shouldMeasure = true
       }
     }
-    if (shouldMeasure || !entries.length) scheduleMeasure()
+    // Keep shared wallpaper geometry in the same paint as the resized sidebar.
+    if (shouldMeasure || !entries.length) {
+      if (frameRequest !== undefined) window?.cancelAnimationFrame?.(frameRequest)
+      frameRequest = undefined
+      measure()
+    }
   }
 
   function stopObservation() {
