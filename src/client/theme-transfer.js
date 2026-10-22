@@ -1,3 +1,4 @@
+import { validBackgroundRegion } from '../shared/background-region.js'
 import { DEFAULT_PREFERENCES, normalizePreferences } from './preferences.js'
 
 export const THEME_PACKAGE_LIMIT = 160 * 1024 * 1024
@@ -22,6 +23,7 @@ export function validateThemePackage(value) {
   const a = value.assets
   if (!record(a) || !record(a.backgrounds) || !record(a.avatars) || !record(a.emblems)) throw Error('主题素材数据不完整')
   for (const slot of transferSlots) if (a.backgrounds[slot] !== null && !encodedImage(a.backgrounds[slot], 10 * 1024 * 1024)) throw Error('背景图片数据无效')
+  if (a.backgroundRegions !== undefined && (!record(a.backgroundRegions) || transferSlots.some(slot => !validBackgroundRegion(a.backgroundRegions[slot] ?? null)))) throw Error('背景保护区域无效')
   for (const role of transferRoles) {
     const avatar = a.avatars[role]
     if (avatar === null) continue
@@ -72,10 +74,11 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
     const value = { format: 'prts-theme', version: 1, themeVersion, exportedAt: new Date().toISOString(), preferences: { ...getPreferences() } }
     const states = {}
     if (includeAssets) {
-      const backgrounds = {}, avatars = {}, items = [], ids = new Map()
+      const backgrounds = {}, backgroundRegions = {}, avatars = {}, items = [], ids = new Map()
       states.backgrounds = await request('backgrounds/configuration')
       for (const slot of transferSlots) {
         const entry = states.backgrounds[slot]
+        backgroundRegions[slot] = entry?.region ?? null
         backgrounds[slot] = null
         if (entry) {
           if (!/^[a-f0-9-]{36}$/.test(entry.id)) throw Error('背景引用无效')
@@ -102,7 +105,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
       }
       const hero = await reference(states.emblems.configuration.hero), conversation = []
       for (const entry of states.emblems.configuration.conversation) conversation.push(await reference(entry))
-      value.assets = { backgrounds, avatars, emblems: { items, hero, conversation } }
+      value.assets = { backgrounds, backgroundRegions, avatars, emblems: { items, hero, conversation } }
       for (const kind of ['backgrounds', 'avatars', 'emblems']) {
         if ((await request(kind + '/configuration')).revision !== states[kind].revision) throw Error('素材在导出期间发生变化，请重试')
       }
@@ -146,7 +149,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
         for (const item of a.emblems.items) drafts.push(await request('emblems/import', item))
         const entry = (ref, index) => ref === null ? null : ref.kind === 'builtin' ? ref : { kind: 'custom', key: 'import-' + index + '-' + drafts[ref.asset].draftId, label: ref.label, draftId: drafts[ref.asset].draftId }
         const configuration = { version: 2, hero: entry(a.emblems.hero, 'hero'), conversation: a.emblems.conversation.map(entry) }
-        for (const slot of transferSlots) await write('backgrounds', { slot, image: a.backgrounds[slot] }, { slot, image: old.backgrounds[slot] })
+        for (const slot of transferSlots) await write('backgrounds', { slot, image: a.backgrounds[slot], region: a.backgroundRegions?.[slot] ?? null }, { slot, image: old.backgrounds[slot], region: old.backgroundRegions?.[slot] ?? null })
         for (const role of transferRoles) await write('avatars', { role, image: a.avatars[role]?.image ?? null, crop: a.avatars[role]?.crop }, { role, image: old.avatars[role]?.image ?? null, crop: old.avatars[role]?.crop })
         await write('emblems', { configuration }, { configuration: before.states.emblems.configuration })
       }

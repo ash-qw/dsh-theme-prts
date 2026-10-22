@@ -1,3 +1,5 @@
+import { createBackgroundLayout } from './background-layout.js'
+import { mountBackgroundRegionEditor, backgroundRegionMarkup } from './background-region-editor.js'
 import { opacityDialMarkup, mountOpacityDials } from './opacity-dial.js'
 const BACKGROUND_ENDPOINT = '/prts-theme-api/backgrounds'
 const backgroundLabels = { sidebar: '侧边栏', conversation: '会话正文', full: '完整背景' }
@@ -7,10 +9,12 @@ function backgroundImageUrl(entry) {
 export function createBackgroundStore({ window, document }) {
   let state = { revision: -1, sidebar: null, conversation: null, full: null }, disposed = false, events, refreshing
   const listeners = new Set()
+  const layout = createBackgroundLayout({window,document})
   const abort = window.AbortController ? new window.AbortController() : null
   const apply = value => {
     if (disposed || value.revision < state.revision) return
     state = value
+    layout.update(state)
     for (const slot of Object.keys(backgroundLabels)) {
       const url = backgroundImageUrl(state[slot])
       const root = document.documentElement
@@ -48,12 +52,18 @@ export function createBackgroundStore({ window, document }) {
   window.addEventListener('focus', focus)
   return {
     snapshot: () => state, refresh,
+    setEnabled: value => layout.setEnabled(value),
     subscribe(fn) { listeners.add(fn); fn(state); return () => listeners.delete(fn) },
     async save(slot, image, revision = state.revision) {
       try { return await request({ slot, image, revision }) }
       catch (error) { await refresh().catch(() => {}); throw error }
     },
+    async saveRegion(slot, region, revision = state.revision) {
+      try { return await request({ slot, region, revision }) }
+      catch (error) { await refresh().catch(() => {}); throw error }
+    },
     dispose() {
+      layout.dispose()
       document.documentElement.style.removeProperty('--prts-sidebar-image-ratio')
       disposed = true; abort?.abort(); events?.close(); listeners.clear(); window.removeEventListener('focus', focus)
       for (const slot of Object.keys(backgroundLabels)) {
@@ -71,13 +81,16 @@ export function backgroundMarkup(heroContrastControl = '') {
     </div>
     <div data-prts-background-images hidden>${Object.entries(backgroundLabels).map(([slot,label]) => `<article data-prts-background-card="${slot}" hidden>
       <div data-prts-background-card-heading><strong>${label}</strong><button type="button" data-prts-background-remove="${slot}" aria-label="移除${label}图片" hidden>移除</button></div>
-      <button type="button" data-prts-background-upload="${slot}" aria-label="上传或替换${label}"><span data-prts-background-thumbnail="${slot}" aria-hidden="true"></span><span data-prts-background-caption="${slot}">＋ 选择图片</span></button>
+      <div data-prts-background-image-controls="${slot}"><span data-prts-background-thumbnail="${slot}" aria-hidden="true"></span><span data-prts-background-empty>尚未选择图片</span>
+        <div data-prts-background-image-actions><button type="button" data-prts-background-region-open="${slot}" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="6.5" y="6.5" width="7" height="7" rx="1.5"/></svg><span>保护区域</span></button><button type="button" data-prts-background-upload="${slot}" aria-label="上传或替换${label}"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="m4 14 4-4 3 3 2-2 4 4"/><circle cx="12.5" cy="7" r="1"/></svg><span data-prts-background-caption="${slot}">选择图片</span></button></div>
+      </div>
+      ${backgroundRegionMarkup(slot)}
       <input type="file" data-prts-background-file="${slot}" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
     </article>`).join('')}</div>
     <label data-prts-background-shade hidden><span>背景淡化 <output></output></span><input type="range" min="0" max="90" step="5" aria-label="背景淡化程度"><small>调高后背景更淡，接近当前主题底色。</small></label>
     <div data-prts-background-hero-setting hidden>${heroContrastControl}</div>
     ${opacityDialMarkup()}
-    <small data-prts-background-help>支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片居中铺满，切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
+    <small data-prts-background-help>支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片铺满，可框选重要区域优先保留。切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
   </section>`
 }
 export function mountBackgroundSettings({ panel, window, store, onChange }) {
@@ -86,9 +99,11 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   let disposed = false, busy = false, preferences = {}, state = store.snapshot()
   const status = section.querySelector('[data-prts-background-status]')
   const range = section.querySelector('input[type="range"]')
+  const regions = mountBackgroundRegionEditor({section,window,store})
   const dials = mountOpacityDials({ section, window, onChange })
   function render() {
     dials.update(preferences, state)
+    regions.update(state, preferences.backgroundMode || 'off')
     const mode = preferences.backgroundMode || 'off'
     section.querySelector('[data-prts-background-images]').hidden = mode === 'off'
     section.querySelector('[data-prts-background-shade]').hidden = mode === 'off'
@@ -97,10 +112,11 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
     for (const slot of Object.keys(backgroundLabels)) {
       const url = backgroundImageUrl(state[slot])
       section.querySelector(`[data-prts-background-card="${slot}"]`).hidden = mode === 'off' || (mode === 'full') !== (slot === 'full')
-      section.querySelector(`[data-prts-background-upload="${slot}"]`).toggleAttribute('data-has-image', Boolean(url))
+      section.querySelector(`[data-prts-background-image-controls="${slot}"]`).toggleAttribute('data-has-image', Boolean(url))
       section.querySelector(`[data-prts-background-thumbnail="${slot}"]`).style.backgroundImage = url ? `url("${url}")` : ''
-      section.querySelector(`[data-prts-background-caption="${slot}"]`).textContent = url ? '替换图片' : '＋ 选择图片'
+      section.querySelector(`[data-prts-background-caption="${slot}"]`).textContent = url ? '替换图片' : '选择图片'
       section.querySelector(`[data-prts-background-remove="${slot}"]`).hidden = !url
+      section.querySelector(`[data-prts-background-region-open="${slot}"]`).hidden = !url
     }
     for (const button of section.querySelectorAll('[data-prts-background-upload], [data-prts-background-remove]')) button.disabled = busy
   }
@@ -139,6 +155,6 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   const unsubscribe = store.subscribe(value => { state = value; render() })
   return {
     update(value) { preferences = value; render() },
-    dispose() { disposed = true; dials.dispose(); unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
+    dispose() { disposed = true; regions.dispose(); dials.dispose(); unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
   }
 }

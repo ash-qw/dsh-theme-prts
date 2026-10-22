@@ -179,6 +179,7 @@ export function applyPrtsPlugin(ctx, environment) {
   }
 
   const disposeVisualState = () => {
+    backgroundStore.setEnabled(false)
     particleField.update({ ...preferences, enabled: false })
     startup.stop({ restoreFocus: false })
     stopStartupReadyWatch()
@@ -201,6 +202,7 @@ export function applyPrtsPlugin(ctx, environment) {
       disposeVisualState()
       return
     }
+    backgroundStore.setEnabled(preferences.backgroundMode !== 'off')
     if (!themeAlreadyApplied) theme.apply(preferences)
     operations ||= createOperationsShell({
       document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore, backgroundStore,

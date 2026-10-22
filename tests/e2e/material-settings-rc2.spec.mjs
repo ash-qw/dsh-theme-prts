@@ -56,7 +56,7 @@ test('native settings save background material and Baker loading through the hos
     name: 'background.png', mimeType: 'image/png',
     buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WZfG9AAAAAASUVORK5CYII=', 'base64'),
   })
-  await expect(page.locator('[data-prts-background-upload="full"]')).toHaveAttribute('data-has-image', '')
+  await expect(page.locator('[data-prts-background-image-controls="full"]')).toHaveAttribute('data-has-image', '')
   await expect(page.locator('[data-prts-background-status]')).toContainText('背景已保存')
   await expect(page.locator('[data-prts-opacity-control="bakerOpacity"]')).toBeVisible()
   await expect(page.locator('[data-prts-opacity-control="classicUserOpacity"]')).toBeHidden()

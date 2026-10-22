@@ -80,3 +80,21 @@ test('background preferences default off and bound the readability mask',()=>{
   assert.equal(normalizePreferences({backgroundMode:'full',backgroundDim:2}).backgroundDim,.9)
   assert.equal(normalizePreferences({backgroundMode:'invalid'}).backgroundMode,'off')
 })
+
+test('protection edits persist without replacing image bytes and enforce revision checks',async t=>{
+  const dir=await mkdtemp(tmpdir()+'/prts-background-region-');t.after(()=>rm(dir,{recursive:true,force:true}))
+  const service=await createBackgroundService(dir),image=await png(),region={x:.6,y:.2,width:.3,height:.5}
+  const first=await service.save({revision:0,slot:'full',image})
+  const original=await service.image(first.full.id)
+  const second=await service.save({revision:1,slot:'full',region})
+  assert.equal(second.full.id,first.full.id);assert.deepEqual(second.full.region,region)
+  assert.deepEqual(await service.image(first.full.id),original)
+  await assert.rejects(service.save({revision:1,slot:'full',region:null}),{status:409})
+  await assert.rejects(service.save({revision:2,slot:'full',region:{...region,width:2}}),{status:400})
+  await assert.rejects(service.save({revision:2,slot:'sidebar',region}),{status:400})
+  const reopened=await createBackgroundService(dir);assert.deepEqual(reopened.snapshot(),second);await reopened.dispose()
+  const cleared=await service.save({revision:2,slot:'full',region:null});assert.equal(cleared.full.region,null)
+  const imported=await service.save({revision:3,slot:'full',image,region});assert.deepEqual(imported.full.region,region)
+  const replaced=await service.save({revision:4,slot:'full',image});assert.equal(replaced.full.region,null)
+  await service.dispose()
+})

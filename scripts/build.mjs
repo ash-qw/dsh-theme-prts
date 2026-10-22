@@ -129,6 +129,9 @@ const heroEmblemMask = buildMaskRecord('rhodes-island-hero', factionEmblemBytes[
 
 
 const clientModulePaths = [
+  'src/shared/background-region.js',
+  'src/client/background-region-editor.js',
+  'src/client/background-layout.js',
   'src/client/preferences.js',
   'src/client/native-preferences.js',
   'src/client/theme-transfer.js',

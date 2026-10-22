@@ -33,3 +33,11 @@
 html[data-dsh-prts] :is([data-prts-emblem-sort-active],[data-prts-emblem-sort-active] *) {
   cursor: var(--prts-sort-cursor, grabbing) !important;
 }
+
+/* The crop surface uses one native cursor family, including during pointer capture. */
+html[data-dsh-prts] [data-prts-region-stage] { cursor:default; }
+html[data-dsh-prts] [data-prts-region-stage] [data-prts-region-box] { cursor:move; }
+html[data-dsh-prts] [data-prts-region-stage] [data-prts-region-handle] { cursor:ns-resize!important; }
+html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="e"],[data-prts-region-handle="w"]) { cursor:ew-resize!important; }
+html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="nw"],[data-prts-region-handle="se"]) { cursor:nwse-resize!important; }
+html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="ne"],[data-prts-region-handle="sw"]) { cursor:nesw-resize!important; }

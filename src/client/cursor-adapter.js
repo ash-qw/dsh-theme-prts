@@ -69,7 +69,7 @@ export function createCursorAdapter({ document, window, assets }) {
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
     if (target === resizeTarget && target.style.cursor === resizeApplied) return
     clearResize()
-    if (!target) return
+    if (!target || target.closest('[data-prts-region-stage]')) return
     const cursor = window.getComputedStyle(target).cursor
     const direction = { 'n-resize': 'ns', 's-resize': 'ns', 'ns-resize': 'ns', 'row-resize': 'ns',
       'e-resize': 'ew', 'w-resize': 'ew', 'ew-resize': 'ew', 'col-resize': 'ew',

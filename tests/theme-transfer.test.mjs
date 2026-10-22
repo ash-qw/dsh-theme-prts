@@ -60,7 +60,8 @@ test('configuration-only import and restore never touch asset services',async t=
 test('full package restores backgrounds, editable avatars, custom emblems and order; failures roll assets back',async t=>{
   const f=await fixture(t)
   const image=await sharp({create:{width:32,height:32,channels:4,background:'#eecc22'}}).png().toBuffer()
-  await f.backgrounds.save({slot:'sidebar',image:image.toString('base64'),revision:0})
+  const region={x:.7,y:.1,width:.2,height:.5}
+  await f.backgrounds.save({slot:'sidebar',image:image.toString('base64'),region,revision:0})
   const crop={zoom:2,x:.4,y:.6}
   await f.avatars.save({role:'user',image:image.toString('base64'),crop,revision:0})
   const draft=await f.emblems.preview({bytes:image,label:'徽记',params:{mode:'alpha'}})
@@ -69,10 +70,12 @@ test('full package restores backgrounds, editable avatars, custom emblems and or
   assert.equal(value.assets.emblems.items.length,1)
   assert.deepEqual(value.assets.avatars.user.crop,crop)
   assert.ok(value.assets.backgrounds.sidebar)
+  assert.deepEqual(value.assets.backgroundRegions.sidebar,region)
   await f.backgrounds.save({slot:'sidebar',image:null,revision:1})
   await f.avatars.save({role:'user',image:null,revision:1})
   await f.transfer.import(value)
   assert.ok(f.backgrounds.snapshot().sidebar)
+  assert.deepEqual(f.backgrounds.snapshot().sidebar.region,region)
   assert.deepEqual(f.avatars.edit('user').crop,crop)
   const restored=f.emblems.snapshot().configuration
   assert.equal(restored.conversation[0].kind,'custom')
@@ -83,6 +86,7 @@ test('full package restores backgrounds, editable avatars, custom emblems and or
   f.reject()
   await assert.rejects(f.transfer.import(broken),/模拟设置冲突/)
   assert.ok(f.backgrounds.snapshot().sidebar)
+  assert.deepEqual(f.backgrounds.snapshot().sidebar.region,region)
   assert.deepEqual(f.avatars.edit('user').crop,crop)
   assert.equal(f.emblems.snapshot().configuration.conversation[0].draftId,restored.conversation[0].draftId)
 })
