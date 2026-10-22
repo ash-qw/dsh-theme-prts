@@ -393,6 +393,12 @@ html[data-dsh-prts] [data-prts-conversation-control="danger"] {
 }
 
 /* Empty session: emblem owns the upper field, composer anchors in the lower third. */
+/* Reserve the native blank header before session restoration adds its controls.
+   Otherwise its height grows from 0 to 40px after the emblem has been positioned. */
+html[data-dsh-prts] [data-phase="hero"] > [data-slot="conversation.header"] > header {
+  min-height: 40px;
+}
+
 html[data-dsh-prts] [data-prts-hero-active] {
   --prts-hero-narrow-spacer: clamp(24px, 8dvh, 72px);
   --prts-hero-wide-spacer: clamp(96px, 22dvh, 340px);
