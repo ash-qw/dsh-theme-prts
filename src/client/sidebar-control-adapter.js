@@ -354,7 +354,11 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     queueScan()
   }
   function interruptSelectionTarget(event) {
-    if (event.target.closest?.('[data-prts-session-row]')) clearSelectionTarget()
+    if (event.target.closest?.('[data-prts-session-row]')) {
+      cancelPendingNavigation()
+      cancelReveal()
+      clearSelectionTarget()
+    }
   }
   function setSelectionTarget(id) {
     clearSelectionTarget()
@@ -378,19 +382,25 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function interruptReveal(event) {
     if (!event.target?.closest?.('[data-prts-region="sessions"]')) return
     if (event.type === 'keydown' && !['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key)) return
-    pendingReveal?.tracker?.interrupt()
+    cancelPendingNavigation()
     cancelReveal()
+    clearSelectionTarget()
   }
-  function revealSessionCard(sessionId) {
+  function revealSessionCard(sessionId, onDone) {
     pendingReveal?.tracker?.interrupt()
     cancelReveal()
-    pendingReveal = {sessionId}
-    revealTimer = window.setTimeout(cancelReveal, 4000)
+    pendingReveal = {sessionId, onDone}
+    revealTimer = window.setTimeout(finishReveal, 4000)
     for (const type of ['wheel','touchmove','pointerdown','keydown']) document.addEventListener(type, interruptReveal, {capture:true, passive:true})
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     syncSessionReveal(root)
     queueScan()
     return Boolean(pendingReveal?.expanding)
+  }
+  function finishReveal() {
+    const onDone = pendingReveal?.onDone
+    cancelReveal()
+    onDone?.()
   }
   function syncSessionReveal(root) {
     if (!pendingReveal || !root) return
@@ -402,7 +412,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (!pendingReveal.tracker) {
         const request = pendingReveal
         request.tracker = createSessionCardReveal({window, root, sessionId, onStart: () => window.clearTimeout(revealTimer), onDone: () => {
-          if (pendingReveal === request) cancelReveal()
+          if (pendingReveal === request) finishReveal()
         }})
       }
       return
@@ -432,7 +442,6 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     closeNavigationPreview()
     cancelPendingNavigation()
     setSelectionTarget(sessionId)
-    revealSessionCard(sessionId)
     const generation = navigationGeneration
     const navigate = () => {
       if (generation !== navigationGeneration || !adapterActive) return
@@ -455,11 +464,14 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (row) row.click?.()
       else clearSelectionTarget()
     }
-    // Paint selection and expansion before the host synchronously mounts another conversation.
-    // Already-expanded workspaces need this too: queueScan has not applied selection yet.
-    navigationFrame = window.requestAnimationFrame(() => {
-      if (generation !== navigationGeneration) return
-      navigationFrame = window.requestAnimationFrame(navigate)
+    // Finish sidebar motion first, then paint its final position before the host can block.
+    revealSessionCard(sessionId, () => {
+      if (generation !== navigationGeneration || !adapterActive) return
+      setSelectionTarget(sessionId)
+      navigationFrame = window.requestAnimationFrame(() => {
+        if (generation !== navigationGeneration) return
+        navigationFrame = window.requestAnimationFrame(navigate)
+      })
     })
   }
 

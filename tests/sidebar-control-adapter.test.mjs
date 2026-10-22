@@ -198,8 +198,7 @@ test('summarizes service-backed session states and opens the selected session', 
   assert.equal(document.querySelector('[data-prts-session-summary-item="done-1"] span:last-child').textContent, '尚未查看')
 
   document.querySelector('[data-prts-session-summary-item="done-1"]').click()
-  await flush(dom.window)
-  await flush(dom.window)
+  for (let i=0;i<20 && !opened.length;i++) await flush(dom.window)
   assert.deepEqual(opened, ['done-1'])
 
   document.querySelector('[data-session-id="run-1"] [data-state]').setAttribute('data-state', 'done')
@@ -278,8 +277,7 @@ test('shows pending questions before running and completion states', async () =>
   assert.equal(document.querySelector('[data-prts-session-summary-item="plan"] [data-prts-session-summary-item-status]').textContent, '待审阅')
   assert.equal(document.querySelector('[data-prts-session-summary-item="archived"]'), null)
   document.querySelector('[data-prts-session-summary-item="question"]').click()
-  await flush(dom.window)
-  await flush(dom.window)
+  for (let i=0;i<200 && !opened.length;i++) await flush(dom.window)
   assert.deepEqual(opened, ['question'])
 
   sessionStatus.update(new Map([
@@ -393,8 +391,7 @@ test('keeps the workspace warning shortcut when the service list omits a visible
   assert.equal(document.querySelector('[data-prts-session-summary-trigger="warning"] [data-prts-session-summary-count]').textContent, '1')
   assert.equal(document.querySelector('[data-prts-session-summary-trigger="ongoing"]'), null)
   document.querySelector('[data-prts-session-summary-item="question"]').click()
-  await flush(dom.window)
-  await flush(dom.window)
+  for (let i=0;i<20 && !opened.length;i++) await flush(dom.window)
   assert.deepEqual(opened, ['question'])
   adapter.dispose()
 })
@@ -441,14 +438,14 @@ test('preview navigation reveals its nested workspace and hidden session card', 
       {workspaceId:'parent',path:'/root',sessionIds:[]},
       {workspaceId:'owner',path:'/root/project',sessionIds:['target']},
     ]})},
-    getUiWorkspace:()=>({openSession:id=>{ assert.ok(expanded.includes('parent'), 'start sidebar expansion before navigating'); opened.push(id) }}),
+    getUiWorkspace:()=>({openSession:id=>{ assert.deepEqual(expanded, ['parent','owner','overflow']); assert.ok(scrolled.length, 'reveal the card before navigating'); opened.push(id) }}),
   })
   adapter.start()
   document.querySelector('[data-prts-session-summary-item="target"]').click()
-  for(let i=0;i<8 && (!scrolled.length || !opened.length);i++)await flush(dom.window)
+  for(let i=0;i<25 && (!scrolled.length || !opened.length);i++)await flush(dom.window)
   assert.deepEqual(opened,['target'])
   assert.deepEqual(expanded,['parent','owner','overflow'])
-  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'smooth'}])
+  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'instant'}])
   adapter.dispose()
   dom.window.close()
 })
@@ -533,4 +530,25 @@ test('preview waits for missing services without needing a sidebar DOM mutation'
   assert.ok(dom.window.document.querySelector('[data-prts-session-summary-item="late"]'))
   adapter.dispose()
   dom.window.close()
+})
+
+test('a second preview navigation cancels the first pending destination', async () => {
+  const dom=new JSDOM('<aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div><span>工作区</span><button>搜索</button></div><div role="tree"></div></div></aside>',{pretendToBeVisual:true})
+  const {document}=dom.window,opened=[]
+  const adapter=createSidebarControlAdapter({document,window:dom.window,
+    sessions:{list:createStore({ids:['a','b'],byId:{a:{id:'a',running:true},b:{id:'b',running:true}}})},
+    getUiWorkspace:()=>({openSession:id=>opened.push(id)})})
+  try {
+    adapter.start()
+    document.querySelector('[data-prts-session-summary-item="a"]').click()
+    await flush(dom.window)
+    document.querySelector('[data-prts-session-summary-item="b"]').click()
+    const row=document.createElement('div')
+    row.setAttribute('role','treeitem');row.setAttribute('aria-selected','false');row.setAttribute('data-session-id','b')
+    row.innerHTML='<span>B</span>'
+    document.querySelector('[role="tree"]').append(row)
+    for(let i=0;i<30 && !opened.length;i++)await flush(dom.window)
+    assert.deepEqual(opened,['b'])
+    await flush(dom.window);assert.deepEqual(opened,['b'])
+  } finally {adapter.dispose();dom.window.close()}
 })

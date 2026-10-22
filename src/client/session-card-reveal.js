@@ -1,7 +1,7 @@
-// Follow one navigation through native selection and subsequent list reflow.
+// Reveal the temporarily selected card before mounting the destination conversation.
 // Keep the destination stable through unrelated reflow; retarget smoothly only when needed.
 export function createSessionCardReveal({window, root, sessionId, onDone, onStart}) {
-  let row, scroller, frame, timer, started = false, disposed = false, geometry, destination
+  let row, scroller, frame, timer, started = false, disposed = false, geometry, destination, stableSince, lastPosition
   const findRow = () => [...root.querySelectorAll('[data-row-key], [data-session-id]')].find(el =>
     el.getAttribute('data-row-key') === `session:${sessionId}` || el.getAttribute('data-session-id') === sessionId)
   const instant = top => {
@@ -31,7 +31,11 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
   function check(final = false) {
     if (disposed) return
     const nextRow = findRow()
-    if (!nextRow || nextRow.getAttribute('aria-selected') !== 'true') return
+    if (!nextRow || (nextRow.getAttribute('data-prts-selection-target') !== 'true' && nextRow.getAttribute('aria-selected') !== 'true')) {
+      stableSince = undefined
+      if (started && !final) schedule()
+      return
+    }
     const remounted = nextRow !== row
     if (remounted) {
       row = nextRow
@@ -52,6 +56,7 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
       resize?.observe(root)
       if (scroller) { resize?.observe(scroller); scroller.addEventListener('scrollend', scrollEnded) }
     }
+    let settled = true
     const first = !started
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
       || root.ownerDocument.documentElement.getAttribute('data-prts-motion') === 'reduced'
@@ -83,20 +88,36 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
           else instant(target)
         }
       }
+      settled = !changed && Math.abs(current - (lastPosition ?? current)) <= 1
+        && (destination === undefined || Math.abs(scroller.scrollTop - destination) <= 1)
+      lastPosition = current
       geometry = next
     } else if (first || remounted || final) {
-      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:!reduced && !final ? 'smooth' : 'instant'})
+      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:'instant'})
+    }
+    for (let node = row; node && node !== root.parentElement; node = node.parentElement) {
+      if ((node.getAnimations?.() ?? []).some(animation => animation.playState === 'running'
+        && Number.isFinite(animation.effect?.getComputedTiming?.().endTime))) settled = false
     }
     if (first) {
       started = true
       onStart?.()
-      // No idle-frame polling. Expiry still checks once, even after a blocked main thread.
+      // Bound the pre-navigation wait; finish any remaining scroll before opening.
       timer = window.setTimeout(() => { check(true); cancel(); onDone() }, 1000)
+    }
+    if (!final) {
+      const now = window.performance.now()
+      if (!settled) stableSince = undefined
+      else stableSince ??= now
+      if (stableSince !== undefined && now - stableSince >= 80) {
+        cancel()
+        onDone()
+      } else schedule()
     }
   }
   const resize = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(schedule) : undefined
   const mutations = new window.MutationObserver(schedule)
-  mutations.observe(root, {childList:true, subtree:true, attributes:true, attributeFilter:['aria-selected','aria-expanded']})
+  mutations.observe(root, {childList:true, subtree:true, attributes:true, attributeFilter:['aria-selected','aria-expanded','data-prts-selection-target']})
   root.addEventListener('transitionend', schedule)
   root.addEventListener('animationend', schedule)
   schedule()

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {JSDOM} from 'jsdom'
 import {createSessionCardReveal} from '../src/client/session-card-reveal.js'
 
-function fixture({reduced=false}={}) {
+function fixture({reduced=false,onDone=()=>{}}={}) {
   const dom=new JSDOM('<main><div style="overflow-y:auto"><div data-row-key="session:target" aria-selected="false"></div></div></main>',{pretendToBeVisual:true})
   const {window}=dom,root=window.document.querySelector('main'),scroller=root.firstElementChild
   let row=scroller.firstElementChild,position=400,height=100,scroll=0,contentHeight=700,finish
@@ -20,7 +20,7 @@ function fixture({reduced=false}={}) {
   scroller.scrollTo=options=>{calls.push(options);if(options.behavior==='instant')scroll=options.top}
   const geometry=el=>{el.getBoundingClientRect=()=>({top:position-scroll,bottom:position-scroll+32,height:32})}
   geometry(row)
-  const tracker=createSessionCardReveal({window,root,sessionId:'target',onDone:()=>{}})
+  const tracker=createSessionCardReveal({window,root,sessionId:'target',onDone})
   const pump=async()=>{await Promise.resolve();for(const [id,fn] of [...frames]){frames.delete(id);fn()}}
   return {window,root,scroller,calls,tracker,pump,get row(){return row},select:()=>row.setAttribute('aria-selected','true'),
     contentHeight:v=>{contentHeight=v;root.append(window.document.createElement('i'))},progress:v=>{scroll=v},resize:v=>{height=v;for(const r of resizers)r.fn()},move:v=>{position=v;root.append(window.document.createElement('i'))},
@@ -130,4 +130,37 @@ test('cancellation stops an owned animation even after the target disappears',as
     const count=f.calls.length;f.tracker.cancel();await f.pump()
     assert.equal(f.calls.length,count)
   }finally{f.close()}
+})
+
+
+test('temporary selection reveals before native navigation and completes only after motion settles',async()=>{
+  let done=0
+  const f=fixture({onDone:()=>done++})
+  try {
+    f.row.setAttribute('data-prts-selection-target','true')
+    await f.pump()
+    assert.equal(f.row.getAttribute('aria-selected'),'false')
+    assert.deepEqual(f.calls,[{top:332,behavior:'smooth'}])
+    f.progress(100)
+    await new Promise(resolve=>setTimeout(resolve,100));await f.pump()
+    assert.equal(done,0,'an unfinished scroll must block navigation')
+    f.progress(332);await f.pump();await f.pump()
+    await new Promise(resolve=>setTimeout(resolve,100));await f.pump()
+    assert.equal(done,1)
+    const count=f.calls.length
+    f.resize(60);await f.pump()
+    assert.equal(f.calls.length,count,'no correction remains after navigation starts')
+  } finally {f.close()}
+})
+
+test('cancelled pre-navigation reveal never opens its old destination',async()=>{
+  let done=0
+  const f=fixture({onDone:()=>done++})
+  try {
+    f.row.setAttribute('data-prts-selection-target','true');await f.pump()
+    f.progress(100);f.tracker.cancel();f.progress(332)
+    await new Promise(resolve=>setTimeout(resolve,100));await f.pump()
+    assert.equal(done,0)
+    assert.deepEqual(f.calls.at(-1),{top:100,behavior:'instant'})
+  } finally {f.close()}
 })

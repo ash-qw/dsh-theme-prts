@@ -12,39 +12,40 @@ async function setup(page) {
     Object.assign(spacer.style,{height:'700px',flexShrink:'0'})
     tree.insertBefore(spacer,el);tree.scrollTop=0
     window.__revealScrolls=[]
+    const ids=window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds
+    const push=ids.push.bind(ids)
+    ids.push=(...values)=>{
+      const card=el.getBoundingClientRect(),box=tree.getBoundingClientRect()
+      window.__navigationGeometry={visible:card.top>=box.top && card.bottom<=box.top+tree.clientHeight+1,
+        selected:el.getAttribute('data-prts-selection-target'),top:tree.scrollTop}
+      // Model a host mount that blocks the main thread immediately after opening.
+      const until=performance.now()+180;while(performance.now()<until){}
+      return push(...values)
+    }
     const original=tree.scrollTo.bind(tree)
     tree.scrollTo=options=>{window.__revealScrolls.push(options);original(options)}
   })
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
   await page.locator('[data-prts-session-summary-item="fixture-session"]').click()
-  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
   return row
 }
 
-test('navigation waits for native selection, preserves smooth motion through a later viewport resize',async({page})=>{
+test('sidebar scroll and selection finish before a blocking conversation mount',async({page})=>{
   const row=await setup(page)
-  expect(await page.evaluate(()=>window.__revealScrolls)).toEqual([])
-  await row.evaluate(el=>el.setAttribute('aria-selected','true'))
-  await expect.poll(()=>page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='smooth').length)).toBe(1)
-  await expect.poll(()=>row.evaluate(el=>{
-    const r=el.getBoundingClientRect(),tree=el.closest('[role="tree"]'),box=tree.getBoundingClientRect()
-    return r.top>=box.top && r.bottom<=box.top+tree.clientHeight+1
-  })).toBe(true)
-  await row.evaluate(el=>Object.assign(el.closest('[role="tree"]').style,{height:'180px',maxHeight:'180px'}))
-  await expect.poll(()=>page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='smooth').length)).toBe(2)
-  await expect.poll(()=>row.evaluate(el=>{
-    const r=el.getBoundingClientRect(),tree=el.closest('[role="tree"]'),box=tree.getBoundingClientRect()
-    return r.top>=box.top && r.bottom<=box.top+tree.clientHeight+1
-  })).toBe(true)
-  expect(await page.evaluate(()=>window.__revealScrolls.filter(x=>x.behavior==='instant').length)).toBe(0)
+  await expect.poll(()=>page.evaluate(()=>window.__revealScrolls.some(x=>x.behavior==='smooth'))).toBe(true)
+  await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual(['fixture-session'])
+  const geometry=await page.evaluate(()=>window.__navigationGeometry)
+  expect(geometry.visible).toBe(true)
+  expect(geometry.selected).toBe('true')
+  const before=await page.evaluate(()=>window.__revealScrolls.length)
+  await page.waitForTimeout(250)
+  expect(await row.evaluate(el=>el.closest('[role="tree"]').scrollTop)).toBeCloseTo(geometry.top,0)
+  expect(await page.evaluate(()=>window.__revealScrolls.length)).toBe(before)
 })
 
-test('manual sidebar scrolling cancels a reveal that is awaiting native selection',async({page})=>{
+test('manual sidebar scrolling cancels the pending conversation navigation',async({page})=>{
   const row=await setup(page)
-  await row.evaluate(el=>{
-    el.closest('[role="tree"]').dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:-100}))
-    el.setAttribute('aria-selected','true')
-  })
-  await page.waitForTimeout(150)
-  expect(await page.evaluate(()=>window.__revealScrolls)).toEqual([])
+  await row.evaluate(el=>el.closest('[role="tree"]').dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:-100})))
+  await page.waitForTimeout(1200)
+  expect(await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.openedSessionIds)).toEqual([])
 })
