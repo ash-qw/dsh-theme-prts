@@ -1,6 +1,25 @@
 import { validBackgroundRegion } from '../shared/background-region.js'
 import { DEFAULT_PREFERENCES, normalizePreferences } from './preferences.js'
 
+export function checkTransferCancelled(signal) {
+  if (signal?.aborted) throw Object.assign(new Error('操作已取消'), { name: 'AbortError' })
+}
+
+export function readTransferFile(window, blob, signal, onProgress, asImage = false) {
+  return new Promise((resolve, reject) => {
+    checkTransferCancelled(signal)
+    const reader = new window.FileReader()
+    const cleanup = () => signal?.removeEventListener('abort', abort)
+    const abort = () => { reader.abort(); cleanup(); reject(Object.assign(new Error('操作已取消'), { name: 'AbortError' })) }
+    reader.onload = () => { cleanup(); resolve(asImage ? String(reader.result).split(',')[1] : reader.result) }
+    reader.onerror = () => { cleanup(); reject(Error('无法读取主题文件或图片')) }
+    reader.onprogress = onProgress
+    signal?.addEventListener('abort', abort, { once: true })
+    if (asImage) reader.readAsDataURL(blob)
+    else reader.readAsText(blob)
+  })
+}
+
 export const THEME_PACKAGE_LIMIT = 160 * 1024 * 1024
 const transferSlots = ['full', 'sidebar', 'conversation']
 const transferRoles = ['user', 'assistant']
@@ -84,61 +103,64 @@ export function describeThemePackage(value) {
 
 export function createThemeTransfer({ window, getPreferences, savePreferences, checkWritable, checkExport = checkWritable, themeVersion }) {
   let busy = false, backup
-  const request = async (path, data) => {
-    const response = await window.fetch('/prts-theme-api/' + path, { credentials: 'same-origin',
+  const request = async (path, data, signal) => {
+    checkTransferCancelled(signal)
+    const response = await window.fetch('/prts-theme-api/' + path, { credentials: 'same-origin', signal,
       ...(data === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-prts-request': '1' }, body: JSON.stringify(data) }) })
     const result = await response.json()
     if (!response.ok) throw Error(result.error || '无法连接主题素材服务')
     return result
   }
-  const readImage = blob => new Promise((resolve, reject) => {
-    const reader = new window.FileReader()
-    reader.onload = () => resolve(String(reader.result).split(',')[1])
-    reader.onerror = () => reject(Error('无法读取背景图片'))
-    reader.readAsDataURL(blob)
-  })
-  async function capture(includeAssets) {
+  async function capture(includeAssets, progress = () => {}, signal) {
+    checkTransferCancelled(signal)
+    progress({ value: 0, label: '正在读取主题设置…' })
     const value = { format: 'prts-theme', version: 1, themeVersion, exportedAt: new Date().toISOString(), preferences: { ...getPreferences() } }
     const states = {}
     if (includeAssets) {
       const backgrounds = {}, backgroundRegions = {}, avatars = {}, items = [], ids = new Map()
-      states.backgrounds = await request('backgrounds/configuration')
+      progress({ value: 0.1, label: '正在读取背景…' })
+      states.backgrounds = await request('backgrounds/configuration', undefined, signal)
       for (const slot of transferSlots) {
         const entry = states.backgrounds[slot]
         backgroundRegions[slot] = entry?.region ?? null
         backgrounds[slot] = null
         if (entry) {
           if (!/^[a-f0-9-]{36}$/.test(entry.id)) throw Error('背景引用无效')
-          const response = await window.fetch('/prts-theme-api/backgrounds/image/' + entry.id, { credentials: 'same-origin' })
+          const response = await window.fetch('/prts-theme-api/backgrounds/image/' + entry.id, { credentials: 'same-origin', signal })
           if (!response.ok) throw Error('无法导出背景图片')
-          backgrounds[slot] = await readImage(await response.blob())
+          backgrounds[slot] = await readTransferFile(window, await response.blob(), signal, undefined, true)
         }
       }
-      states.avatars = await request('avatars/configuration')
+      progress({ value: 0.35, label: '正在读取头像…' })
+      states.avatars = await request('avatars/configuration', undefined, signal)
       for (const role of transferRoles) {
-        const source = await request('avatars/edit/' + role)
+        const source = await request('avatars/edit/' + role, undefined, signal)
         if (source.revision !== states.avatars.revision) throw Error('头像已变化，请重新导出')
         avatars[role] = source.image ? { image: source.image, crop: source.crop } : null
       }
-      states.emblems = await request('emblems/configuration')
+      progress({ value: 0.5, label: '正在读取徽记…' })
+      states.emblems = await request('emblems/configuration', undefined, signal)
       async function reference(entry) {
         if (!entry) return null
         if (entry.kind === 'builtin') return { kind: 'builtin', key: entry.key, label: entry.label }
         if (!ids.has(entry.draftId)) {
           ids.set(entry.draftId, items.length)
-          items.push(await request('emblems/draft/' + encodeURIComponent(entry.draftId) + '/export'))
+          items.push(await request('emblems/draft/' + encodeURIComponent(entry.draftId) + '/export', undefined, signal))
         }
         return { kind: 'custom', asset: ids.get(entry.draftId), label: entry.label }
       }
       const hero = await reference(states.emblems.configuration.hero), conversation = []
       for (const entry of states.emblems.configuration.conversation) conversation.push(await reference(entry))
       value.assets = { backgrounds, backgroundRegions, avatars, emblems: { items, hero, conversation } }
+      progress({ value: 0.85, label: '正在核对素材…' })
       for (const kind of ['backgrounds', 'avatars', 'emblems']) {
-        if ((await request(kind + '/configuration')).revision !== states[kind].revision) throw Error('素材在导出期间发生变化，请重试')
+        if ((await request(kind + '/configuration', undefined, signal)).revision !== states[kind].revision) throw Error('素材在导出期间发生变化，请重试')
       }
     }
     if (JSON.stringify(value.preferences) !== JSON.stringify(getPreferences())) throw Error('设置在导出期间发生变化，请重试')
+    checkTransferCancelled(signal)
     validateThemePackage(value)
+    progress({ value: 1, label: '主题数据已就绪' })
     return { value, states }
   }
   async function exclusive(fn) {
@@ -154,14 +176,23 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
     window.document.body.append(link); link.click(); link.remove()
     window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
   }
-  async function apply(value) {
+  async function apply(value, progress = () => {}, signal) {
+    checkTransferCancelled(signal)
     validateThemePackage(value)
     const preferenceRevision = checkWritable()
-    const before = await capture(Boolean(value.assets))
+    const before = await capture(Boolean(value.assets), state => progress({ value: state.value * 0.3, label: '备份：' + state.label }), signal)
     backup = before.value
+    progress({ value: 0.3, label: '正在生成导入前备份…' })
+    await new Promise(resolve => window.setTimeout(resolve, 0))
+    checkTransferCancelled(signal)
     download(backup, 'before-import')
+    let completed = 0
+    const total = value.assets ? value.assets.emblems.items.length + 7 : 1
+    const step = label => progress({ value: 0.35 + 0.65 * completed / total, label })
     const undo = [], revisions = Object.fromEntries(Object.entries(before.states).map(([key, state]) => [key, state.revision]))
     const write = async (kind, data, previous) => {
+      checkTransferCancelled(signal)
+      // Await writes without aborting: their confirmed revision is needed for rollback.
       const result = await request(kind + '/configuration', { ...data, revision: revisions[kind] })
       revisions[kind] = result.revision
       undo.push(async () => {
@@ -173,24 +204,35 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
       if (value.assets) {
         const a = value.assets, old = before.value.assets, drafts = []
         // Generate every custom draft before changing the active configuration.
-        for (const item of a.emblems.items) drafts.push(await request('emblems/import', item))
+        for (const item of a.emblems.items) {
+          step('正在导入徽记素材…')
+          checkTransferCancelled(signal)
+          drafts.push(await request('emblems/import', item)); completed++
+        }
         const entry = (ref, index) => ref === null ? null : ref.kind === 'builtin' ? ref : { kind: 'custom', key: 'import-' + index + '-' + drafts[ref.asset].draftId, label: ref.label, draftId: drafts[ref.asset].draftId }
         const configuration = { version: 2, hero: entry(a.emblems.hero, 'hero'), conversation: a.emblems.conversation.map(entry) }
-        for (const slot of transferSlots) await write('backgrounds', { slot, image: a.backgrounds[slot], region: a.backgroundRegions?.[slot] ?? null }, { slot, image: old.backgrounds[slot], region: old.backgroundRegions?.[slot] ?? null })
-        for (const role of transferRoles) await write('avatars', { role, image: a.avatars[role]?.image ?? null, crop: a.avatars[role]?.crop }, { role, image: old.avatars[role]?.image ?? null, crop: old.avatars[role]?.crop })
-        await write('emblems', { configuration }, { configuration: before.states.emblems.configuration })
+        for (const slot of transferSlots) { step('正在应用背景…'); await write('backgrounds', { slot, image: a.backgrounds[slot], region: a.backgroundRegions?.[slot] ?? null }, { slot, image: old.backgrounds[slot], region: old.backgroundRegions?.[slot] ?? null }); completed++ }
+        for (const role of transferRoles) { step('正在应用头像…'); await write('avatars', { role, image: a.avatars[role]?.image ?? null, crop: a.avatars[role]?.crop }, { role, image: old.avatars[role]?.image ?? null, crop: old.avatars[role]?.crop }); completed++ }
+        step('正在应用徽记排列…')
+        await write('emblems', { configuration }, { configuration: before.states.emblems.configuration }); completed++
       }
+      step('正在保存主题设置…')
+      checkTransferCancelled(signal)
+      progress({ value: 0.99, label: '正在保存主题设置…', cancellable: false })
       await savePreferences(mergeThemePreferences(before.value.preferences, value.preferences), preferenceRevision)
+      progress({ value: 1, label: '主题已保存' })
     } catch (error) {
+      progress({ value: null, label: signal?.aborted ? '正在取消，回退素材…' : '导入失败，正在回退素材…', cancellable: false })
       let failures = 0
       for (const restore of undo.reverse()) { try { await restore() } catch { failures++ } }
+      if (signal?.aborted && !failures && error.name === 'AbortError') throw Error('操作已取消，已回退已写入的素材。')
       throw Error(`${error.message}。${failures ? '部分素材未能自动恢复。' : '已回退已确认写入的素材。'}若连接中断，请检查实际状态；导入前备份已发起下载，可重新导入恢复。`)
     }
   }
   return {
-    export: includeAssets => exclusive(async () => { checkExport(); return (await capture(includeAssets)).value }),
-    import: value => exclusive(() => apply(value)),
-    restore: () => exclusive(() => { if (!backup) throw Error('没有可恢复的备份'); return apply(backup) }),
+    export: (includeAssets, progress, signal) => exclusive(async () => { checkExport(); return (await capture(includeAssets, progress, signal)).value }),
+    import: (value, progress, signal) => exclusive(() => apply(value, progress, signal)),
+    restore: (progress, signal) => exclusive(() => { if (!backup) throw Error('没有可恢复的备份'); return apply(backup, progress, signal) }),
     get hasBackup() { return Boolean(backup) },
     download,
   }

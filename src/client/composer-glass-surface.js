@@ -1,10 +1,12 @@
 // Keep host content in place; mount upstream GlassSurface only as a background.
 export function createComposerGlassSurface({document, window, mount}) {
   const surfaces = new Map()
+  const observed = new Set()
   let observer, resize, frame
   function remove(card, entry) {
     window.clearTimeout(entry.resizeTimer)
     resize?.unobserve(card)
+    observed.delete(card)
     entry.unmount()
     entry.container.remove()
     card.removeAttribute('data-prts-composer-glass-active')
@@ -14,7 +16,14 @@ export function createComposerGlassSurface({document, window, mount}) {
     frame = undefined
     const cards = new Set(document.querySelectorAll('[data-composer-card], [data-prts-composer-fallback]'))
     for (const [card, entry] of surfaces) if (!cards.has(card)) remove(card, entry)
+    for (const card of observed) {
+      if (cards.has(card)) continue
+      resize?.unobserve(card)
+      observed.delete(card)
+    }
     for (const card of cards) {
+      // Hidden composers still need observation so their first visible size mounts glass.
+      if (!observed.has(card)) { resize?.observe(card); observed.add(card) }
       // Use layout dimensions, unaffected by host entrance/resize transforms.
       const w = card.offsetWidth
       const h = card.offsetHeight
@@ -37,7 +46,6 @@ export function createComposerGlassSurface({document, window, mount}) {
         entry = {container, shape, width:w, height:h, unmount:mount(container, {shape})}
         surfaces.set(card, entry)
         card.setAttribute('data-prts-composer-glass-active', '')
-        resize?.observe(card)
       } else if (entry.shape !== shape) {
         entry.shape = shape
         entry.width = w
@@ -76,6 +84,7 @@ export function createComposerGlassSurface({document, window, mount}) {
       observer?.disconnect()
       observer = undefined
       resize?.disconnect()
+      observed.clear()
       window.cancelAnimationFrame?.(frame)
       frame = undefined
       for (const [card, entry] of surfaces) remove(card, entry)

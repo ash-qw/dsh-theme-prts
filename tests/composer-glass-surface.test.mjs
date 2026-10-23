@@ -10,12 +10,13 @@ function fixture(t) {
   let width = 600
   Object.defineProperty(card, 'offsetWidth', { get: () => width })
   Object.defineProperty(card, 'offsetHeight', { get: () => 150 })
+  const observed = new Set()
   let resized
   dom.window.ResizeObserver = class {
     constructor(callback) { resized = callback }
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    observe(card) { observed.add(card) }
+    unobserve(card) { observed.delete(card) }
+    disconnect() { observed.clear() }
   }
   const calls = { mounts: 0, updates: [], unmounts: 0 }
   const surface = createComposerGlassSurface({
@@ -28,7 +29,7 @@ function fixture(t) {
     },
   })
   t.after(() => { surface.dispose(); dom.window.close() })
-  return { document, card, calls, surface, resize(value) { width = value; resized() } }
+  return { document, card, calls, surface, observed, resize(value) { width = value; if (observed.has(card)) resized() } }
 }
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -83,4 +84,28 @@ test('without a rendering mount the enhancement does not partially enable menus'
   adapter.start()
   assert.equal(dom.window.document.documentElement.hasAttribute('data-prts-composer-enhanced'), false)
   adapter.dispose()
+})
+
+
+test('a composer hidden when glass starts mounts when it gains layout dimensions', async t => {
+  const f = fixture(t)
+  f.resize(0)
+  f.surface.start()
+  assert.equal(f.calls.mounts, 0)
+  f.resize(600)
+  await wait(40)
+  assert.equal(f.calls.mounts, 1)
+  assert.equal(f.card.hasAttribute('data-prts-composer-glass-active'), true)
+  f.surface.dispose()
+  assert.equal(f.observed.size, 0)
+})
+
+test('hidden composers removed before mounting are no longer observed', async t => {
+  const f = fixture(t)
+  f.resize(0)
+  f.surface.start()
+  f.card.remove()
+  await wait(40)
+  assert.equal(f.observed.size, 0)
+  assert.equal(f.calls.mounts, 0)
 })

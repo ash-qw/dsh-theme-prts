@@ -1,4 +1,4 @@
-import { THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage, ignoredThemePackageFields } from './theme-transfer.js'
+import { checkTransferCancelled, readTransferFile, THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage, ignoredThemePackageFields } from './theme-transfer.js'
 
 export function themeTransferMarkup() {
   return `<dialog data-prts-transfer-dialog aria-labelledby="prts-transfer-title">
@@ -25,6 +25,8 @@ export function themeTransferMarkup() {
         <div data-prts-transfer-buttons><button type="button" data-prts-transfer-apply>确认导入</button><button type="button" data-prts-transfer-cancel>取消</button></div>
       </div>
       <div data-prts-transfer-recovery hidden><small>恢复将替换最近一次导入后所做的修改。</small><button type="button" data-prts-transfer-restore>恢复导入前配置</button></div>
+      <div data-prts-transfer-progress hidden><div><span data-prts-transfer-phase></span><span data-prts-transfer-percent></span></div><progress data-prts-transfer-bar max="1" aria-label="主题文件处理进度"></progress></div>
+      <button type="button" data-prts-transfer-stop hidden>取消操作</button>
       <p data-prts-transfer-status role="status" aria-live="polite"></p>
     </section>
   </dialog>`
@@ -40,34 +42,53 @@ export function mountThemeTransfer({ panel, window, transfer }) {
   const keydown = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close() } }
   const cancel = event => { if (event.target === dialog) { event.preventDefault(); event.stopPropagation(); close() } }
   const get = name => section.querySelector(`[data-prts-transfer-${name}]`)
-  let pending, busy = false, disposed = false, generation = 0
+  let pending, busy = false, disposed = false, generation = 0, controller, cancellable = true
   const render = () => {
     if (disposed) return
     get('preview').hidden = !pending
     if (!pending) get('compatibility').hidden = true
     get('recovery').hidden = !transfer.hasBackup
     for (const control of section.querySelectorAll('button,input')) control.disabled = busy
+    get('stop').hidden = !busy
+    get('stop').disabled = !busy || !cancellable || controller?.signal.aborted
     // Prevent local editors from racing a multi-service import; other clients use revision checks.
     for (const page of panel.querySelectorAll('[data-prts-settings-section]')) if (!page.contains(section)) page.inert = busy
   }
+  const progress = ({ value, label, cancellable: allowed }) => {
+    if (disposed) return
+    if (allowed === false) { cancellable = false; render() }
+    get('progress').hidden = false
+    get('phase').textContent = label
+    get('percent').textContent = value === null ? '' : `${Math.round(value * 100)}%`
+    if (value === null) get('bar').removeAttribute('value')
+    else get('bar').value = value
+  }
+  const paint = () => new Promise(resolve => window.setTimeout(resolve, 0))
   async function run(task) {
     if (busy) return
-    busy = true; get('status').textContent = '正在处理，请稍候…'; render()
-    try { get('status').textContent = await task() }
-    catch (error) { if (!disposed) get('status').textContent = error.message }
-    finally { busy = false; render() }
+    controller = new window.AbortController(); cancellable = true
+    busy = true; section.setAttribute('aria-busy', 'true'); get('status').textContent = ''; get('progress').hidden = true; render()
+    progress({ value: null, label: '正在准备…' })
+    try {
+      await paint()
+      checkTransferCancelled(controller.signal)
+      const message = await task(controller.signal)
+      if (!disposed) { progress({ value: 1, label: '处理完成' }); get('status').textContent = message }
+    }
+    catch (error) { if (!disposed) { get('progress').hidden = true; get('status').textContent = error.name === 'AbortError' ? '操作已取消。' : error.message } }
+    finally { busy = false; if (!pending && !disposed) get('file').value = '';  if (!disposed) section.setAttribute('aria-busy', 'false'); render() }
   }
   const change = event => {
     if (event.target !== get('file')) return
     const file = event.target.files?.[0], selected = ++generation
     pending = undefined; render()
     if (!file) return
-    void run(async () => {
+    void run(async signal => {
       if (file.size > THEME_PACKAGE_LIMIT) throw Error('主题文件不能超过 160 MB')
-      const text = await new Promise((resolve, reject) => {
-        const reader = new window.FileReader()
-        reader.onload = () => resolve(reader.result); reader.onerror = () => reject(Error('无法读取主题文件')); reader.readAsText(file)
-      })
+      const text = await readTransferFile(window, file, signal, event => progress({ value: event.lengthComputable && event.total ? event.loaded / event.total * 0.8 : null, label: '正在读取主题文件…' }))
+      progress({ value: 0.8, label: '正在解析并检查主题文件…' })
+      await paint()
+      checkTransferCancelled(signal)
       let value
       try { value = JSON.parse(text) } catch { throw Error('主题文件不是有效的 JSON') }
       validateThemePackage(value)
@@ -85,22 +106,28 @@ export function mountThemeTransfer({ panel, window, transfer }) {
   }
   const click = event => {
     const button = event.target.closest?.('button')
+    if (button === get('stop') && busy && cancellable) {
+      controller.abort(); progress({ value: null, label: '正在取消，请稍候…', cancellable: false }); return
+    }
     if (button === get('close')) close()
     if (button === get('choose')) get('file').click()
-    if (button === get('export')) void run(async () => {
-      const value = await transfer.export(get('assets').checked)
+    if (button === get('export')) void run(async signal => {
+      const value = await transfer.export(get('assets').checked, state => progress({ ...state, value: state.value * 0.9 }), signal)
+      progress({ value: 0.9, label: '正在生成下载文件…' })
+      await paint()
+      checkTransferCancelled(signal)
       transfer.download(value)
       return '已发起下载，请确认主题文件已保存。'
     })
-    if (button === get('apply') && pending) void run(async () => {
-      await transfer.import(pending); pending = undefined; get('file').value = ''
+    if (button === get('apply') && pending) void run(async signal => {
+      await transfer.import(pending, progress, signal); pending = undefined; get('file').value = ''
       return '主题已导入并保存。'
     })
-    if (button === get('cancel')) { pending = undefined; get('file').value = ''; get('status').textContent = ''; render() }
-    if (button === get('restore')) void run(async () => { await transfer.restore(); return '已恢复导入前配置。' })
+    if (button === get('cancel')) { pending = undefined; get('file').value = ''; get('status').textContent = ''; get('progress').hidden = true; render() }
+    if (button === get('restore')) void run(async signal => { await transfer.restore(progress, signal); return '已恢复导入前配置。' })
   }
   trigger?.addEventListener('click', open)
   dialog.addEventListener('keydown', keydown); dialog.addEventListener('cancel', cancel)
   section.addEventListener('change', change); section.addEventListener('click', click); render()
-  return { dispose() { disposed = true; generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
+  return { dispose() { disposed = true; controller?.abort(); generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
 }

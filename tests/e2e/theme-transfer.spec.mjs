@@ -95,3 +95,48 @@ test('complete theme file includes actual assets and can be imported in a second
     expect(state.emblem.configuration.hero.label).toBe('测试徽记')
   }finally{await context.close()}
 })
+
+test('cancel a slow export and start a new export',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced'}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-transfer-open]').click()
+  await page.evaluate(()=>{
+    const original=window.fetch
+    window.fetch=(url,options)=>{
+      if(String(url).endsWith('/backgrounds/configuration') && options?.signal){
+        window.__transferWaiting=true
+        return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new DOMException('aborted','AbortError')),{once:true}))
+      }
+      return original(url,options)
+    }
+  })
+  const downloads=[];page.on('download',download=>downloads.push(download))
+  await page.locator('[data-prts-transfer-export]').click()
+  await expect.poll(()=>page.evaluate(()=>window.__transferWaiting)).toBe(true)
+  await expect(page.locator('[data-prts-transfer-close]')).toBeDisabled()
+  await page.getByRole('button',{name:'取消操作',exact:true}).click()
+  await expect(page.locator('[data-prts-transfer-status]')).toContainText('操作已取消')
+  await expect(page.locator('[data-prts-transfer-close]')).toBeEnabled()
+  expect(downloads).toHaveLength(0)
+  await page.locator('[data-prts-transfer-assets]').uncheck()
+  const downloaded=page.waitForEvent('download')
+  await page.locator('[data-prts-transfer-export]').click()
+  await downloaded
+  await expect(page.locator('[data-prts-transfer-status]')).toContainText('已发起下载')
+})
+
+test('importing split backgrounds enables composer glass after a hidden composer becomes visible',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced',backgroundMode:'off',composerGlass:false}})))
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  await page.locator('[data-prts-rail-brand]').click()
+  await page.locator('[data-prts-transfer-open]').click()
+  const composer=page.locator('[data-composer-card]').first()
+  await composer.evaluate(el=>el.style.display='none')
+  await page.locator('[data-prts-transfer-file]').setInputFiles({name:'split.prts-theme.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'prts-theme',version:1,preferences:{version:12,backgroundMode:'split',composerGlass:false}}))})
+  await page.locator('[data-prts-transfer-apply]').click()
+  await expect(page.locator('[data-prts-transfer-status]')).toContainText('主题已导入并保存')
+  await page.locator('[data-prts-transfer-close]').click()
+  await composer.evaluate(el=>el.style.removeProperty('display'))
+  await expect(composer).toHaveAttribute('data-prts-composer-glass-active','')
+})
