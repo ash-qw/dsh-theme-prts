@@ -28,6 +28,13 @@ export function createNativePreferences({ storage, onChange }) {
       migrationAttempted = true
       pending = { ...legacy, ...pending }
     }
+    // Materialize the old shared sidebar values once, so later left-side edits
+    // cannot change a right-side preference that was never written by the Host.
+    if (s.value?.preferencesInitialized && writable(s)) {
+      for (const key of ['rightSidebarOpacity', 'rightSidebarBlur']) {
+        if (!Object.hasOwn(s.value, key) && !Object.hasOwn(pending, key) && !Object.hasOwn(inFlight, key) && !Object.hasOwn(failed, key)) pending[key] = host[key]
+      }
+    }
     current = normalizePreferences({ ...host, ...inFlight, ...pending })
     if (s.value?.preferencesInitialized) {
       legacy = null

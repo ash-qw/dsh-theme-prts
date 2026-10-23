@@ -30,6 +30,20 @@ test('Host settings override stale local settings without uploading them',async(
   assert.equal(x.store.value.enabled,false);assert.equal(x.writes.length,0)
   assert.equal(x.data.has(PRTS_STORAGE_KEY),false)
 })
+test('existing Host settings separate right sidebar values from legacy left values',async()=>{
+  const x=setup()
+  const value={...DEFAULT_PREFERENCES,sidebarOpacity:.22,sidebarBlur:17,preferencesInitialized:true}
+  delete value.rightSidebarOpacity
+  delete value.rightSidebarBlur
+  x.state({value})
+  x.store.bind(x.form);await tick()
+  assert.equal(x.store.value.rightSidebarOpacity,.22)
+  assert.equal(x.store.value.rightSidebarBlur,17)
+  assert.deepEqual(x.writes[0].ops.map(op=>op.path[0]),['rightSidebarOpacity','rightSidebarBlur','preferencesInitialized'])
+  x.store.update({...x.store.value,sidebarOpacity:.05,sidebarBlur:4});await tick()
+  assert.equal(x.store.value.rightSidebarOpacity,.22)
+  assert.equal(x.store.value.rightSidebarBlur,17)
+})
 test('migrates legacy preferences once and persists native cache',async()=>{
   const x=setup({preferencesInitialized:false},{...DEFAULT_PREFERENCES,enabled:true})
   x.store.bind(x.form);await tick()

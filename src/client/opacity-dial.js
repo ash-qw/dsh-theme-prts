@@ -1,7 +1,8 @@
 // Ring geometry adapted from React Bits CometDial (David Haz).
 // See src/vendor/react-bits/LICENSE.md and THIRD_PARTY_NOTICES.md.
 export const BACKGROUND_OPACITY_CONTROLS = Object.freeze([
-  { key: 'sidebarOpacity', label: '会话列表侧栏', property: '--prts-sidebar-opacity', value: 94, blurKey: 'sidebarBlur', blurProperty: '--prts-sidebar-blur', blurDefault: 8 },
+  { key: 'sidebarOpacity', label: '左侧边栏', property: '--prts-sidebar-opacity', value: 94, blurKey: 'sidebarBlur', blurProperty: '--prts-sidebar-blur', blurDefault: 8 },
+  { key: 'rightSidebarOpacity', label: '右侧边栏', property: '--prts-right-sidebar-opacity', value: 94, blurKey: 'rightSidebarBlur', blurProperty: '--prts-right-sidebar-blur', blurDefault: 8 },
   { key: 'railOpacity', label: '设置侧栏', property: '--prts-rail-opacity', value: 70, blurKey: 'railBlur', blurProperty: '--prts-rail-blur', blurDefault: 12 },
   { key: 'bakerOpacity', label: 'Baker 气泡', property: '--prts-baker-opacity', value: 50, blurKey: 'bakerBlur', blurProperty: '--prts-baker-blur', blurDefault: 8, theme: 'deck-chat' },
   { key: 'classicUserOpacity', label: '经典用户消息', property: '--prts-classic-user-opacity', value: 50, blurKey: 'classicUserBlur', blurProperty: '--prts-classic-user-blur', blurDefault: 8, theme: 'native' },
@@ -16,7 +17,8 @@ export function opacityDialMarkup() {
   const controls = BACKGROUND_OPACITY_CONTROLS.map(({key,label,value,blurDefault}) => {
     const sample = key === 'bakerOpacity' ? '<span>这是一条回复</span><i></i>'
       : key === 'classicUserOpacity' ? '<span>这是我发送的消息</span><i></i>'
-        : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>' : '<span>工作区</span><i></i><i></i>'
+        : key === 'railOpacity' ? '<b>◇</b><b>☼</b><b>⚙</b>'
+          : key === 'rightSidebarOpacity' ? '<span>侧边栏</span><i></i><i></i>' : '<span>工作区</span><i></i><i></i>'
     return `<div data-prts-opacity-control="${key}">
       <div data-prts-opacity-heading><strong>${label}</strong><button type="button" data-prts-opacity-reset data-prts-opacity-reset-tooltip="恢复到 ${value}%" aria-label="恢复${label}透明度到 ${value}%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 10a7.5 7.5 0 1 1 .7 5.2M4.5 4.5V10H10"/></svg></button></div>
       <div data-prts-opacity-dial><svg viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="${label}透明度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><circle data-dial-focus cx="100" cy="100" r="97"/><path data-dial-track d="${dialArc(110,430)}"/><path data-dial-lit/><path data-dial-tail/><circle data-dial-head r="8"/></svg><label data-prts-opacity-number><input type="number" min="0" max="100" step="1" value="${value}" aria-label="${label}透明度百分比"><span>%</span></label></div>
@@ -24,8 +26,8 @@ export function opacityDialMarkup() {
       <div data-prts-blur-control hidden><label><span>模糊</span><input type="range" min="0" max="32" step="1" value="${blurDefault}" aria-label="${label}模糊度"></label><output>${blurDefault}px</output><button type="button" data-prts-blur-reset title="恢复到 ${blurDefault}px" aria-label="恢复${label}模糊度到 ${blurDefault}px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 10a7.5 7.5 0 1 1 .7 5.2M4.5 4.5V10H10"/></svg></button></div>
       <small data-prts-opacity-note></small>
     </div>`
-  }).join('')
-  return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度与模糊度</legend><small>透明度数值越高越透明；模糊度以像素计。调整时预览，松手后保存。</small><div data-prts-opacity-grid>${controls}</div></fieldset>`
+  })
+  return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度与模糊度</legend><small>透明度数值越高越透明；模糊度以像素计。调整时预览，松手后保存。</small><div data-prts-opacity-grid>${controls.join('')}</div></fieldset>`
 }
 export function mountOpacityDials({ section, window, onChange }) {
   const root = section.ownerDocument.documentElement
@@ -108,14 +110,14 @@ export function mountOpacityDials({ section, window, onChange }) {
     for(const [el,type,fn] of bindings)el.addEventListener(type,fn)
     paint(value)
     return {
-      update(preferences, active) {
+      update(preferences, active, inactiveNote) {
         container.hidden = Boolean(definition.theme && preferences.conversationStyle !== definition.theme)
         saved = 100 - Math.round((preferences[definition.key] ?? (100 - definition.value) / 100) * 100)
         if (!grip && section.ownerDocument.activeElement !== input) paint(saved)
         savedBlur = preferences[definition.blurKey] ?? definition.blurDefault
         if (section.ownerDocument.activeElement !== blurInput) paintBlur(savedBlur)
         blurControl.hidden = !active
-        container.querySelector('[data-prts-opacity-note]').textContent = active ? '' : '当前未启用此材质'
+        container.querySelector('[data-prts-opacity-note]').textContent = active ? '' : inactiveNote
       },
       dispose() { if(grip)finish({},true);window.clearTimeout(timer);for(const [el,type,fn] of bindings)el.removeEventListener(type,fn) },
     }
@@ -127,10 +129,13 @@ export function mountOpacityDials({ section, window, onChange }) {
       section.querySelector('[data-prts-opacity-settings]').hidden = preferences.backgroundMode === 'off'
       const conversationImage = full || (split && Boolean(state.conversation))
       const sidebarImage = full || (split && Boolean(state.sidebar))
-      const active = [sidebarImage, sidebarImage,
+      const active = [sidebarImage || conversationImage, conversationImage, sidebarImage,
         conversationImage && preferences.conversationStyle === 'deck-chat',
         conversationImage && preferences.conversationStyle === 'native']
-      controls.forEach((control,i)=>control.update(preferences,active[i]))
+      const missingImage = full || !split ? '上传完整背景图片后生效' : null
+      const inactiveNotes = [missingImage || '上传左侧边栏或正文图片后生效', missingImage || '上传正文图片后生效',
+        missingImage || '上传左侧边栏图片后生效', missingImage || '上传正文图片后生效', missingImage || '上传正文图片后生效']
+      controls.forEach((control,i)=>control.update(preferences,active[i],inactiveNotes[i]))
     },
     dispose() {for(const control of controls)control.dispose()},
   }

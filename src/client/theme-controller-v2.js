@@ -771,8 +771,10 @@ export function createThemeController({ document, window, cssText, service, curs
       root.dataset.prtsBackgroundMode = preferences.backgroundMode
       root.style.setProperty('--prts-background-shade', `${preferences.backgroundDim * 100}%`)
       for (const name of ['sidebar', 'rail', 'baker']) root.style.setProperty(`--prts-${name}-opacity`, `${preferences[`${name}Opacity`] * 100}%`)
+      root.style.setProperty('--prts-right-sidebar-opacity', `${preferences.rightSidebarOpacity * 100}%`)
       root.style.setProperty('--prts-classic-user-opacity', `${preferences.classicUserOpacity * 100}%`)
       for (const name of ['sidebar', 'rail', 'baker']) root.style.setProperty(`--prts-${name}-blur`, `${preferences[`${name}Blur`]}px`)
+      root.style.setProperty('--prts-right-sidebar-blur', `${preferences.rightSidebarBlur}px`)
       root.style.setProperty('--prts-classic-user-blur', `${preferences.classicUserBlur}px`)
       refresh()
     },

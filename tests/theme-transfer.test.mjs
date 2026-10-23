@@ -18,9 +18,12 @@ test('packages reject future versions and malformed settings without mutating th
   assert.throws(()=>validateThemePackage({...value,version:2}))
   assert.throws(()=>validateThemePackage({...value,preferences:{version:999,enabled:true}}))
   assert.throws(()=>validateThemePackage({...value,preferences:{version:12,sidebarOpacity:'x'}}))
+  assert.throws(()=>validateThemePackage({...value,preferences:{version:12,rightSidebarOpacity:'x'}}))
   assert.throws(()=>validateThemePackage({...value,preferences:{version:12,motion:'unknown'}}))
   assert.throws(()=>validateThemePackage({...value,assets:{}}))
   assert.equal(mergeThemePreferences({...DEFAULT_PREFERENCES,previewTools:false},{version:11,glass:'soft'}).previewTools,false)
+  const merged=mergeThemePreferences({...DEFAULT_PREFERENCES,rightSidebarOpacity:.42,rightSidebarBlur:19},{version:12,sidebarOpacity:.2,sidebarBlur:11})
+  assert.deepEqual([merged.sidebarOpacity,merged.sidebarBlur,merged.rightSidebarOpacity,merged.rightSidebarBlur],[.2,11,.42,19])
 })
 
 test('import preview identifies fields this version will discard',()=>{

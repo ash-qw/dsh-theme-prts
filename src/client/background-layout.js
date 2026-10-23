@@ -4,21 +4,22 @@ export function createBackgroundLayout({window,document}) {
   const root=document.documentElement
   const raf=window.requestAnimationFrame?.bind(window) ?? (fn=>window.setTimeout(fn,16))
   const caf=window.cancelAnimationFrame?.bind(window) ?? window.clearTimeout.bind(window)
-  let state={}, frame, disposed=false, enabled=false, observing=false, operation, sessions
+  let state={}, frame, disposed=false, enabled=false, observing=false, hostFrame, operation, sessions
   const set=(name,value)=>{if(root.style.getPropertyValue(name)!==value) root.style.setProperty(name,value)}
   const update=()=>{
     frame=undefined
     if(disposed||!observing)return
+    const nextFrame=document.querySelector('[data-prts-region="frame"]')
     const nextOperation=document.querySelector('[data-prts-region="operation"]')
     const nextSessions=document.querySelector('[data-prts-region="sessions"]')
-    if(operation!==nextOperation || sessions!==nextSessions){
-      resize?.disconnect(); operation=nextOperation;sessions=nextSessions
-      for(const node of [operation,sessions])if(node)resize?.observe(node)
+    if(hostFrame!==nextFrame || operation!==nextOperation || sessions!==nextSessions){
+      resize?.disconnect(); hostFrame=nextFrame;operation=nextOperation;sessions=nextSessions
+      for(const node of [hostFrame||operation,sessions])if(node)resize?.observe(node)
     }
     const railWidth=parseFloat(window.getComputedStyle(root).getPropertyValue('--prts-nav-width'))||0
     for(const slot of ['full','conversation','sidebar']){
       const entry=state[slot]
-      const node=slot==='sidebar'?sessions:operation
+      const node=slot==='sidebar'?sessions:slot==='conversation'?(hostFrame||operation):operation
       const width=slot==='full'?window.innerWidth:(node?.clientWidth||0)+(slot==='sidebar'?railWidth:0)
       const height=slot==='full'?window.innerHeight:node?.clientHeight||0
       const active=entry?.region && width>0 && height>0
@@ -47,7 +48,7 @@ export function createBackgroundLayout({window,document}) {
   const attributes=new window.MutationObserver(schedule)
   function clear(){
     caf(frame);frame=undefined;resize?.disconnect();mutations.disconnect();attributes.disconnect();window.removeEventListener('resize',schedule)
-    operation=undefined;sessions=undefined;observing=false
+    hostFrame=undefined;operation=undefined;sessions=undefined;observing=false
     for(const slot of ['full','conversation','sidebar'])for(const axis of ['x','y','width'])root.style.removeProperty(`--prts-protected-${slot}-${axis}`)
   }
   function reconcile(){

@@ -2,7 +2,7 @@ import { createBackgroundLayout } from './background-layout.js'
 import { mountBackgroundRegionEditor, backgroundRegionMarkup } from './background-region-editor.js'
 import { opacityDialMarkup, mountOpacityDials } from './opacity-dial.js'
 const BACKGROUND_ENDPOINT = '/prts-theme-api/backgrounds'
-const backgroundLabels = { sidebar: '侧边栏', conversation: '会话正文', full: '完整背景' }
+const backgroundLabels = { sidebar: '左侧边栏', conversation: '会话正文', full: '完整背景' }
 function backgroundImageUrl(entry) {
   return /^[a-f0-9-]{36}$/.test(entry?.id ?? '') ? `${BACKGROUND_ENDPOINT}/image/${entry.id}` : null
 }
@@ -77,7 +77,7 @@ export function backgroundMarkup(heroContrastControl = '') {
   return `<section data-prts-background-settings>
     <header><strong>会话背景</strong><small>分区使用不同图片，或让一张完整背景贯穿侧边栏与正文。</small></header>
     <div data-prts-background-modes role="group" aria-label="背景模式">
-      ${[['off','默认背景','使用主题原有底色'],['split','分区背景','侧栏与正文独立配置'],['full','完整背景','一张图片贯穿整个界面']].map(([value,label,hint]) => `<button type="button" data-prts-setting-key="backgroundMode" data-prts-setting-value="${value}" aria-pressed="false"><span data-prts-background-diagram="${value}" aria-hidden="true"><i></i><i></i></span><span><strong>${label}</strong><small>${hint}</small></span></button>`).join('')}
+      ${[['off','默认背景','使用主题原有底色'],['split','分区背景','左侧边栏与正文独立配置'],['full','完整背景','一张图片贯穿整个界面']].map(([value,label,hint]) => `<button type="button" data-prts-setting-key="backgroundMode" data-prts-setting-value="${value}" aria-pressed="false"><span data-prts-background-diagram="${value}" aria-hidden="true"><i></i><i></i></span><span><strong>${label}</strong><small>${hint}</small></span></button>`).join('')}
     </div>
     <div data-prts-background-images hidden>${Object.entries(backgroundLabels).map(([slot,label]) => `<article data-prts-background-card="${slot}" hidden>
       <div data-prts-background-card-heading><strong>${label}</strong><button type="button" data-prts-background-remove="${slot}" aria-label="移除${label}图片" hidden>移除</button></div>
