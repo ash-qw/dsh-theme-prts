@@ -1,6 +1,21 @@
 // Cards own touch gestures: immediate swipes scroll, while a hold locks into sorting.
 export function mountEmblemReorder({ list, window, status, canStart, onStart, onCommit }) {
   let gesture = null, holdTimer, frame, previousTime = 0, suppressClick = false
+  const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const animations = new Map()
+  const stopAnimations = () => { for (const animation of animations.values()) animation.cancel(); animations.clear() }
+  const rearrange = mutate => {
+    const before = new Map(rows().map(row => [row, row.getBoundingClientRect().top]))
+    stopAnimations()
+    mutate()
+    if (reduced()) return
+    for (const row of rows()) {
+      const offset = before.get(row) - row.getBoundingClientRect().top
+      if (!offset || (row === gesture?.row && !gesture.keyboard)) continue
+      const animation = row.animate?.([{transform:`translateY(${offset}px)`},{transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'})
+      if (animation) { animations.set(row,animation); animation.onfinish=()=>animations.delete(row) }
+    }
+  }
   const rows = () => [...list.children].filter(row => row.hasAttribute('data-emblem-key'))
   const scroller = list.closest('[data-prts-theme-settings-scroll]')
   const clear = () => {
@@ -10,7 +25,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
   const finish = (commit = false) => {
     const current = gesture
     if (!current) return
-    gesture = null; clear()
+    gesture = null; clear(); stopAnimations(); current.landing?.cancel()
     current.ghost?.remove();current.row.removeAttribute('data-prts-emblem-dragging')
     list.removeAttribute('data-prts-emblem-sorting')
     scroller?.removeAttribute('data-prts-emblem-sort-active')
@@ -29,14 +44,14 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     const current = gesture
     if (!current?.active) return
     const others = rows().filter(row=>row!==current.row)
-    const next = others.find(row=>{const box=row.getBoundingClientRect();return y < box.top + box.height/2})
+    const next = others.find(row=>{const box=row.getBoundingClientRect();const offset=animations.has(row)?new window.DOMMatrixReadOnly(window.getComputedStyle(row).transform).m42:0;return y < box.top-offset + box.height/2})
     if (next) {
-      if (current.row.nextElementSibling !== next) list.insertBefore(current.row,next)
-    } else if (others.at(-1)?.nextElementSibling !== current.row) list.insertBefore(current.row,current.ghost)
+      if (current.row.nextElementSibling !== next) rearrange(()=>list.insertBefore(current.row,next))
+    } else if (others.at(-1)?.nextElementSibling !== current.row) rearrange(()=>list.insertBefore(current.row,current.ghost))
     current.position = rows().indexOf(current.row)
   }
   const tick = time => {
-    if (!gesture?.active || gesture.keyboard) return
+    if (!gesture?.active || gesture.keyboard || gesture.settling) return
     const current = gesture
     if (!list.isConnected || !list.getClientRects().length) { finish();return }
     const delta = previousTime ? Math.min(32,time-previousTime) : 16
@@ -48,7 +63,9 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
       if (speed) scroller.scrollTop += speed * delta * .5
     }
     place(current.y)
-    current.ghost.style.transform=`translate3d(${current.x-current.startX}px,${current.y-current.startY}px,0)`
+    const dx=current.x-current.startX,dy=current.y-current.startY
+    const tilt=reduced()?0:Math.max(-3,Math.min(3,dx*.035))
+    current.ghost.style.transform=`translate3d(${dx}px,${dy}px,0) rotate(${tilt}deg) scale(${reduced()?1:1.025})`
     frame=window.requestAnimationFrame(tick)
   }
   const activate = () => {
@@ -79,6 +96,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     status.textContent='正在调整徽记顺序，松开保存；按 Esc 取消'
   }
   const down = event => {
+    if (gesture?.settling) finish(true)
     if (gesture) { if (event.pointerId!==gesture.pointerId) finish();return }
     const row=event.target.closest('[data-emblem-key]')
     const handle=row?.querySelector('[data-prts-emblem-reorder]')
@@ -92,7 +110,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     if (sortable) holdTimer=window.setTimeout(activate,400)
   }
   const move = event => {
-    if (!gesture || gesture.pointerId!==event.pointerId) return
+    if (!gesture || gesture.settling || gesture.pointerId!==event.pointerId) return
     const previousY=gesture.y
     gesture.x=event.clientX;gesture.y=event.clientY
     if (!gesture.active && !gesture.scrolling && Math.hypot(gesture.x-gesture.startX,gesture.y-gesture.startY)>8) {
@@ -110,18 +128,31 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
     if (gesture?.pointerId!==event.pointerId) return
     if (gesture.scrolling) {finish();return}
     const box=list.getBoundingClientRect(), viewport=(scroller || list).getBoundingClientRect()
-    finish(event.clientX>=box.left && event.clientX<=box.right && event.clientY>=viewport.top && event.clientY<=viewport.bottom)
+    const commit=event.clientX>=box.left && event.clientX<=box.right && event.clientY>=viewport.top && event.clientY<=viewport.bottom
+    if (!commit || !gesture.active || reduced() || !gesture.ghost?.animate) {finish(commit);return}
+    const current=gesture
+    place(event.clientY)
+    current.settling=true;clear()
+    current.ghost.style.transform='none'
+    const target=current.row.getBoundingClientRect(), floating=current.ghost.getBoundingClientRect()
+    const dx=target.left-floating.left,dy=target.top-floating.top
+    current.landing=current.ghost.animate([
+      {transform:`translate3d(${current.x-current.startX}px,${current.y-current.startY}px,0) rotate(${Math.max(-3,Math.min(3,(current.x-current.startX)*.035))}deg) scale(1.025)`},
+      {transform:`translate3d(${dx}px,${dy}px,0) scale(1)`,opacity:1}
+    ],{duration:160,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'})
+    current.landing.onfinish=()=>{if(gesture===current)finish(true)}
   }
   const cancelPointer = event => {if (gesture?.pointerId===event.pointerId) finish()}
   // A touch initially belongs to its hit target. Transferring capture to the
   // list emits a bubbling loss event from that child, not a canceled drag.
   const lostCapture = event => {
-    if (event.target === list && !list.hasPointerCapture(event.pointerId)) cancelPointer(event)
+    if (!gesture?.settling && event.target === list && !list.hasPointerCapture(event.pointerId)) cancelPointer(event)
   }
   const cancel = () => finish()
   const visibility = () => {if (window.document.hidden) finish()}
   const keydown = event => {
     if (event.key==='Escape' && gesture) {event.preventDefault();event.stopPropagation();finish();return}
+    if (gesture?.settling) finish(true)
     const handle=event.target.closest?.('[data-prts-emblem-reorder]')
     if (!handle || handle.disabled || !canStart()) return
     if ([' ','Enter'].includes(event.key)) {
@@ -134,7 +165,7 @@ export function mountEmblemReorder({ list, window, status, canStart, onStart, on
       event.preventDefault()
       const current=rows(),index=current.indexOf(gesture.row)
       const target=event.key==='Home'?0:event.key==='End'?current.length-1:Math.max(0,Math.min(current.length-1,index+(event.key==='ArrowDown'?1:-1)))
-      if (target!==index)list.insertBefore(gesture.row,target<index?current[target]:current[target].nextSibling)
+      if (target!==index)rearrange(()=>list.insertBefore(gesture.row,target<index?current[target]:current[target].nextSibling))
       gesture.handle.focus({preventScroll:true});gesture.row.scrollIntoView({block:'nearest'})
       status.textContent=`当前位置：第 ${target+1} 项，共 ${current.length} 项；空格保存`
     }
