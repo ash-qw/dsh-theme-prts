@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import { dropFile } from '../helpers/file-drop.mjs'
 import { expect, test } from '@playwright/test'
 
 async function start(page, noStorage=false) {
@@ -22,7 +24,7 @@ async function image(page) {
   return Buffer.from(base64,'base64')
 }
 async function upload(page,buffer,name) {
-  await page.locator('[data-prts-emblem-file]').setInputFiles({name,mimeType:'image/png',buffer})
+  await dropFile(page,'[data-prts-emblem-workspace]',{name,mimeType:'image/png',buffer})
   await expect(page.locator('[data-prts-emblem-apply]')).toBeEnabled()
 }
 async function apply(page) {
@@ -221,7 +223,7 @@ test('exported assets import into an independent instance, preview before applyi
     await expect(other.locator('[data-prts-emblem-hero-row]')).toContainText('内置罗德岛')
     await other.locator('[data-prts-emblem-add]').click()
     await other.locator('[data-prts-emblem-source]').selectOption('package')
-    await other.locator('[data-prts-emblem-import]').setInputFiles(packagePath)
+    await dropFile(other,'[data-prts-emblem-workspace]',{name:'test.prts-emblem.json',mimeType:'application/json',buffer:await readFile(packagePath)})
     await expect(other.locator('[data-prts-emblem-status]')).toContainText('素材已导入预览')
     await expect(other.locator('[data-prts-emblem-list] > li')).toHaveCount(5)
     await apply(other)

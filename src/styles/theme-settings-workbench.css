@@ -1019,3 +1019,5 @@ html[data-dsh-prts] [data-prts-theme-settings] [data-prts-footer-action][hidden]
 [data-prts-transfer-progress] { display: grid; gap: 8px; }
 [data-prts-transfer-progress] > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
 [data-prts-transfer-bar] { width: 100%; height: 8px; accent-color: var(--prts-accent, #d8b85e); }
+
+[data-prts-drop-active] { outline: 2px dashed var(--prts-accent, #d8b85e); outline-offset: -3px; }

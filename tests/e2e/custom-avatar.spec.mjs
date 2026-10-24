@@ -1,3 +1,4 @@
+import { dropFile } from '../helpers/file-drop.mjs'
 import { test,expect } from '@playwright/test'
 import sharp from 'sharp'
 import { randomBytes } from 'node:crypto'
@@ -8,7 +9,7 @@ async function open(page){
   await page.locator('[data-prts-setting-key="conversationStyle"][data-prts-setting-value="deck-chat"]').click()
   await expect(page.locator('[data-prts-avatars]')).toBeVisible()
 }
-test('avatars upload independently, sync across pages, persist reload and reset to defaults',async({page,context})=>{
+test('avatars upload independently, sync across pages, persist reload and reset to defaults',async({page,context,browser})=>{
   await context.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
   await page.goto('/tests/fixtures/rc2-harness.html')
   await page.addStyleTag({content:'*,*::before,*::after{corner-shape:superellipse(1.5)}'})
@@ -21,7 +22,7 @@ test('avatars upload independently, sync across pages, persist reload and reset 
   const buffer=await sharp({create:{width:80,height:120,channels:4,background:'#ee5500'}}).png().toBuffer()
   await page.locator('[data-prts-avatar-preview="user"]').click()
   await expect(page.locator('[data-crop-file]')).toBeEnabled()
-  await page.locator('[data-crop-file]').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer})
+  await dropFile(page,'[data-prts-avatar-crop]',{name:'avatar.png',mimeType:'image/png',buffer})
   await page.locator('[data-crop-save]').click()
   await expect(page.locator('[data-prts-avatar-status]')).toContainText('已保存')
   const user=page.locator('[data-prts-avatar-preview="user"]')
@@ -34,7 +35,10 @@ test('avatars upload independently, sync across pages, persist reload and reset 
   await page.locator('[data-crop-file]').setInputFiles([])
   await expect(page.locator('[data-prts-avatars]')).toBeVisible()
   await page.locator('[data-crop-cancel]').click()
-  const other=await context.newPage()
+  // Separate connection pools avoid six HTTP/1 SSE streams starving image requests.
+  const other=await browser.newPage({baseURL:new URL(page.url()).origin})
+  await other.context().addCookies(await context.cookies())
+  await other.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
   await other.goto('/tests/fixtures/rc2-harness.html');await open(other)
   await expect(other.locator('[data-prts-avatar-preview="user"]')).toHaveCSS('background-image',/data:image\/png/)
   await page.locator('[data-prts-avatar-preview="assistant"]').click()

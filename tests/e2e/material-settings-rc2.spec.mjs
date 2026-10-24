@@ -85,7 +85,7 @@ test('native settings save background material and Baker loading through the hos
   await bakerBlur.focus()
   await bakerBlur.press('End')
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('prtsFixtureNativeConfig')).value.bakerBlur)).toBe(32)
-  await expect(page.locator('[data-message-role="assistant"]').first()).toHaveCSS('backdrop-filter', 'blur(32px) saturate(1.08)')
+  await expect.poll(() => page.locator('[data-message-role="assistant"]').first().evaluate(node => getComputedStyle(node, '::after').backdropFilter)).toBe('blur(32px) saturate(1.08)')
   const opacityLayout = await page.locator('[data-prts-opacity-grid]').evaluate(grid => ({
     width: grid.getBoundingClientRect().width,
     columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,

@@ -1,3 +1,4 @@
+import { mountFileDrop } from './file-drop.js'
 import { mountEmblemReorder } from './emblem-reorder.js'
 import { PARTICLE_DENSITY_PROFILES } from './particle-field-adapter.js'
 
@@ -268,13 +269,13 @@ export function customEmblemMarkup() {
       <strong data-prts-emblem-target></strong>
       <button type="button" data-prts-emblem-cancel aria-label="关闭徽记编辑">×</button></div>
       <div data-prts-emblem-edit-body>
-        <aside data-prts-emblem-edit-preview><canvas width="280" height="280" data-prts-emblem-preview aria-label="拖动调整徽记位置，也可使用方向键微调" tabindex="0" hidden></canvas><p data-prts-emblem-empty>选择图片后在此预览粒子效果</p></aside>
+        <aside data-prts-emblem-edit-preview><canvas width="280" height="280" data-prts-emblem-preview aria-label="拖动调整徽记位置，也可使用方向键微调" tabindex="0" hidden></canvas><p data-prts-emblem-empty>拖入图片或选择图片，预览粒子效果</p></aside>
         <div data-prts-emblem-edit-controls>
       <label>素材来源<select data-prts-emblem-source><option value="image">上传图片</option><option value="package">导入素材包</option></select></label>
       <label data-prts-emblem-source-kind="image">选择图片<input type="file" accept="image/png,image/jpeg,image/webp" data-prts-emblem-file></label>
       <small data-prts-emblem-source-kind="image">支持 PNG、WebP、JPEG，最大 8 MB / 1600 万像素。透明底标志和黑白剪影效果更好。</small>
       <label data-prts-emblem-source-kind="package" hidden>选择素材包<input type="file" accept=".prts-emblem.json,application/json" data-prts-emblem-import></label>
-      <small data-prts-emblem-source-kind="package" hidden>导入 .prts-emblem.json 可恢复原图和调整参数，预览后再应用。</small>
+      <small data-prts-emblem-source-kind="package" hidden>选择“导入素材包”后可拖入 .prts-emblem.json，恢复原图和调整参数，预览后再应用。</small>
       <div data-prts-emblem-editor hidden>
         <label>提取方式<select data-prts-emblem-mode><option value="auto">自动识别</option><option value="alpha">透明轮廓</option><option value="dark">保留暗部</option><option value="light">保留亮部</option><option value="lineart">线稿轮廓</option></select></label>
         <small>线稿模式提取轮廓；阈值越高，保留的细节越少。彩色原图建议先由 AI 简化背景与纹理。</small>
@@ -724,8 +725,13 @@ export function mountCustomEmblemEditor({ panel, window, store }) {
   canvas.addEventListener('pointercancel',abortDrag)
   canvas.addEventListener('lostpointercapture',abortDrag)
   canvas.addEventListener('keydown',positionKey)
+  const drop = mountFileDrop({ area: get('workspace'),
+    input: () => get('source').value === 'package' ? get('import') : fileInput,
+    enabled: () => get('workspace').open && destination !== null && !saving && !processing && !disposed,
+    onError: message => { status.textContent = message },
+  })
   return { prefetch, close:cancel, cancelReorder: () => reorder.cancel(), dispose() {
-    cancel()
+    drop.dispose(); cancel()
     get('workspace').removeEventListener('cancel',editorCancel)
     get('discard').removeEventListener('cancel',editorCancel)
     get('reset-confirm').removeEventListener('cancel',resetCancel)

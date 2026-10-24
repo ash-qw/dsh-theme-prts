@@ -187,18 +187,45 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"]:is(
 --prts-chat-user-surface: rgb(255 255 255 / var(--prts-baker-opacity, 50%));
 --prts-chat-assistant-surface: rgb(223 227 223 / var(--prts-baker-opacity, 50%));
 }
+/* One backdrop plane covers the body and tail; the parent must not create
+   a nested backdrop root. The mask rounds the body without clipping content. */
 & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"],
-& :is([data-prts-ai-surface], [data-message-role="user"], [data-message-role="assistant"]),
-& [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)) {
--webkit-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+& :is([data-prts-ai-surface], [data-message-role="user"], [data-message-role="assistant"]) {
+  isolation: isolate;
+  background: transparent !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 & [data-prts-ai-surface]::before,
 & [data-message-role="assistant"]::after,
 & :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]::before,
 & [data-message-role="user"]::before {
--webkit-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+  inset: 0 0 0 -10px; width: auto; height: auto; z-index: -1;
+  transform: none;
+  -webkit-backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+  backdrop-filter: blur(var(--prts-baker-blur, 8px)) saturate(1.08);
+  mask:
+    linear-gradient(#000 0 0) 10px 0 / calc(100% - 28px) calc(100% - 18px),
+    linear-gradient(#000 0 0) 10px 18px / calc(100% - 10px) calc(100% - 36px),
+    linear-gradient(#000 0 0) 28px bottom / calc(100% - 46px) 18px,
+    radial-gradient(circle at left bottom, #000 17.5px, transparent 18px) right top / 18px 18px,
+    radial-gradient(circle at right top, #000 17.5px, transparent 18px) 10px bottom / 18px 18px,
+    radial-gradient(circle at left top, #000 17.5px, transparent 18px) right bottom / 18px 18px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 18'%3E%3Cpath d='M0 0H10V18Q10 6 0 0Z'/%3E%3C/svg%3E") left top / 10px 18px;
+  mask-repeat: no-repeat;
+}
+& :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]::before,
+& [data-message-role="user"]::before {
+  inset: 0 -10px 0 0;
+  mask:
+    linear-gradient(#000 0 0) 18px 0 / calc(100% - 28px) calc(100% - 18px),
+    linear-gradient(#000 0 0) 0 18px / calc(100% - 10px) calc(100% - 36px),
+    linear-gradient(#000 0 0) 18px bottom / calc(100% - 46px) 18px,
+    radial-gradient(circle at right bottom, #000 17.5px, transparent 18px) left top / 18px 18px,
+    radial-gradient(circle at right top, #000 17.5px, transparent 18px) left bottom / 18px 18px,
+    radial-gradient(circle at left top, #000 17.5px, transparent 18px) right 10px bottom 0 / 18px 18px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 18'%3E%3Cpath d='M10 0H0V18Q0 6 10 0Z'/%3E%3C/svg%3E") right top / 10px 18px;
+  mask-repeat: no-repeat;
 }
 }
 
@@ -419,3 +446,29 @@ html[data-dsh-prts][data-windows-titlebar] [data-prts-region="operation"] { bord
 [data-prts-region-handle="s"] {left:50%;bottom:-8px;transform:translateX(-50%);cursor:ns-resize}
 [data-prts-region-handle="w"] {left:-8px;top:50%;transform:translateY(-50%);cursor:ew-resize}
 [data-prts-region-handle="e"] {right:-8px;top:50%;transform:translateY(-50%);cursor:ew-resize}
+
+html[data-dsh-prts] [data-prts-background-confirm] {
+  box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 24px; overflow: auto; border: 1px solid var(--prts-line-strong); border-top: 2px solid var(--prts-yellow);
+  border-radius: 8px; background: var(--prts-canvas); color: var(--prts-ink); box-shadow: 0 24px 80px #0006;
+  font: 13px/1.6 var(--prts-body);
+  &::backdrop { background: #0008; backdrop-filter: blur(4px); }
+  & header { display: block; margin: 0 0 20px; padding: 0; border: 0; }
+  & header small { color: var(--prts-muted); font-size: 12px; }
+  & h2 { margin: 4px 0 0; color: var(--prts-ink); font-size: 21px; line-height: 1.4; }
+  & [data-prts-background-compare] { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  & figure { min-width: 0; margin: 0; }
+  & img { display: block; box-sizing: border-box; width: 100%; aspect-ratio: 4/3; object-fit: contain; border: 1px solid var(--prts-line); border-radius: 4px; background: var(--prts-panel-raised); }
+  & figure:last-child img { border-color: var(--prts-yellow); }
+  & figcaption { margin-top: 8px; font-size: 12px; }
+  & [data-prts-background-filename] { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--prts-muted); }
+  & p { margin: 20px 0; color: var(--prts-muted); font-size: 12px; }
+  & footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
+  & button { min-width: 88px; padding: 9px 16px; border: 1px solid var(--prts-line-strong); border-radius: 4px; background: var(--prts-panel-raised); color: var(--prts-ink); font: inherit; cursor: pointer; }
+  & [data-prts-background-confirm-apply] { border-color: var(--prts-yellow); background: var(--prts-yellow); color: #171b1d; font-weight: 600; }
+  & button:hover { filter: brightness(.94); }
+  & button:focus-visible { outline: 2px solid var(--prts-yellow); outline-offset: 3px; }
+}
+@media (max-width: 480px) {
+  html[data-dsh-prts] [data-prts-background-confirm] { padding: 18px; }
+}

@@ -1,9 +1,10 @@
+import { mountFileDrop } from './file-drop.js'
 export function mountAvatarCrop({panel,window,load,onSave}){
   const dialog=panel.ownerDocument.createElement('dialog')
   dialog.setAttribute('data-prts-avatar-crop','')
   dialog.setAttribute('aria-labelledby','prts-avatar-crop-title')
   dialog.innerHTML=`<header><strong id="prts-avatar-crop-title">头像设置</strong><label data-prts-avatar-upload>更换图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" data-crop-file aria-label="上传新头像"></label></header>
-    <p>拖动亮区选择头像范围，滚轮或触摸板调整大小。</p>
+    <p>可拖入图片更换头像。拖动亮区选择头像范围，滚轮或触摸板调整大小。</p>
     <canvas width="320" height="320" tabindex="0" aria-label="原图与头像裁剪范围，可拖动或用方向键调整亮区"></canvas>
     <div data-crop-tools><label>缩放 <input type="range" min="1" max="4" step=".01" value="1" aria-label="头像裁剪缩放"></label><button type="button" data-crop-center>重置裁剪</button></div>
     <p role="status" data-prts-avatar-crop-status></p>
@@ -109,6 +110,10 @@ export function mountAvatarCrop({panel,window,load,onSave}){
     catch(error){status.textContent=error.message}
     finally{busy=false;controls()}
   })
+  const drop = mountFileDrop({ area: dialog, input: dialog.querySelector('[data-crop-file]'),
+    enabled: () => dialog.open && ready && !busy && !disposed,
+    onError: message => { status.textContent = message },
+  })
   return{
     async open(target){
       const ticket=++generation
@@ -129,6 +134,6 @@ export function mountAvatarCrop({panel,window,load,onSave}){
       finally{if(ticket===generation){busy=false;controls();canvas.focus()}}
     },
     close,
-    dispose(){disposed=true;close();dialog.remove()},
+    dispose(){disposed=true;drop.dispose();close();dialog.remove()},
   }
 }

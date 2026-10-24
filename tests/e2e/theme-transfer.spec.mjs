@@ -1,3 +1,4 @@
+import { dropFile } from '../helpers/file-drop.mjs'
 import {test,expect} from '@playwright/test'
 import {readFile} from 'node:fs/promises'
 
@@ -26,7 +27,7 @@ for(const width of [1440,480])test(`theme configuration export, import and recov
   const value=JSON.parse(await readFile(await download.path(),'utf8'))
   expect(value.format).toBe('prts-theme');expect(value.assets).toBeUndefined()
   value.preferences.previewTools=false
-  await page.locator('[data-prts-transfer-file]').setInputFiles({name:'test.prts-theme.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))})
+  await dropFile(page,'[data-prts-transfer-drop]',{name:'test.prts-theme.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))})
   await expect(page.locator('[data-prts-transfer-summary]')).toContainText('保留当前背景')
   const backup=page.waitForEvent('download')
   await page.getByRole('button',{name:'确认导入',exact:true}).click()

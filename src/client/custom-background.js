@@ -1,3 +1,4 @@
+import { mountFileDrop } from './file-drop.js'
 import { createBackgroundLayout } from './background-layout.js'
 import { mountBackgroundRegionEditor, backgroundRegionMarkup } from './background-region-editor.js'
 import { opacityDialMarkup, mountOpacityDials } from './opacity-dial.js'
@@ -87,10 +88,19 @@ export function backgroundMarkup(heroContrastControl = '') {
       ${backgroundRegionMarkup(slot)}
       <input type="file" data-prts-background-file="${slot}" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
     </article>`).join('')}</div>
+    <dialog data-prts-background-confirm aria-labelledby="prts-background-confirm-title" aria-describedby="prts-background-confirm-note">
+      <header><small>会话背景</small><h2 id="prts-background-confirm-title"></h2></header>
+      <div data-prts-background-compare>
+        <figure><img data-prts-background-before alt="当前背景"><figcaption>当前背景</figcaption></figure>
+        <figure><img data-prts-background-after alt="新背景"><figcaption>新背景<span data-prts-background-filename></span></figcaption></figure>
+      </div>
+      <p id="prts-background-confirm-note"></p>
+      <footer><button type="button" data-prts-background-confirm-cancel autofocus>取消</button><button type="button" data-prts-background-confirm-apply>替换背景</button></footer>
+    </dialog>
     <label data-prts-background-shade hidden><span>背景淡化 <output></output></span><input type="range" min="0" max="90" step="5" aria-label="背景淡化程度"><small>调高后背景更淡，接近当前主题底色。</small></label>
     <div data-prts-background-hero-setting hidden>${heroContrastControl}</div>
     ${opacityDialMarkup()}
-    <small data-prts-background-help>支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片铺满，可框选重要区域优先保留。切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
+    <small data-prts-background-help>可将图片拖入对应背景区域。支持 PNG / JPEG / WebP / AVIF · 最大 10 MB<br>图片铺满，可框选重要区域优先保留。切换模式保留素材，并在当前 DSH 实例同步。</small><p data-prts-background-status role="status"></p>
   </section>`
 }
 export function mountBackgroundSettings({ panel, window, store, onChange }) {
@@ -99,6 +109,38 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   let disposed = false, busy = false, preferences = {}, state = store.snapshot()
   const status = section.querySelector('[data-prts-background-status]')
   const range = section.querySelector('input[type="range"]')
+  const confirmDialog = section.querySelector('[data-prts-background-confirm]')
+  let finishConfirmation, previewUrl, returnFocus
+  const finish = accepted => {
+    if (!finishConfirmation) return
+    const resolve = finishConfirmation; finishConfirmation = undefined
+    confirmDialog.close()
+    confirmDialog.querySelectorAll('img').forEach(image => image.removeAttribute('src'))
+    window.URL.revokeObjectURL(previewUrl); previewUrl = undefined
+    returnFocus?.focus?.({ preventScroll: true })
+    resolve(accepted)
+  }
+  const confirmReplace = (slot, file) => new Promise(resolve => {
+    returnFocus = section.querySelector(`[data-prts-background-upload="${slot}"]`)
+    previewUrl = window.URL.createObjectURL(file)
+    confirmDialog.querySelector('h2').textContent = `替换${backgroundLabels[slot]}？`
+    confirmDialog.querySelector('[data-prts-background-before]').src = backgroundImageUrl(state[slot])
+    confirmDialog.querySelector('[data-prts-background-after]').src = previewUrl
+    confirmDialog.querySelector('[data-prts-background-filename]').textContent = file.name
+    confirmDialog.querySelector('p').textContent = state[slot].region ? '替换后，当前图片的保护区域将清除。' : '确认后，新图片将应用到此区域。'
+    finishConfirmation = resolve
+    confirmDialog.showModal()
+    confirmDialog.querySelector('[data-prts-background-confirm-cancel]').focus()
+  })
+  const confirmClick = event => {
+    if (event.target.closest('[data-prts-background-confirm-cancel]')) finish(false)
+    if (event.target.closest('[data-prts-background-confirm-apply]')) finish(true)
+  }
+  const confirmCancel = event => { event.preventDefault(); event.stopPropagation(); finish(false) }
+  const confirmKey = event => { if (event.key === 'Escape') confirmCancel(event) }
+  confirmDialog.addEventListener('click', confirmClick)
+  confirmDialog.addEventListener('cancel', confirmCancel)
+  confirmDialog.addEventListener('keydown', confirmKey)
   const regions = mountBackgroundRegionEditor({section,window,store})
   const dials = mountOpacityDials({ section, window, onChange })
   function render() {
@@ -121,9 +163,11 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
     for (const button of section.querySelectorAll('[data-prts-background-upload], [data-prts-background-remove]')) button.disabled = busy
   }
   async function save(slot, file) {
-    if (busy) return
+    if (busy || finishConfirmation) return
     if (file && file.size > 10 * 1024 * 1024) { status.textContent = '请上传不超过 10 MB 的图片'; return }
     const revision = state.revision
+    if (file && state[slot] && !await confirmReplace(slot, file)) return
+    if (disposed) return
     busy = true; status.textContent = '正在保存背景…'; render()
     try {
       let image = null
@@ -152,9 +196,15 @@ export function mountBackgroundSettings({ panel, window, store, onChange }) {
   }
   const input = event => { if (event.target === range) section.querySelector('output').textContent = `${range.value}%` }
   section.addEventListener('click', click); section.addEventListener('change', change); section.addEventListener('input', input)
+  const drops = Object.keys(backgroundLabels).map(slot => mountFileDrop({
+    area: section.querySelector(`[data-prts-background-image-controls="${slot}"]`),
+    input: section.querySelector(`[data-prts-background-file="${slot}"]`),
+    enabled: () => !busy && !finishConfirmation && !disposed,
+    onError: message => { status.textContent = message },
+  }))
   const unsubscribe = store.subscribe(value => { state = value; render() })
   return {
     update(value) { preferences = value; render() },
-    dispose() { disposed = true; regions.dispose(); dials.dispose(); unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
+    dispose() { disposed = true; finish(false); confirmDialog.removeEventListener('click', confirmClick); confirmDialog.removeEventListener('cancel', confirmCancel); confirmDialog.removeEventListener('keydown', confirmKey); drops.forEach(drop => drop.dispose()); regions.dispose(); dials.dispose(); unsubscribe(); section.removeEventListener('click', click); section.removeEventListener('change', change); section.removeEventListener('input', input) },
   }
 }

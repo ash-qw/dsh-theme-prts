@@ -1,3 +1,4 @@
+import { dropFile } from '../helpers/file-drop.mjs'
 import {test,expect} from '@playwright/test'
 import sharp from 'sharp'
 
@@ -12,8 +13,41 @@ for(const slot of ['full','sidebar','conversation'])test(`modal background prote
   await openSettings()
   await page.locator(`[data-prts-setting-key="backgroundMode"][data-prts-setting-value="${slot==='full'?'full':'split'}"]`).click()
   const image=await sharp({create:{width:1200,height:600,channels:3,background:'#326485'}}).composite([{input:Buffer.from('<svg width="1200" height="600"><rect x="960" y="120" width="180" height="180" fill="#f5d65a"/></svg>')}]).png().toBuffer()
-  await page.locator(`[data-prts-background-file="${slot}"]`).setInputFiles({name:'subject.png',mimeType:'image/png',buffer:image})
+  await dropFile(page,`[data-prts-background-image-controls="${slot}"]`,{name:'subject.png',mimeType:'image/png',buffer:image})
   await expect(page.locator('[data-prts-background-status]')).toContainText('背景已保存')
+  const replacementSnapshot=()=>page.evaluate(async()=>await (await fetch('/prts-theme-api/backgrounds/configuration')).json())
+  const replacementImage=await sharp({create:{width:1200,height:600,channels:3,background:'#264d43'}}).composite([{input:Buffer.from('<svg width="1200" height="600"><circle cx="600" cy="300" r="160" fill="#d3dfb6"/></svg>')}]).png().toBuffer()
+  const beforeReplace=await replacementSnapshot()
+  let writes=0
+  const countWrite=request=>{if(request.method()==='POST' && request.url().endsWith('/backgrounds/configuration'))writes++}
+  page.on('request',countWrite)
+  await dropFile(page,`[data-prts-background-image-controls="${slot}"]`,{name:'replacement.png',mimeType:'image/png',buffer:replacementImage})
+  const confirmation=page.locator('[data-prts-background-confirm]')
+  await expect(confirmation).toBeVisible()
+  await expect(confirmation.locator('img')).toHaveCount(2)
+  await expect(confirmation.getByRole('button',{name:'取消',exact:true})).toBeFocused()
+  await confirmation.screenshot({path:`/tmp/prts-background-confirm-${slot}.png`})
+  if(slot==='full') {
+    await page.setViewportSize({width:390,height:844})
+    await expect(confirmation).toBeVisible()
+    expect(await confirmation.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1)
+    await confirmation.screenshot({path:'/tmp/prts-background-confirm-mobile.png'})
+    const scheme=await page.locator('html').getAttribute('data-prts-scheme')
+    await page.locator('html').evaluate(el=>el.setAttribute('data-prts-scheme','light'))
+    await confirmation.screenshot({path:'/tmp/prts-background-confirm-light.png'})
+    await page.locator('html').evaluate((el,value)=>el.setAttribute('data-prts-scheme',value),scheme)
+    await page.setViewportSize({width:1440,height:1000})
+  }
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toBeHidden()
+  await expect(page.locator('[data-prts-theme-settings]')).toBeVisible()
+  expect(await replacementSnapshot()).toEqual(beforeReplace)
+  expect(writes).toBe(0)
+  await dropFile(page,`[data-prts-background-image-controls="${slot}"]`,{name:'replacement.png',mimeType:'image/png',buffer:replacementImage})
+  await confirmation.getByRole('button',{name:'替换背景',exact:true}).click()
+  await expect.poll(async()=>(await replacementSnapshot()).revision).toBeGreaterThan(beforeReplace.revision)
+  expect(writes).toBe(1)
+  page.off('request',countWrite)
   const trigger=page.locator(`[data-prts-background-region-open="${slot}"]`)
   const entry=await trigger.boundingBox(),thumbnail=await page.locator(`[data-prts-background-image-controls="${slot}"]`).boundingBox()
   expect(entry.x).toBeGreaterThanOrEqual(thumbnail.x);expect(entry.y+entry.height).toBeLessThanOrEqual(thumbnail.y+thumbnail.height)

@@ -1,3 +1,4 @@
+import { mountFileDrop } from './file-drop.js'
 import { checkTransferCancelled, readTransferFile, THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage, ignoredThemePackageFields } from './theme-transfer.js'
 
 export function themeTransferMarkup() {
@@ -11,8 +12,8 @@ export function themeTransferMarkup() {
           <small>取消勾选，仅导出主题设置。</small>
           <button type="button" data-prts-transfer-export>导出主题文件 <span aria-hidden="true">↓</span></button>
         </section>
-        <section data-prts-transfer-card>
-          <h3>导入主题</h3><p>选择已导出的文件，确认内容后应用。</p>
+        <section data-prts-transfer-card data-prts-transfer-drop>
+          <h3>导入主题</h3><p>选择或拖入已导出的文件，确认内容后应用。</p>
           <div data-prts-transfer-file-hint><span aria-hidden="true">↑</span><small>.prts-theme.json · 最大 160 MB</small></div>
           <button type="button" data-prts-transfer-choose>选择主题文件</button>
           <input type="file" accept=".prts-theme.json,application/json" aria-label="导入主题文件" data-prts-transfer-file hidden>
@@ -126,8 +127,9 @@ export function mountThemeTransfer({ panel, window, transfer }) {
     if (button === get('cancel')) { pending = undefined; get('file').value = ''; get('status').textContent = ''; get('progress').hidden = true; render() }
     if (button === get('restore')) void run(async signal => { await transfer.restore(progress, signal); return '已恢复导入前配置。' })
   }
+  const drop = mountFileDrop({ area: get('drop'), input: get('file'), enabled: () => !busy && !disposed, onError: message => { get('status').textContent = message } })
   trigger?.addEventListener('click', open)
   dialog.addEventListener('keydown', keydown); dialog.addEventListener('cancel', cancel)
   section.addEventListener('change', change); section.addEventListener('click', click); render()
-  return { dispose() { disposed = true; controller?.abort(); generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
+  return { dispose() { drop.dispose(); disposed = true; controller?.abort(); generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
 }

@@ -1,3 +1,4 @@
+import sharp from 'sharp'
 import {test,expect} from '@playwright/test'
 
 for(const width of [1280,390])for(const scheme of ['dark','light'])test(`communications bubbles preserve content and round portraits (${width}, ${scheme})`,async({page})=>{
@@ -40,4 +41,41 @@ for(const width of [1280,390])for(const scheme of ['dark','light'])test(`communi
   expect(overflow.scroll,JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.width+1)
   expect(await page.locator('pre').evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true)
   await page.locator('[data-bubble-sample]').screenshot({path:`/tmp/prts-chat-${width}-${scheme}.png`})
+})
+
+for(const scheme of ['dark','light'])test(`wallpaper bubble tails share one backdrop plane (${scheme})`,async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,conversationStyle:'deck-chat'})))
+  await page.goto('/tests/fixtures/rc2-harness.html')
+  await expect(page.locator('html')).toHaveAttribute('data-prts-conversation-style','deck-chat')
+  await page.evaluate(scheme=>{
+    const root=document.documentElement
+    root.setAttribute('data-prts-scheme',scheme)
+    root.setAttribute('data-prts-background-mode','split')
+    root.setAttribute('data-prts-background-conversation','')
+    root.style.setProperty('--prts-baker-opacity','35%')
+    root.style.setProperty('--prts-baker-blur','12px')
+    const sample=document.createElement('section')
+    sample.id='material-bubbles'
+    sample.style.cssText='position:fixed;inset:80px 80px auto;z-index:9999;padding:40px;display:grid;gap:40px;background:repeating-linear-gradient(0deg,#8fb4c5 0 5px,#314a5a 5px 10px)'
+    sample.innerHTML='<div data-chat-flow-kind="user"><div class="sample_bubble" style="width:250px;margin-left:auto"><div data-markdown>用户消息</div></div></div><div data-prts-ai-surface="body" style="width:250px"><div data-markdown>助手回复</div></div><div data-submission-echo><div class="sample_bubble" style="width:250px;margin-left:auto">发送中的消息</div></div>'
+    document.body.append(sample)
+  },scheme)
+  const bubbles=page.locator('#material-bubbles .sample_bubble, #material-bubbles [data-prts-ai-surface]')
+  for(const bubble of await bubbles.all()) {
+    await expect(bubble).toHaveCSS('background-color','rgba(0, 0, 0, 0)')
+    await expect(bubble).toHaveCSS('backdrop-filter','none')
+    const style=await bubble.evaluate(el=>{const s=getComputedStyle(el,'::before');return{width:parseFloat(s.width),body:el.getBoundingClientRect().width,filter:s.backdropFilter,bg:s.backgroundColor}})
+    expect(style.width).toBeCloseTo(style.body+10)
+    expect(style.filter).toContain('blur(12px)')
+    expect(style.bg).toContain('0.35')
+  }
+  const shot=await page.screenshot({path:`/tmp/prts-bubble-material-${scheme}.png`})
+  const {data,info}=await sharp(shot).ensureAlpha().raw().toBuffer({resolveWithObject:true})
+  for(const bubble of await bubbles.all()) {
+    const box=await bubble.boundingBox(), assistant=await bubble.getAttribute('data-prts-ai-surface')
+    const edge=assistant ? box.x : box.x+box.width, y=Math.round(box.y)+4
+    const pixel=x=>[...data.subarray((y*info.width+Math.round(x))*4,(y*info.width+Math.round(x))*4+3)]
+    const inside=pixel(edge+(assistant?2:-2)),tail=pixel(edge+(assistant?-2:2))
+    expect(Math.max(...inside.map((channel,index)=>Math.abs(channel-tail[index]))),`${inside} vs ${tail}`).toBeLessThanOrEqual(3)
+  }
 })

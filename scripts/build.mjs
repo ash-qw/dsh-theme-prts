@@ -134,6 +134,7 @@ const clientModulePaths = [
   'src/client/background-layout.js',
   'src/client/preferences.js',
   'src/client/native-preferences.js',
+  'src/client/file-drop.js',
   'src/client/theme-transfer.js',
   'src/client/theme-transfer-panel.js',
   'src/client/emblem-reorder.js',
