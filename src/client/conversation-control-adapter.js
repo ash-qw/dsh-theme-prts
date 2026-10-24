@@ -14,6 +14,7 @@ function closestWithClassSuffix(node, suffix) {
 function classify(button, operation) {
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
+  if (button.querySelector('[data-compaction-disclosure]')) return null
   // Notification headers belong to the card surface, not standalone buttons.
   if (button.parentElement?.matches('[data-turn-trigger]')) return null
   // Changed-file cards own one outer surface; their header and rows stay native.
@@ -23,11 +24,14 @@ function classify(button, operation) {
   if (button.tagName !== 'BUTTON' || !operation.contains(button)) return null
   if (hasClassSuffix(button, '_sessionLogButton')) return 'header'
   const tokens=[...(button.classList ?? [])]
-  const fileLink=tokens.some(token=>/(?:^|_)file(?:Link|Mention)(?:_|$)/.test(token))
+  const fileMention=tokens.some(token=>/(?:^|_)fileMention(?:_|$)/.test(token))
+  const fileLink=tokens.some(token=>/(?:^|_)fileLink(?:_|$)/.test(token))
+  // Tool summaries own a compact, single-line link; card padding/wrapping clips it.
+  if (fileLink && !fileMention) return null
   const fileChange=hasClassSuffix(button,'_header')
     && [...button.children].some(node=>hasClassSuffix(node,'_tile'))
     && [...button.children].some(node=>hasClassSuffix(node,'_titles'))
-  if (fileLink || fileChange || button.closest('[data-produced-files-row]')) return 'file'
+  if (fileMention || fileChange || button.closest('[data-produced-files-row]')) return 'file'
   if (hasClassSuffix(button, '_showFolder')) return 'utility'
   if (closestWithClassSuffix(button, '_older')) return 'utility'
   if (hasClassSuffix(button, '_inspectButton')) return 'inspect'

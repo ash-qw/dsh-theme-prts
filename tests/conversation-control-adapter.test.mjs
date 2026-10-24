@@ -84,7 +84,7 @@ test('preserves process disclosures across states without excluding neighboring 
 })
 
 
-test('groups change cards and both file-link class formats without styling transparent hit targets',()=>{
+test('styles file cards and Markdown mentions while preserving compact tool links',()=>{
   const dom=new JSDOM(`<main data-prts-region="operation"><article data-chat-flow-kind="assistant-step">
     <button class="future_header"><span class="future_tile"></span><span class="future_titles">文件</span></button>
     <button class="future_fileLink">文件</button><button class="_fileMention_hash_1 _fileLink_hash_2">文件</button>
@@ -93,7 +93,8 @@ test('groups change cards and both file-link class formats without styling trans
   </article></main>`,{pretendToBeVisual:true})
   const {document}=dom.window,adapter=createConversationControlAdapter({document,window:dom.window})
   adapter.start()
-  assert.equal(document.querySelectorAll('[data-prts-conversation-control="file"]').length,3)
+  assert.equal(document.querySelectorAll('[data-prts-conversation-control="file"]').length,2)
+  assert.equal(document.querySelector('.future_fileLink').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE),false)
   assert.equal(document.querySelector('.other_header').getAttribute(CONVERSATION_CONTROL_ATTRIBUTE),'micro')
   assert.equal(document.querySelector('.future_cardPreview').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE),false)
   adapter.dispose();assert.equal(document.querySelectorAll('[data-prts-conversation-control]').length,0)

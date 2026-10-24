@@ -472,3 +472,10 @@ html[data-dsh-prts] [data-prts-background-confirm] {
 @media (max-width: 480px) {
   html[data-dsh-prts] [data-prts-background-confirm] { padding: 18px; }
 }
+
+/* Expanded process headers remain sticky without painting the native opaque base. */
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"] :is([data-variant="think"][data-expanded] [data-open] > [data-disclosure-header],button[aria-expanded="true"]:has([data-compaction-disclosure])) {
+background:color-mix(in srgb,var(--prts-panel) 28%,transparent);
+-webkit-backdrop-filter:blur(12px);
+backdrop-filter:blur(12px);
+}
