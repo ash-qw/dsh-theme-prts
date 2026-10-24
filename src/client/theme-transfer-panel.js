@@ -6,16 +6,16 @@ export function themeTransferMarkup() {
     <section data-prts-transfer>
       <header data-prts-transfer-heading><div><small>P.R.T.S. / 主题文件</small><h2 id="prts-transfer-title">导入与导出</h2></div><button type="button" data-prts-transfer-close aria-label="关闭导入与导出">×</button></header>
       <div data-prts-transfer-columns>
-        <section data-prts-transfer-card>
+        <section data-prts-transfer-card="export">
           <h3>导出主题</h3><p>保存一份主题，备份或带到另一台设备。</p>
           <label data-prts-transfer-option><input type="checkbox" data-prts-transfer-assets checked><span>包含自定义素材<small>背景、头像和徽记，保留编辑参数与排列。</small></span></label>
           <small>取消勾选，仅导出主题设置。</small>
           <button type="button" data-prts-transfer-export>导出主题文件 <span aria-hidden="true">↓</span></button>
         </section>
-        <section data-prts-transfer-card data-prts-transfer-drop>
+        <section data-prts-transfer-card="import" data-prts-transfer-drop>
           <h3>导入主题</h3><p>选择或拖入已导出的文件，确认内容后应用。</p>
           <div data-prts-transfer-file-hint><span aria-hidden="true">↑</span><small>.prts-theme.json · 最大 160 MB</small></div>
-          <button type="button" data-prts-transfer-choose>选择主题文件</button>
+          <button type="button" data-prts-transfer-choose>选择主题文件 <span aria-hidden="true">↑</span></button>
           <input type="file" accept=".prts-theme.json,application/json" aria-label="导入主题文件" data-prts-transfer-file hidden>
         </section>
       </div>
@@ -43,9 +43,10 @@ export function mountThemeTransfer({ panel, window, transfer }) {
   const keydown = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close() } }
   const cancel = event => { if (event.target === dialog) { event.preventDefault(); event.stopPropagation(); close() } }
   const get = name => section.querySelector(`[data-prts-transfer-${name}]`)
-  let pending, busy = false, disposed = false, generation = 0, controller, cancellable = true
+  let choosing = false, activeOperation, pending, busy = false, disposed = false, generation = 0, controller, cancellable = true
   const render = () => {
     if (disposed) return
+    for (const card of section.querySelectorAll('[data-prts-transfer-card]')) card.toggleAttribute('data-prts-transfer-active', card.dataset.prtsTransferCard === (busy ? activeOperation : pending || choosing ? 'import' : undefined))
     get('preview').hidden = !pending
     if (!pending) get('compatibility').hidden = true
     get('recovery').hidden = !transfer.hasBackup
@@ -65,9 +66,10 @@ export function mountThemeTransfer({ panel, window, transfer }) {
     else get('bar').value = value
   }
   const paint = () => new Promise(resolve => window.setTimeout(resolve, 0))
-  async function run(task) {
+  async function run(kind, task) {
     if (busy) return
     controller = new window.AbortController(); cancellable = true
+    activeOperation = kind
     busy = true; section.setAttribute('aria-busy', 'true'); get('status').textContent = ''; get('progress').hidden = true; render()
     progress({ value: null, label: '正在准备…' })
     try {
@@ -81,10 +83,11 @@ export function mountThemeTransfer({ panel, window, transfer }) {
   }
   const change = event => {
     if (event.target !== get('file')) return
+    choosing = false
     const file = event.target.files?.[0], selected = ++generation
     pending = undefined; render()
     if (!file) return
-    void run(async signal => {
+    void run('import', async signal => {
       if (file.size > THEME_PACKAGE_LIMIT) throw Error('主题文件不能超过 160 MB')
       const text = await readTransferFile(window, file, signal, event => progress({ value: event.lengthComputable && event.total ? event.loaded / event.total * 0.8 : null, label: '正在读取主题文件…' }))
       progress({ value: 0.8, label: '正在解析并检查主题文件…' })
@@ -111,8 +114,8 @@ export function mountThemeTransfer({ panel, window, transfer }) {
       controller.abort(); progress({ value: null, label: '正在取消，请稍候…', cancellable: false }); return
     }
     if (button === get('close')) close()
-    if (button === get('choose')) get('file').click()
-    if (button === get('export')) void run(async signal => {
+    if (button === get('choose')) { choosing = true; render(); get('file').click() }
+    if (button === get('export')) void run('export', async signal => {
       const value = await transfer.export(get('assets').checked, state => progress({ ...state, value: state.value * 0.9 }), signal)
       progress({ value: 0.9, label: '正在生成下载文件…' })
       await paint()
@@ -120,16 +123,18 @@ export function mountThemeTransfer({ panel, window, transfer }) {
       transfer.download(value)
       return '已发起下载，请确认主题文件已保存。'
     })
-    if (button === get('apply') && pending) void run(async signal => {
+    if (button === get('apply') && pending) void run('import', async signal => {
       await transfer.import(pending, progress, signal); pending = undefined; get('file').value = ''
       return '主题已导入并保存。'
     })
     if (button === get('cancel')) { pending = undefined; get('file').value = ''; get('status').textContent = ''; get('progress').hidden = true; render() }
-    if (button === get('restore')) void run(async signal => { await transfer.restore(progress, signal); return '已恢复导入前配置。' })
+    if (button === get('restore')) void run('import', async signal => { await transfer.restore(progress, signal); return '已恢复导入前配置。' })
   }
   const drop = mountFileDrop({ area: get('drop'), input: get('file'), enabled: () => !busy && !disposed, onError: message => { get('status').textContent = message } })
+  const cancelChoice = () => { choosing = false; render() }
+  get('file').addEventListener('cancel', cancelChoice)
   trigger?.addEventListener('click', open)
   dialog.addEventListener('keydown', keydown); dialog.addEventListener('cancel', cancel)
   section.addEventListener('change', change); section.addEventListener('click', click); render()
-  return { dispose() { drop.dispose(); disposed = true; controller?.abort(); generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
+  return { dispose() { get('file').removeEventListener('cancel', cancelChoice); drop.dispose(); disposed = true; controller?.abort(); generation++; if (dialog.open) dialog.close(); trigger?.removeEventListener('click', open); dialog.removeEventListener('keydown', keydown); dialog.removeEventListener('cancel', cancel); section.removeEventListener('change', change); section.removeEventListener('click', click) } }
 }

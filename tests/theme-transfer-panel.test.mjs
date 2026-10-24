@@ -15,11 +15,13 @@ test('transfer panel shows pending progress, completion, error and resets for th
   get('export').click();await tick()
   assert.equal(get('progress').hidden,false)
   assert.equal(get('close').disabled,true)
+  assert.equal(window.document.querySelector('[data-prts-transfer-card=export]').hasAttribute('data-prts-transfer-active'),true)
   report({value:.5,label:'正在读取背景…'})
   assert.equal(get('bar').value,.45)
   resolve({});await tick()
   assert.equal(downloaded,true)
   assert.equal(get('bar').value,1)
+  assert.equal(window.document.querySelector('[data-prts-transfer-card=export]').hasAttribute('data-prts-transfer-active'),false)
   assert.equal(get('close').disabled,false)
   get('export').click();await tick()
   assert.equal(get('bar').hasAttribute('value'),false)
@@ -49,4 +51,17 @@ test('cancel stays busy until rollback settles and never downloads a cancelled e
   assert.match(get('status').textContent,/已取消/)
   assert.equal(get('close').disabled,false)
   assert.equal(get('stop').hidden,true)
+})
+
+
+test('import card stays highlighted while choosing a file and resets on picker cancellation',t=>{
+  const dom=new JSDOM(themeTransferMarkup()), {window}=dom
+  t.after(()=>dom.window.close())
+  const mounted=mountThemeTransfer({panel:window.document,window,transfer:{}})
+  t.after(()=>mounted.dispose())
+  const card=window.document.querySelector('[data-prts-transfer-card=import]')
+  window.document.querySelector('[data-prts-transfer-choose]').click()
+  assert.equal(card.hasAttribute('data-prts-transfer-active'),true)
+  window.document.querySelector('[data-prts-transfer-file]').dispatchEvent(new window.Event('cancel',{bubbles:true}))
+  assert.equal(card.hasAttribute('data-prts-transfer-active'),false)
 })
