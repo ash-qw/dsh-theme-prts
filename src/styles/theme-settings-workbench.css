@@ -940,7 +940,7 @@ html[data-dsh-prts] [data-prts-transfer] {
   & input[type="file"] { max-width: 100%; min-width: 0; }
   & input[type="checkbox"] { accent-color: var(--prts-yellow); }
   & button { justify-self: start; padding: 8px 14px; border: 1px solid var(--prts-line-strong); border-radius: 0; background: var(--prts-panel-raised); color: var(--prts-ink); font: inherit; cursor: pointer; }
-  & button:hover:not(:disabled) { border-color: var(--prts-yellow); }
+  & button:hover:not(:disabled) { border-color: var(--prts-line-strong); }
   & button:focus-visible { outline: 2px solid var(--prts-yellow); outline-offset: 3px; }
   & button:disabled { opacity: .55; cursor: wait; }
   & [data-prts-transfer-apply] { border-color: var(--prts-yellow); }
@@ -951,7 +951,7 @@ html[data-dsh-prts] [data-prts-transfer] {
 
 html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-actions] { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
 html[data-dsh-prts] [data-prts-transfer-open] { display:flex; align-items:center; gap:8px; width:100%; padding:10px 8px; background:none; border:1px solid var(--prts-line); border-radius:4px; color:var(--prts-ink); font:500 12px/1.4 var(--prts-body); cursor:pointer; }
-html[data-dsh-prts] [data-prts-transfer-open]:hover { border-color:var(--prts-yellow); }
+html[data-dsh-prts] [data-prts-transfer-open]:hover { border-color:var(--prts-line); }
 html[data-dsh-prts] [data-prts-transfer-dialog] { box-sizing:border-box; width:min(660px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); padding:0; border:1px solid var(--prts-line-strong); border-radius:8px; background:var(--prts-canvas); color:var(--prts-ink); box-shadow:0 24px 80px #0006; font:13px/1.6 var(--prts-body); overflow:auto; }
 html[data-dsh-prts] [data-prts-transfer-dialog]::backdrop { background:#0007; }
 html[data-dsh-prts] [data-prts-transfer] {
@@ -963,7 +963,7 @@ html[data-dsh-prts] [data-prts-transfer] {
   & [data-prts-transfer-columns] { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   & [data-prts-transfer-card] { display:flex; flex-direction:column; gap:12px; min-width:0; padding:18px; border:1px solid var(--prts-line); border-radius:6px; background:var(--prts-panel-raised); transition:border-color 180ms ease,background-color 180ms ease,box-shadow 180ms ease; }
   & [data-prts-transfer-card] > button { margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:12px; align-self:stretch; border-radius:4px; }
-  & [data-prts-transfer-card] > button:hover:not(:disabled) { border-color:var(--prts-cyan); }
+  & [data-prts-transfer-card] > button:hover:not(:disabled) { border-color:var(--prts-line-strong); }
   & [data-prts-transfer-option] { align-items:flex-start; flex-wrap:nowrap; padding:12px 0 0; }
   & [data-prts-transfer-option] input { margin:5px 0 0; }
   & [data-prts-transfer-option] small { display:block; margin-top:4px; }

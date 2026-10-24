@@ -100,3 +100,21 @@ test('styles file cards and Markdown mentions while preserving compact tool link
   adapter.dispose();assert.equal(document.querySelectorAll('[data-prts-conversation-control]').length,0)
   dom.window.close()
 })
+
+test('rebinds a replaced conversation region and releases its shared frame',()=>{
+  const dom=new JSDOM('<main data-prts-region="operation"><article data-chat-flow-kind="assistant-step"><button>复制</button></article></main>',{pretendToBeVisual:true})
+  const {document}=dom.window,adapter=createConversationControlAdapter({document,window:dom.window})
+  adapter.start()
+  const original=document.querySelector('[data-prts-body-target-frame]')
+  for(let i=0;i<10;i++)adapter.start()
+  assert.equal(document.querySelectorAll('[data-prts-body-target-frame]').length,1)
+  document.querySelector('main').outerHTML='<main data-prts-region="operation"><article data-chat-flow-kind="assistant-step"><button>重试</button></article></main>'
+  adapter.start()
+  assert.equal(original.isConnected,false)
+  assert.equal(document.querySelectorAll('[data-prts-body-target-frame]').length,1)
+  assert.equal(document.querySelector('button').getAttribute(CONVERSATION_CONTROL_ATTRIBUTE),'micro')
+  document.querySelector('main').remove()
+  adapter.start()
+  assert.equal(document.querySelectorAll('[data-prts-body-target-frame]').length,0)
+  adapter.dispose();dom.window.close()
+})

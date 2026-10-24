@@ -100,27 +100,32 @@ test('cancel and image or storage failures preserve the current emblem list',asy
   expect(await page.locator('[data-prts-theme-settings-scroll]').evaluate(e=>e.scrollWidth-e.clientWidth)).toBe(0)
 })
 
-test('server changes synchronize across pages and saved images can be adjusted again',async({page,context})=>{
+test('server changes synchronize across pages and saved images can be adjusted again',async({page,context,browser})=>{
   await start(page);await open(page)
   await page.locator('[data-emblem-action="hero"]').click()
   await upload(page,await image(page),'editable.png');await apply(page)
-  const other=await context.newPage();await other.goto('/tests/fixtures/rc2-harness.html');await open(other)
-  await expect(other.locator('[data-prts-emblem-hero-row]')).toContainText('editable.png')
-  await other.locator('[data-emblem-action="hero"]').click()
-  await expect(other.locator('[data-prts-emblem-editor]')).toBeVisible()
-  await other.locator('[data-prts-emblem-zoom]').fill('1.2')
-  await expect(other.locator('[data-prts-emblem-apply]')).toBeEnabled()
-  await apply(other)
-  const config=await page.evaluate(()=>fetch('/prts-theme-api/emblems/configuration').then(r=>r.json()))
-  const id=config.configuration.hero.draftId
-  const draft=await page.evaluate(id=>fetch(`/prts-theme-api/emblems/draft/${id}`).then(r=>r.json()),id)
-  expect(draft.params.zoom).toBe(1.2)
-  await page.locator('[data-emblem-action="hero"]').click()
-  await expect(page.locator('[data-prts-emblem-workspace]')).toBeVisible()
-  await other.locator('[data-emblem-action="reset-hero"]').click()
-  await other.locator('[data-prts-emblem-reset-proceed]').click()
-  await expect(page.locator('[data-prts-emblem-hero-row]')).toContainText('内置罗德岛')
-  await expect(page.locator('[data-prts-emblem-workspace]')).toBeHidden()
+  // Each page opens persistent SSE streams; use independent HTTP/1 connection pools.
+  const other=await browser.newPage({baseURL:new URL(page.url()).origin})
+  try {
+    await other.context().addCookies(await context.cookies())
+    await start(other);await open(other)
+    await expect(other.locator('[data-prts-emblem-hero-row]')).toContainText('editable.png')
+    await other.locator('[data-emblem-action="hero"]').click()
+    await expect(other.locator('[data-prts-emblem-editor]')).toBeVisible()
+    await other.locator('[data-prts-emblem-zoom]').fill('1.2')
+    await expect(other.locator('[data-prts-emblem-apply]')).toBeEnabled()
+    await apply(other)
+    const config=await page.evaluate(()=>fetch('/prts-theme-api/emblems/configuration').then(r=>r.json()))
+    const id=config.configuration.hero.draftId
+    const draft=await page.evaluate(id=>fetch(`/prts-theme-api/emblems/draft/${id}`).then(r=>r.json()),id)
+    expect(draft.params.zoom).toBe(1.2)
+    await page.locator('[data-emblem-action="hero"]').click()
+    await expect(page.locator('[data-prts-emblem-workspace]')).toBeVisible()
+    await other.locator('[data-emblem-action="reset-hero"]').click()
+    await other.locator('[data-prts-emblem-reset-proceed]').click()
+    await expect(page.locator('[data-prts-emblem-hero-row]')).toContainText('内置罗德岛')
+    await expect(page.locator('[data-prts-emblem-workspace]')).toBeHidden()
+  } finally { await other.close() }
 })
 
 test('long press requires a hold, Escape and failed saves restore order; keyboard sorting persists',async({page})=>{
@@ -264,7 +269,7 @@ for (const width of [1280,390]) test(`emblem modals preserve scroll and retain e
   const scroll=page.locator('[data-prts-theme-settings-scroll]')
   const tabs=page.getByRole('tablist',{name:'设置分区'})
   await expect(page.getByRole('tabpanel')).toHaveCount(1)
-  await expect(page.getByRole('tab',{name:'粒子效果',exact:true})).toHaveAttribute('aria-selected','true')
+  await expect(page.locator('[data-prts-settings-jump="particles"]')).toHaveAttribute('aria-selected','true')
   await page.locator('[data-prts-emblem-add]').click()
   await upload(page,await image(page),'分页保留.png')
   await page.locator('[data-prts-emblem-zoom]').fill('1.2')
@@ -281,15 +286,19 @@ for (const width of [1280,390]) test(`emblem modals preserve scroll and retain e
   expect(await scroll.evaluate(e=>e.scrollTop)).toBeCloseTo(position,0)
   await apply(page)
   await expect(page.locator('[data-prts-emblem-list] > li').last()).toContainText('分页保留.png')
-  await page.getByRole('tab',{name:'粒子效果',exact:true}).focus()
+  await page.locator('[data-prts-settings-jump="particles"]').focus()
   await page.keyboard.press('Home')
-  await expect(page.getByRole('tab',{name:'外观',exact:true})).toBeFocused()
+  await expect(page.getByRole('tab',{name:'会话主题',exact:true})).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab',{name:'会话背景',exact:true})).toBeFocused()
   await page.keyboard.press('ArrowRight')
   await expect(page.getByRole('tab',{name:'交互',exact:true})).toBeFocused()
   await expect(page.getByRole('switch',{name:'PRTS 光标',exact:true})).toBeVisible()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('switch',{name:'PRTS 光标',exact:true})).not.toBeFocused()
-  await expect(page.getByRole('button',{name:'恢复全部外观设置',exact:true})).toBeFocused()
+  await expect(page.locator('[data-prts-transfer-open]')).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button',{name:'恢复全部主题设置',exact:true})).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('tabpanel')).toBeFocused()
   expect(await scroll.evaluate(e=>e.scrollWidth-e.clientWidth)).toBe(0)
@@ -415,7 +424,7 @@ test('file picker cancellation keeps settings and unfinished emblem edits open',
     await page.locator('[data-prts-emblem-source]').selectOption(selector.includes('import')?'package':'image')
     await page.locator(selector).dispatchEvent('cancel',{bubbles:true,cancelable:false})
     await expect(page.locator('[data-prts-emblem-workspace]')).toBeVisible()
-    await expect(page.getByRole('tab',{name:'粒子效果',exact:true})).toHaveAttribute('aria-selected','true')
+    await expect(page.locator('[data-prts-settings-jump="particles"]')).toHaveAttribute('aria-selected','true')
   }
   await page.locator('[data-prts-emblem-source]').selectOption('image')
   await upload(page,await image(page),'未保存.png')
@@ -655,11 +664,13 @@ for(const single of [false,true])test(`desktop touch swipes keep scrolling acros
     const scroll=page.locator('[data-prts-theme-settings-scroll]')
     // Leave room below even in the one-item case so boundary clamping cannot mask a stalled swipe.
     await scroll.evaluate(e=>{const spacer=document.createElement('div');spacer.style.height='600px';e.append(spacer)})
+    // Recheck layout stability after extending the scroll surface.
+    await label.scrollIntoViewIfNeeded()
     const box=await label.boundingBox(),x=box.x+8,y=box.y+8
     const cdp=await context.newCDPSession(page)
     const before=await scroll.evaluate(e=>e.scrollTop)
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]})
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-2}]})
+    // Cross the swipe threshold immediately; two CDP round trips can exceed the 400ms hold.
     for(let step=1;step<=4;step++){
       await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*20}]})
       await expect.poll(()=>scroll.evaluate(e=>e.scrollTop)).toBeGreaterThanOrEqual(before+step*20-2)

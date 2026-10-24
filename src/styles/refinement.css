@@ -364,7 +364,7 @@ html[data-dsh-prts] :is(
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 ):is(:hover, :focus-visible) {
-  --prts-control-outline: var(--prts-yellow);
+  --prts-control-outline: var(--prts-line);
 }
 
 html[data-dsh-prts] :is(
@@ -464,7 +464,7 @@ html[data-dsh-prts] :is([data-presented-file],[data-changed-files],[data-prts-co
   background:var(--prts-active-glass)!important;color:var(--prts-ink);
   backdrop-filter:var(--prts-active-glass-filter);
   &::before{content:none}
-  &:is(:hover,:focus-within){border-color:var(--prts-yellow)!important}
+  &:is(:hover,:focus-within){border-color:var(--prts-glass-border)!important}
 }
 /* One surface for both single-file summaries and grouped changes. */
 html[data-dsh-prts] [data-changed-files]{
@@ -510,3 +510,42 @@ html[data-dsh-prts] [data-turn-trigger] {
   & > div > p { color:var(--prts-muted); }
   & [data-context-text] { color:var(--prts-ink); }
 }
+
+/* Body interactions lock onto four corners; shell controls keep their own treatment. */
+html[data-dsh-prts] :is([data-chat-flow-kind],[data-message-role]) :is([data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button) {
+  position:relative;
+  --prts-control-outline:var(--prts-line);
+  &:is(:hover,:focus-visible,:focus-within) {
+    --prts-control-outline:var(--prts-line);
+    border-color:var(--prts-line)!important;
+  }
+  &:is([data-presented-file],[data-changed-files],[data-prts-conversation-control="file"]) {
+    &:is(:hover,:focus-visible,:focus-within){border-color:var(--prts-glass-border)!important}
+  }
+  &:active{transform:none}
+}
+html[data-dsh-prts] [data-prts-body-target-frame] {
+  position:fixed;inset:auto;left:0;top:0;width:0;height:0;margin:0;padding:0;border:0;background:transparent;overflow:visible;z-index:100;pointer-events:none;opacity:0;--prts-corner-width:1px;
+  & > i {
+    position:absolute;left:0;top:0;width:7px;height:7px;will-change:transform;
+    &::before,&::after{content:"";position:absolute;left:0;top:0;background:currentColor}
+    &::before{width:7px;height:var(--prts-corner-width);transform:scaleX(var(--prts-arm-scale,1));transform-origin:left center}
+    &::after{width:var(--prts-corner-width);height:7px;transform:scaleY(var(--prts-arm-scale,1));transform-origin:center top}
+    &:nth-child(2),&:nth-child(4){
+      &::before{transform-origin:right center}
+      &::after{left:auto;right:0}
+    }
+    &:nth-child(3),&:nth-child(4){
+      &::before{top:auto;bottom:0}
+      &::after{transform-origin:center bottom}
+    }
+  }
+  &[data-pressed]{--prts-corner-width:2px;filter:brightness(1.3)}
+}
+
+html[data-dsh-prts] :is([data-chat-flow-kind],[data-message-role]) [data-changed-files] button:is(:hover,:focus-visible) {
+  background:color-mix(in srgb,var(--prts-ink) 5%,transparent);box-shadow:none;
+}
+
+html[data-dsh-prts] [data-prts-corner-target]:focus-visible{outline:none!important}
+html[data-dsh-prts] [data-prts-corner-target]:active{transform:none!important}

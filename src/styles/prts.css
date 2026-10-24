@@ -1542,7 +1542,7 @@ html[data-dsh-prts] [data-prts-conversation-control] {
 
 html[data-dsh-prts] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):is(:hover, :focus-visible),
 html[data-dsh-prts] [data-prts-conversation-control]:is(:hover, :focus-visible) {
-  border-color: var(--prts-yellow) !important;
+  border-color: var(--prts-line) !important;
 }
 
 html[data-dsh-prts] [data-composer-card] button[aria-label*="send" i],
@@ -1606,7 +1606,9 @@ html[data-dsh-prts] [data-prts-floating-item] {
   color: var(--prts-ink) !important;
 }
 
-html[data-dsh-prts] [data-prts-floating-item]:is(:hover, [data-highlighted]) {
+/* Native material menus own their item states, including body portals without
+   aria-controls or composer markers. Keep generic fallback styling separate. */
+html[data-dsh-prts] [data-prts-floating-item]:not([data-menu-material] *, [data-prts-glass-menu] *, [data-slot="conversation.input.overlay"] *):is(:hover, [data-highlighted]) {
   background: var(--prts-panel-muted) !important;
 }
 
