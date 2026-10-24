@@ -1,6 +1,6 @@
 {
   "name": "@ash-qw/dsh-theme-prts",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": false,
   "type": "module",
   "description": "Unofficial Arknights P.R.T.S.-inspired UI theme for DeepSeek Harness Web and the official desktop client",
