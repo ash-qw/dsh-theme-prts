@@ -345,6 +345,12 @@ html[data-dsh-prts] [data-prts-settings-section="background"] [data-prts-backgro
 [data-prts-composer-glass-setting], [data-prts-composer-glass-required] { display: block; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--prts-line); }
 [data-prts-composer-glass-required] { font-size: 12px; color: var(--prts-muted); }
 
+/* Pending questions, approvals and plan reviews replace the glass composer.
+ * Keep its full-width seat clear even while no glass card is mounted. */
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-composer-seat] {
+background: transparent !important;
+}
+
 /* The native active composer fades into DSH's base color. Baker paints a
 * different solid backdrop, so match that backdrop while keeping the fade. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-background-mode="off"] [data-phase="active"] [data-composer-seat]:not(:has([data-prts-composer-glass-active])) {
