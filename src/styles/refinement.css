@@ -32,20 +32,12 @@ html[data-dsh-prts] [data-prts-region="sessions"] [data-slot="sidebar.settings"]
   color: var(--prts-ink) !important;
 }
 
-/* Workspace hierarchy: remove only the folder glyph and retain the disclosure control. */
-html[data-dsh-prts] [data-prts-workspace-icon] {
-  display: none !important;
-}
-
+/* Keep native folder/chevron visibility and active color; align their shared seat. */
+html[data-dsh-prts] [data-prts-workspace-icon],
 html[data-dsh-prts] [data-prts-workspace-disclosure] {
   position: relative;
   z-index: 4;
-  width: 14px;
-  flex: 0 0 14px;
-  display: grid;
-  place-items: center;
   margin-left: calc(var(--prts-spine-width) + 4px);
-  color: var(--prts-muted);
   transform: translate3d(var(--prts-row-shift), 0, 0);
   transition: transform 220ms var(--prts-ease-spring), color 160ms ease;
 }
