@@ -552,3 +552,26 @@ test('a second preview navigation cancels the first pending destination', async 
     await flush(dom.window);assert.deepEqual(opened,['b'])
   } finally {adapter.dispose();dom.window.close()}
 })
+
+test('adapts the ungrouped workspace create button without a management menu', () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
+      <div role="tree"><div role="treeitem" aria-expanded="true" data-row-key="workspace:">
+        <span>folder</span><span>chevron</span><span>未分组</span>
+        <span><button type="button" aria-label="新建会话">+</button></span>
+      </div></div>
+    </div></aside></body></html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createSidebarControlAdapter({ document, window: dom.window })
+  adapter.start()
+  const button = document.querySelector('button')
+  assert.ok(button.hasAttribute('data-prts-workspace-create'))
+  assert.ok(button.parentElement.hasAttribute('data-prts-workspace-actions'))
+  assert.ok(button.querySelector('[data-prts-facility-svg]'))
+  assert.equal(document.querySelector('[data-prts-workspace-menu]'), null)
+  assert.equal(document.querySelector('[data-prts-row-title]').textContent, '未分组')
+  adapter.dispose()
+  assert.equal(button.hasAttribute('data-prts-workspace-create'), false)
+  assert.equal(button.parentElement.hasAttribute('data-prts-workspace-actions'), false)
+  dom.window.close()
+})

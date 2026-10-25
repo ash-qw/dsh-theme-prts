@@ -97,6 +97,10 @@ html[data-dsh-prts] [data-prts-workspace-actions] {
   width: 57px !important;
 }
 
+html[data-dsh-prts] [data-prts-workspace-actions]:has(> [data-prts-workspace-create]:only-child) {
+  width: 28px !important;
+}
+
 html[data-dsh-prts] [data-prts-session-actions] {
   width: auto !important;
 }

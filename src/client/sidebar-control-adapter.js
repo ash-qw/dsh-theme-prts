@@ -104,8 +104,11 @@ function markSidebarNode(node, attribute, next) {
 function resolveRowControls(row, kind) {
   const menu = row.querySelector(':scope > span > span > button[type="button"]')
   const anchor = menu?.parentElement
-  const actions = anchor?.parentElement
-  if (!menu || !anchor || actions?.parentElement !== row) return {}
+  // Ungrouped workspaces have a create button but no management menu.
+  const actions = anchor?.parentElement ?? (kind === 'workspace'
+    ? Array.from(row.children).find(node => node.matches('span') && node.querySelector(':scope > button[type="button"]'))
+    : undefined)
+  if (actions?.parentElement !== row) return {}
   const create = kind === 'workspace'
     ? actions.querySelector(':scope > button[type="button"]')
     : undefined
