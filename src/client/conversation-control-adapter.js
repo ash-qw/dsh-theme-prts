@@ -138,7 +138,7 @@ function mountBodyTargetFrame(document, window, operation) {
   // Nonvisual hosts can still mount the theme without an animation clock.
   if (!window?.requestAnimationFrame || !window?.cancelAnimationFrame) return () => {}
   const composerButton=':is([data-composer-card],[data-prts-composer-fallback]) button:not([data-slot="conversation.input.attachments"] *,[data-prts-glass-menu] *,[data-prts-floating-glass] *,[role="menu"] *,[role="listbox"] *)'
-  const selector='[data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button,[data-prts-glass-control],[data-prts-transfer-open],[data-prts-transfer] button,'+composerButton
+  const selector='[data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button,[data-prts-glass-control],[data-prts-footer-action],[data-prts-transfer] button,'+composerButton
   const frame=document.createElement('div')
   frame.setAttribute('data-prts-body-target-frame','');frame.setAttribute('aria-hidden','true')
   const corners=Array.from({length:4},()=>frame.appendChild(document.createElement('i')))
