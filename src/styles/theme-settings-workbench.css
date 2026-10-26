@@ -967,7 +967,8 @@ html[data-dsh-prts] [data-prts-transfer] {
   & [data-prts-transfer-option] { align-items:flex-start; flex-wrap:nowrap; padding:12px 0 0; }
   & [data-prts-transfer-option] input { margin:5px 0 0; }
   & [data-prts-transfer-option] small { display:block; margin-top:4px; }
-  & [data-prts-transfer-file-hint] { display:grid; place-items:center; flex:1; gap:6px; padding:12px; border:1px dashed var(--prts-line-strong); }
+  & [data-prts-transfer-card] > [data-prts-transfer-file-hint] { display:flex; flex-direction:column; justify-content:center; flex:1; gap:6px; min-height:130px; padding:16px 12px; border:1px dashed var(--prts-line-strong); text-align:center; white-space:normal; }
+  & [data-prts-transfer-file-hint] > strong { font-size:13px; font-weight:500; }
   & [data-prts-transfer-file-hint] > span { font-size:24px; color:var(--prts-muted); }
   & [data-prts-transfer-buttons] { display:flex; gap:8px; }
   & [data-prts-transfer-compatibility] { margin:0; padding:10px 12px; border:1px solid var(--prts-yellow); overflow-wrap:anywhere; }

@@ -13,9 +13,8 @@ export function themeTransferMarkup() {
           <button type="button" data-prts-transfer-export>导出主题文件 <span aria-hidden="true">↓</span></button>
         </section>
         <section data-prts-transfer-card="import" data-prts-transfer-drop>
-          <h3>导入主题</h3><p>选择或拖入已导出的文件，确认内容后应用。</p>
-          <div data-prts-transfer-file-hint><span aria-hidden="true">↑</span><small>.prts-theme.json · 最大 160 MB</small></div>
-          <button type="button" data-prts-transfer-choose>选择主题文件 <span aria-hidden="true">↑</span></button>
+          <h3>导入主题</h3><p>导入已导出的主题文件，确认内容后应用。</p>
+          <button type="button" data-prts-transfer-file-hint data-prts-transfer-choose><span aria-hidden="true">↑</span><strong>点击选择或拖拽主题文件到此处</strong><small>.prts-theme.json · 最大 160 MB</small></button>
           <input type="file" accept=".prts-theme.json,application/json" aria-label="导入主题文件" data-prts-transfer-file hidden>
         </section>
       </div>
