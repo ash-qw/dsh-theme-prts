@@ -95,9 +95,13 @@ function visibleSessionSummaries(sessions, workspaces, sessionStatus) {
   })
 }
 
+function setSidebarAttribute(node, attribute, value) {
+  if (node.getAttribute(attribute) !== value) node.setAttribute(attribute, value)
+}
+
 function markSidebarNode(node, attribute, next) {
   if (!node) return
-  node.setAttribute(attribute, '')
+  setSidebarAttribute(node, attribute, '')
   next.add(node)
 }
 
@@ -174,9 +178,9 @@ function ensureFacilityFace(document, row, kind, next) {
     face.setAttribute('data-prts-owned-facility', '')
     row.insertBefore(face, row.firstChild)
   }
-  face.setAttribute('data-prts-facility-face', kind)
-  face.setAttribute('data-prts-facility-texture', kind === 'workspace' ? 'silhouette' : 'pickup')
-  face.setAttribute('aria-hidden', 'true')
+  setSidebarAttribute(face, 'data-prts-facility-face', kind)
+  setSidebarAttribute(face, 'data-prts-facility-texture', kind === 'workspace' ? 'silhouette' : 'pickup')
+  setSidebarAttribute(face, 'aria-hidden', 'true')
   next.add(face)
   return face
 }
@@ -188,8 +192,8 @@ function ensureFacilitySpine(document, row, kind, next) {
     spine.setAttribute('data-prts-owned-facility-spine', '')
     row.insertBefore(spine, row.firstChild)
   }
-  spine.setAttribute('data-prts-facility-spine', kind)
-  spine.setAttribute('aria-hidden', 'true')
+  setSidebarAttribute(spine, 'data-prts-facility-spine', kind)
+  setSidebarAttribute(spine, 'aria-hidden', 'true')
   next.add(spine)
   return spine
 }
@@ -223,6 +227,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   let statusSourcesStarted = false
   let summaryRoot
   let summarySignature = ''
+  let sourceSummarySignature = ''
   let heldPreviewState
   let hoveredSummary, summaryLeaveTimer
   let summaryDismissed = false, pointerLeftSummary = false
@@ -327,18 +332,26 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       sourceRetryTimer = undefined
     }
   }
+  function onSummarySourceChange() {
+    // Streaming activity often republishes unchanged title/status summaries.
+    // Native DOM mutations still handle row mounts, selection and hierarchy.
+    const signature = JSON.stringify(visibleSessionSummaries(sessions, workspaces, sessionStatus))
+    if (signature === sourceSummarySignature && !pendingReveal) return
+    sourceSummarySignature = signature
+    queueScan()
+  }
   function connectSummarySources() {
     if (getSessions) sessions = getSessions()
     if (getWorkspaces) workspaces = getWorkspaces()
     if (subscribedSessions !== sessions?.list) {
       stopSessionList()
       subscribedSessions = sessions?.list
-      stopSessionList = subscribedSessions?.subscribe?.(queueScan) ?? (() => {})
+      stopSessionList = subscribedSessions?.subscribe?.(onSummarySourceChange) ?? (() => {})
     }
     if (subscribedWorkspaces !== workspaces?.list) {
       stopWorkspaceList()
       subscribedWorkspaces = workspaces?.list
-      stopWorkspaceList = subscribedWorkspaces?.subscribe?.(queueScan) ?? (() => {})
+      stopWorkspaceList = subscribedWorkspaces?.subscribe?.(onSummarySourceChange) ?? (() => {})
     }
   }
   function connectSessionStatus() {
@@ -346,7 +359,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     if (source === sessionStatus) return
     stopSessionStatus()
     sessionStatus = source
-    stopSessionStatus = source?.subscribe?.(queueScan) ?? (() => {})
+    stopSessionStatus = source?.subscribe?.(onSummarySourceChange) ?? (() => {})
   }
 
   let selectionTarget, selectionTargetTimer
@@ -861,6 +874,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   function scan() {
     if (!adapterActive) return
     syncSummarySources()
+    sourceSummarySignature = JSON.stringify(visibleSessionSummaries(sessions, workspaces, sessionStatus))
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
     const next = new Set()
     const nextVectorOwners = new Set()
@@ -919,16 +933,16 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         }
         markSidebarNode(row, 'data-prts-session-row', next)
         if (state) {
-          row.setAttribute('data-prts-session-state', state)
+          setSidebarAttribute(row, 'data-prts-session-state', state)
           next.add(row)
         } else {
           row.removeAttribute('data-prts-session-state')
         }
-        row.dataset.prtsSessionIndex = sessionIndex
+        setSidebarAttribute(row, 'data-prts-session-index', sessionIndex)
         const title = resolveRowTitle(row, 'session', controls.actions)
         markSidebarNode(title, 'data-prts-row-title', next)
         markSidebarNode(resolveSessionTime(row, title, controls.actions), 'data-prts-session-time', next)
-        if (title) title.dataset.prtsSessionIndex = sessionIndex
+        if (title) setSidebarAttribute(title, 'data-prts-session-index', sessionIndex)
         row.toggleAttribute('data-prts-row-menu-open', controls.menu?.getAttribute('aria-expanded') === 'true'
           || row.classList.contains('menuOpen'))
         markSidebarNode(controls.actions, 'data-prts-session-actions', next)

@@ -575,3 +575,23 @@ test('adapts the ungrouped workspace create button without a management menu', (
   assert.equal(button.parentElement.hasAttribute('data-prts-workspace-actions'), false)
   dom.window.close()
 })
+
+test('unchanged streaming summaries do not rescan all sidebar cards', async () => {
+  const rows=Array.from({length:40},(_,i)=>`<div role="treeitem" aria-selected="false" data-row-key="session:${i}"><span data-state="ongoing"></span><span data-session-title>会话${i}</span><span><span><button type="button">…</button></span></span></div>`).join('')
+  const dom=new JSDOM(`<aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><header><span>工作区</span><button>搜索</button></header><div role="tree">${rows}</div></div></aside>`,{pretendToBeVisual:true})
+  const snapshot={ids:Array.from({length:40},(_,i)=>String(i)),byId:Object.fromEntries(Array.from({length:40},(_,i)=>[String(i),{displayTitle:'会话'+i,running:true}]))}
+  const list=createStore(snapshot)
+  const adapter=createSidebarControlAdapter({document:dom.window.document,window:dom.window,sessions:{list}})
+  adapter.start();await flush(dom.window);await flush(dom.window)
+  const root=dom.window.document.querySelector('[data-slot="sidebar.workspaces"]'),query=root.querySelectorAll.bind(root)
+  let scans=0
+  root.querySelectorAll=selector=>{if(selector==='div[role="treeitem"][aria-selected]')scans++;return query(selector)}
+  for(let i=0;i<5;i++){list.update({...snapshot});await flush(dom.window)}
+  console.log('unchanged summary full scans:',scans)
+  assert.equal(scans,0)
+  list.update({...snapshot,byId:{...snapshot.byId,'0':{displayTitle:'已更名',running:true}}})
+  await flush(dom.window)
+  assert.ok(scans>0)
+  assert.ok(root.textContent.includes('已更名'))
+  adapter.dispose();dom.window.close()
+})
