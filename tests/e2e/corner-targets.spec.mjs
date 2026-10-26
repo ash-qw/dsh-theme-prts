@@ -82,3 +82,29 @@ test('transfer dialog actions remain clickable with a frame above the modal',asy
   expect(await frame.evaluate(e=>e.matches(':popover-open'))).toBe(false)
   await expect(frame).toHaveCount(1)
 })
+
+test('same-frame tap visibly contracts then releases without delaying click', async ({page}) => {
+  await start(page)
+  await page.evaluate(() => {
+    const b=document.createElement('button');b.id='quick-tap';b.setAttribute('data-prts-glass-control','model');b.textContent='轻点';b.style.cssText='position:fixed;left:600px;top:300px;width:80px;height:40px;z-index:100';document.body.append(b)
+  })
+  const button=page.locator('#quick-tap')
+  await button.hover()
+  await page.waitForTimeout(300)
+  const result=await button.evaluate(async b=>{
+    const frame=document.querySelector('[data-prts-body-target-frame]')
+    const corner=frame.firstElementChild
+    const initial=corner.style.transform
+    let clicked=false;b.onclick=()=>{clicked=true}
+    b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse'}))
+    b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'mouse'}))
+    b.click()
+    const immediate=clicked,samples=[]
+    for(let i=0;i<30;i++){await new Promise(requestAnimationFrame);samples.push({pressed:frame.hasAttribute('data-pressed'),transform:corner.style.transform})}
+    return {initial,immediate,samples}
+  })
+  expect(result.immediate).toBe(true)
+  expect(result.samples.some(s=>s.pressed && s.transform!==result.initial)).toBe(true)
+  expect(result.samples.at(-1).pressed).toBe(false)
+  expect(result.samples.at(-1).transform).toBe(result.initial)
+})

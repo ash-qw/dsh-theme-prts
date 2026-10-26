@@ -153,7 +153,7 @@ function mountBodyTargetFrame(document, window, operation) {
     if(!frame.matches(':popover-open'))frame.showPopover()
     layer=modal
   }
-  let target=null, hovered=null, focused=null, raf=0, pressed=false, disposed=false
+  let target=null, hovered=null, focused=null, raf=0, pressed=false, releasePending=false, disposed=false
   let pointer={x:0,y:0}, state=null, settled=false, tween=null, bounds=null, boundsDirty=false, hitDirty=false, exitGoal=null, motionDuration=240, targetArm=7
   const resizeObserver=window.ResizeObserver?new window.ResizeObserver(()=>{boundsDirty=true;wake()}):null
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -170,7 +170,7 @@ function mountBodyTargetFrame(document, window, operation) {
     const next=hovered || focused
     if(next!==target){
       target?.removeAttribute('data-prts-corner-target')
-      pressed=false;settled=false;tween=null;exitGoal=null;motionDuration=240;target=next;boundsDirty=true
+      pressed=false;releasePending=false;settled=false;tween=null;exitGoal=null;motionDuration=240;target=next;boundsDirty=true
       resizeObserver?.disconnect()
       if(target)resizeObserver?.observe(target)
       if(target){
@@ -186,11 +186,11 @@ function mountBodyTargetFrame(document, window, operation) {
   function draw(time) {
     raf=0
     if(hitDirty){hitDirty=false;hovered=find(document.elementFromPoint(pointer.x,pointer.y));choose()}
-    if(target && !target.isConnected){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;settled=false;exitGoal=null}
+    if(target && !target.isConnected){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;releasePending=false;settled=false;exitGoal=null}
     if(!state)return
     if(target && boundsDirty){
       measure()
-      if(!bounds.width && !bounds.height){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;settled=false;exitGoal=null;resizeObserver?.disconnect()}
+      if(!bounds.width && !bounds.height){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;releasePending=false;settled=false;exitGoal=null;resizeObserver?.disconnect()}
     }
     const box=target?bounds:null,gap=pressed?3:5
     // Freeze the exit destination: subsequent pointer motion must not restart the fade.
@@ -223,7 +223,10 @@ function mountBodyTargetFrame(document, window, operation) {
     if(frame.style.opacity!==opacity)frame.style.opacity=opacity
     settled=!moving
     frame.toggleAttribute('data-pressed',pressed)
-    if(moving)wake()
+    if(releasePending && pressed && !moving){
+      releasePending=false;pressed=false;motionDuration=140;settled=false;wake()
+    }
+    else if(moving)wake()
     else {tween=null;if(!state.alpha)hideFrame()}
   }
   const move=event=>{
@@ -240,13 +243,19 @@ function mountBodyTargetFrame(document, window, operation) {
     pointer={x:event.clientX,y:event.clientY}
     if(event.pointerType==='touch')hovered=find(event.target)
     choose()
-    if(target && find(event.target)===target){pressed=true;motionDuration=100;settled=false;wake()}
+    if(target && find(event.target)===target){pressed=true;releasePending=false;motionDuration=100;settled=false;wake()}
   }
-  const up=event=>{pressed=false;motionDuration=140;settled=false;if(event.pointerType==='touch')hovered=null;choose()}
+  const release=()=>{
+    // A tap can release before the first paint. Finish one contraction, then
+    // expand; one flag keeps repeated taps interruptible without a timer queue.
+    if(pressed && !settled && !reduced?.matches){releasePending=true;settled=false;wake()}
+    else {pressed=false;releasePending=false;motionDuration=140;settled=false;wake()}
+  }
+  const up=event=>{release();if(event.pointerType==='touch')hovered=null;choose()}
   const reset=()=>{
     target?.removeAttribute('data-prts-corner-target');hideFrame()
     hovered=focused=target=null;state=tween=bounds=exitGoal=null
-    pressed=false;settled=true;boundsDirty=hitDirty=false
+    pressed=false;releasePending=false;settled=true;boundsDirty=hitDirty=false
     resizeObserver?.disconnect();window.cancelAnimationFrame(raf);raf=0
     frame.style.opacity='0';frame.removeAttribute('data-pressed')
   }
@@ -254,7 +263,7 @@ function mountBodyTargetFrame(document, window, operation) {
   const scroll=()=>{if(!target && !state?.alpha)return;boundsDirty=true;hitDirty=!!hovered;wake()}
   document.addEventListener('scroll',scroll,true)
   window.addEventListener('resize',reset)
-  const key=event=>{if(target && (event.key===' ' || event.key==='Enter')){pressed=event.type==='keydown';motionDuration=pressed?100:140;settled=false;wake()}}
+  const key=event=>{if(target && (event.key===' ' || event.key==='Enter')){if(event.type==='keyup')release();else {pressed=true;releasePending=false;motionDuration=100;settled=false;wake()}}}
   const listeners=[
     [document,'pointermove',move],[document,'pointerleave',leave],
     [document,'focusin',focus],[document,'focusout',blur],
