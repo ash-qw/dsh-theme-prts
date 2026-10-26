@@ -11,6 +11,15 @@ function closestWithClassSuffix(node, suffix) {
   return null
 }
 
+function isPendingInteractionAction(button) {
+  if (!button || button.tagName !== 'BUTTON') return false
+  if (button.closest('[data-approval-key]')) return true
+  if (button.closest('[data-question-key]')) {
+    return hasClassSuffix(button, '_waitButton') || Boolean(closestWithClassSuffix(button, '_footerActions'))
+  }
+  return Boolean(button.closest('[data-plan-review-key]') && closestWithClassSuffix(button, '_actions'))
+}
+
 function classify(button, operation) {
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
@@ -138,14 +147,16 @@ function mountBodyTargetFrame(document, window, operation) {
   // Nonvisual hosts can still mount the theme without an animation clock.
   if (!window?.requestAnimationFrame || !window?.cancelAnimationFrame) return () => {}
   const composerButton=':is([data-composer-card],[data-prts-composer-fallback]) button:not([data-slot="conversation.input.attachments"] *,[data-prts-glass-menu] *,[data-prts-floating-glass] *,[role="menu"] *,[role="listbox"] *)'
-  const selector='[data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button,[data-prts-glass-control],[data-prts-footer-action],[data-prts-transfer] button,'+composerButton
+  const selector='[data-prts-to-bottom],[data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button,[data-prts-glass-control],[data-prts-footer-action],[data-prts-transfer] button,'+composerButton
   const frame=document.createElement('div')
   frame.setAttribute('data-prts-body-target-frame','');frame.setAttribute('aria-hidden','true')
   const corners=Array.from({length:4},()=>frame.appendChild(document.createElement('i')))
   document.body.append(frame)
   if(frame.showPopover)frame.setAttribute('popover','manual')
-  let layer=null
-  const hideFrame=()=>{if(frame.hidePopover && frame.matches(':popover-open'))frame.hidePopover()}
+  let layer=null, imageRetiring=false
+  const hideFrame=()=>{
+    if(frame.hidePopover && frame.matches(':popover-open'))frame.hidePopover()
+  }
   const showFrame=()=>{
     if(!frame.showPopover)return
     const modal=target?.closest('dialog[open]')
@@ -154,26 +165,35 @@ function mountBodyTargetFrame(document, window, operation) {
     layer=modal
   }
   let target=null, hovered=null, focused=null, raf=0, pressed=false, releasePending=false, disposed=false
-  let pointer={x:0,y:0}, state=null, settled=false, tween=null, bounds=null, boundsDirty=false, hitDirty=false, exitGoal=null, motionDuration=240, targetArm=7
+  let pointer={x:0,y:0}, state=null, settled=false, tween=null, bounds=null, boundsDirty=false, hitDirty=false, exitGoal=null, motionDuration=240, targetArm=7, retiringBounds=null, targetRetires=false
   const resizeObserver=window.ResizeObserver?new window.ResizeObserver(()=>{boundsDirty=true;wake()}):null
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')
   const fine=window.matchMedia?.('(hover:hover) and (pointer:fine)')
+  let activeModal=null
   const find=node=>{
+    if(activeModal && !activeModal.contains(node))return null
     if (!node?.closest || node.closest('[data-prts-workspace-actions],[data-prts-session-actions]')) return null
     const card=node.closest('[data-presented-file],[data-changed-files]')
-    const candidate=card || node.closest(selector)
+    const button=node.closest('button')
+    const pendingAction=operation.contains(button) && isPendingInteractionAction(button) ? button : null
+    const candidate=card || pendingAction || node.closest(selector)
     return candidate && !candidate.matches(':disabled,[aria-disabled="true"]') && !candidate.closest('[inert]') ? candidate : null
   }
   const measure=()=>{bounds=target.getBoundingClientRect();targetArm=7+Math.max(0,Math.min(1,(Math.min(bounds.width,bounds.height)-36)/36))*5;boundsDirty=false}
   const wake=()=>{if(!raf && !disposed)raf=window.requestAnimationFrame(draw)}
   const choose=()=>{
-    const next=hovered || focused
+    const next=(hovered?.isConnected?hovered:null) || (focused?.isConnected?focused:null)
     if(next!==target){
+      const retire=!next && target && !target.isConnected && targetRetires && releasePending && bounds && !reduced?.matches
+      imageRetiring=false
+      retiringBounds=retire?{left:bounds.left,top:bounds.top,width:bounds.width,height:bounds.height}:null
       target?.removeAttribute('data-prts-corner-target')
+      if(retire){hovered=focused=target=null;boundsDirty=false;resizeObserver?.disconnect();wake();return}
       pressed=false;releasePending=false;settled=false;tween=null;exitGoal=null;motionDuration=240;target=next;boundsDirty=true
       resizeObserver?.disconnect()
       if(target)resizeObserver?.observe(target)
       if(target){
+        targetRetires=hasClassSuffix(target,'_toBottom') || isPendingInteractionAction(target)
         target.setAttribute('data-prts-corner-target','');showFrame()
         measure();const box=bounds
         if(!state || state.alpha<.01)state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
@@ -185,6 +205,7 @@ function mountBodyTargetFrame(document, window, operation) {
   }
   function draw(time) {
     raf=0
+    if(target && !target.isConnected)choose()
     if(hitDirty){hitDirty=false;hovered=find(document.elementFromPoint(pointer.x,pointer.y));choose()}
     if(target && !target.isConnected){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;releasePending=false;settled=false;exitGoal=null}
     if(!state)return
@@ -192,7 +213,7 @@ function mountBodyTargetFrame(document, window, operation) {
       measure()
       if(!bounds.width && !bounds.height){target.removeAttribute('data-prts-corner-target');target=hovered=focused=null;pressed=false;releasePending=false;settled=false;exitGoal=null;resizeObserver?.disconnect()}
     }
-    const box=target?bounds:null,gap=pressed?3:5
+    const box=target?bounds:retiringBounds,gap=pressed?(imageRetiring?0:3):5
     // Freeze the exit destination: subsequent pointer motion must not restart the fade.
     const goal=box?{x:box.left-gap,y:box.top-gap,w:box.width+gap*2,h:box.height+gap*2,alpha:1,arm:targetArm}:
       (exitGoal ||= {x:pointer.x-10,y:pointer.y-10,w:20,h:20,alpha:0,arm:7})
@@ -224,7 +245,8 @@ function mountBodyTargetFrame(document, window, operation) {
     settled=!moving
     frame.toggleAttribute('data-pressed',pressed)
     if(releasePending && pressed && !moving){
-      releasePending=false;pressed=false;motionDuration=140;settled=false;wake()
+      if(retiringBounds){exitGoal={...state,alpha:0};retiringBounds=null}
+      releasePending=false;pressed=false;motionDuration=imageRetiring?120:140;settled=false;wake()
     }
     else if(moving)wake()
     else {tween=null;if(!state.alpha)hideFrame()}
@@ -254,11 +276,33 @@ function mountBodyTargetFrame(document, window, operation) {
   const up=event=>{release();if(event.pointerType==='touch')hovered=null;choose()}
   const reset=()=>{
     target?.removeAttribute('data-prts-corner-target');hideFrame()
-    hovered=focused=target=null;state=tween=bounds=exitGoal=null
+    hovered=focused=target=null;state=tween=bounds=exitGoal=retiringBounds=null
+    imageRetiring=false
     pressed=false;releasePending=false;settled=true;boundsDirty=hitDirty=false
     resizeObserver?.disconnect();window.cancelAnimationFrame(raf);raf=0
     frame.style.opacity='0';frame.removeAttribute('data-pressed')
   }
+  const syncModal=()=>{
+    const modals=[...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"]')]
+    const previousModal=activeModal
+    activeModal=modals.filter(node=>!node.hidden && node.getAttribute('aria-hidden')!=='true').at(-1) ?? null
+    if(activeModal===previousModal)return
+    if(activeModal && target && !activeModal.contains(target) && target.querySelector('img') && activeModal.querySelector('img') && releasePending && bounds && !reduced?.matches){
+      // The preview is opaque: show a bounded click acknowledgment above it,
+      // then fade at the thumbnail position instead of retaining a hover target.
+      imageRetiring=true;motionDuration=120;tween=null
+      retiringBounds={left:bounds.left,top:bounds.top,width:bounds.width,height:bounds.height}
+      target.removeAttribute('data-prts-corner-target');hovered=focused=target=null
+      boundsDirty=hitDirty=false;resizeObserver?.disconnect();settled=false;wake()
+    }else if(imageRetiring || activeModal && (!target || !activeModal.contains(target)))reset()
+  }
+  // Native image previews mount a body portal without moving the pointer.
+  // Watch portal changes only, not the streaming conversation subtree.
+  const modalObserver=window.MutationObserver?new window.MutationObserver(syncModal):null
+  modalObserver?.observe(document.body,{childList:true})
+  const modalToggle=event=>{if(event.target?.matches?.('dialog'))syncModal()}
+  document.addEventListener('toggle',modalToggle,true)
+  syncModal()
   const visibility=()=>{if(document.hidden)reset()}
   const scroll=()=>{if(!target && !state?.alpha)return;boundsDirty=true;hitDirty=!!hovered;wake()}
   document.addEventListener('scroll',scroll,true)
@@ -273,6 +317,7 @@ function mountBodyTargetFrame(document, window, operation) {
   ]
   for(const [node,event,handler] of listeners)node.addEventListener(event,handler)
   return ()=>{
+    modalObserver?.disconnect();document.removeEventListener('toggle',modalToggle,true)
     disposed=true;target?.removeAttribute('data-prts-corner-target');hideFrame();window.cancelAnimationFrame(raf);resizeObserver?.disconnect()
     document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',reset)
     for(const [node,event,handler] of listeners)node.removeEventListener(event,handler)

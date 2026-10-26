@@ -108,3 +108,115 @@ test('same-frame tap visibly contracts then releases without delaying click', as
   expect(result.samples.at(-1).pressed).toBe(false)
   expect(result.samples.at(-1).transform).toBe(result.initial)
 })
+
+test('back-to-bottom keeps native geometry and clears corners when removed', async ({page}) => {
+  await start(page)
+  await page.evaluate(()=>{
+    const b=document.createElement('button');b.className='host_toBottom';b.id='bottom-test';b.textContent='↓';b.style.cssText='position:fixed;left:650px;top:250px;width:32px;height:32px;border-radius:50%;background:rgb(40,50,60);z-index:100';
+    b.onclick=()=>b.remove();document.querySelector('[data-prts-region="operation"]').append(b)
+  })
+  const b=page.locator('#bottom-test'),frame=page.locator('[data-prts-body-target-frame]')
+  await expect(b).toHaveAttribute('data-prts-to-bottom','')
+  const material=await b.evaluate(n=>({radius:getComputedStyle(n).borderRadius,background:getComputedStyle(n).backgroundColor}))
+  await b.hover()
+  await expect(b).toHaveAttribute('data-prts-corner-target','')
+  await expect(frame).toHaveCSS('opacity','1')
+  await expect(b).toHaveCSS('border-radius',material.radius)
+  await expect(b).toHaveCSS('background-color',material.background)
+  await page.mouse.down()
+  await expect(frame).toHaveAttribute('data-pressed')
+  await page.mouse.up()
+  await expect(b).toHaveCount(0)
+  await expect(frame).toHaveCSS('opacity','0')
+})
+
+test('removed back-to-bottom finishes tap contraction then fades in place',async({page})=>{
+  await start(page)
+  await page.evaluate(()=>{
+    const b=document.createElement('button');b.id='vanishing-bottom';b.className='host_toBottom';b.textContent='↓';b.style.cssText='position:fixed;left:650px;top:250px;width:36px;height:36px;z-index:100';b.onclick=()=>b.remove();document.querySelector('[data-prts-region="operation"]').append(b)
+  })
+  const button=page.locator('#vanishing-bottom')
+  await button.hover();await page.waitForTimeout(300)
+  const result=await button.evaluate(async b=>{
+    const f=document.querySelector('[data-prts-body-target-frame]'),corner=f.firstElementChild,initial=corner.style.transform
+    b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse'}));b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'mouse'}));b.click()
+    const samples=[]
+    for(let i=0;i<35;i++){await new Promise(requestAnimationFrame);samples.push({pressed:f.hasAttribute('data-pressed'),alpha:Number(f.style.opacity),transform:corner.style.transform})}
+    return {initial,samples,removed:!b.isConnected}
+  })
+  expect(result.removed).toBe(true)
+  expect(result.samples.some(s=>s.pressed && s.alpha===1 && s.transform!==result.initial)).toBe(true)
+  const fade=result.samples.filter(s=>s.alpha>0 && s.alpha<1)
+  expect(fade.length).toBeGreaterThan(0)
+  expect(new Set(fade.map(s=>s.transform)).size).toBe(1)
+  expect(result.samples.at(-1).alpha).toBe(0)
+})
+
+for (const kind of ['question', 'plan-review', 'approval']) {
+  test(`${kind} action contracts after removal; choice rows stay native`,async({page})=>{
+    await start(page)
+    await page.evaluate(kind=>{
+      const panel=document.createElement('section');panel.id='pending-corner-test';panel.setAttribute('data-'+kind+'-key','fixture');panel.style.cssText='position:fixed;left:500px;top:250px;z-index:100';
+      panel.innerHTML='<button id="pending-choice" class="host_option">选项</button><button id="pending-wait" class="host_waitButton">暂缓</button><div class="host_'+(kind==='question'?'footerActions':'actions')+'"><button id="pending-submit">提交</button></div>';
+      panel.querySelector('#pending-submit').onclick=()=>panel.remove();document.querySelector('[data-prts-region="operation"]').append(panel)
+    },kind)
+    if(kind==='question'){
+      await page.locator('#pending-choice').hover()
+      await expect(page.locator('#pending-choice')).not.toHaveAttribute('data-prts-corner-target')
+      await page.locator('#pending-wait').hover()
+      await expect(page.locator('#pending-wait')).toHaveAttribute('data-prts-corner-target','')
+    }
+    const b=page.locator('#pending-submit');await b.hover();await page.waitForTimeout(300)
+    const result=await b.evaluate(async b=>{
+      const f=document.querySelector('[data-prts-body-target-frame]'),initial=f.firstElementChild.style.transform
+      b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse'}));b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'mouse'}));b.click()
+      const samples=[];for(let i=0;i<35;i++){await new Promise(requestAnimationFrame);samples.push({pressed:f.hasAttribute('data-pressed'),alpha:Number(f.style.opacity),position:f.firstElementChild.style.transform})}
+      return {initial,samples,removed:!b.isConnected}
+    })
+    expect(result.removed).toBe(true)
+    expect(result.samples.some(s=>s.pressed && s.alpha===1 && s.position!==result.initial)).toBe(true)
+    expect(result.samples.at(-1).alpha).toBe(0)
+  })
+}
+
+test('image preview portal clears background corners without pointer movement',async({page})=>{
+  await start(page)
+  await page.evaluate(()=>{
+    const flow=document.createElement('div');flow.setAttribute('data-message-role','assistant');
+    flow.innerHTML='<button id="preview-image" style="position:fixed;left:600px;top:250px;width:100px;height:80px;z-index:100">图片</button>';
+    flow.firstElementChild.onclick=()=>{
+      const modal=document.createElement('div');modal.id='image-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.style.cssText='position:fixed;inset:0;z-index:1000;background:#333';document.body.append(modal)
+    };document.querySelector('[data-prts-region="operation"]').append(flow)
+  })
+  const b=page.locator('#preview-image'),f=page.locator('[data-prts-body-target-frame]')
+  await b.hover();await expect(f).toHaveCSS('opacity','1')
+  await b.click();await expect(page.locator('#image-modal')).toBeVisible()
+  await expect(f).toHaveCSS('opacity','0')
+  await expect(b).not.toHaveAttribute('data-prts-corner-target')
+  await b.dispatchEvent('pointermove',{pointerType:'mouse'})
+  await expect(f).toHaveCSS('opacity','0')
+  await page.locator('#image-modal').evaluate(n=>n.remove())
+  await page.mouse.move(300,200);await b.hover();await expect(f).toHaveCSS('opacity','1')
+})
+
+test('image tap visibly contracts above opaque preview then clears',async({page})=>{
+  await start(page)
+  await page.evaluate(()=>{
+    const flow=document.createElement('div');flow.setAttribute('data-message-role','assistant');flow.innerHTML='<button id="image-tap" style="position:fixed;left:600px;top:250px;width:100px;height:80px;z-index:10"><img alt="图片"></button>';
+    flow.firstElementChild.onclick=()=>{const modal=document.createElement('div');modal.id='image-tap-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.style.cssText='position:fixed;inset:0;z-index:1000;background:rgb(17,22,26)';modal.innerHTML='<img alt="预览">';document.body.append(modal)};
+    document.querySelector('[data-prts-region="operation"]').append(flow)
+  })
+  const b=page.locator('#image-tap');await b.hover();await page.waitForTimeout(300)
+  const result=await b.evaluate(async b=>{
+    const f=document.querySelector('[data-prts-body-target-frame]'),initial=f.firstElementChild.style.transform
+    b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse'}));b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'mouse'}));b.click()
+    const samples=[];for(let i=0;i<35;i++){await new Promise(requestAnimationFrame);samples.push({pressed:f.hasAttribute('data-pressed'),alpha:Number(f.style.opacity),position:f.firstElementChild.style.transform,top:f.matches(':popover-open'),z:Number(getComputedStyle(f).zIndex)})}
+    return {initial,samples}
+  })
+  expect(result.samples.some(s=>s.pressed && s.position!==result.initial && s.alpha>0)).toBe(true)
+  expect(result.samples.filter(s=>s.alpha>0).every(s=>s.top)).toBe(true)
+  expect(result.samples.at(-1).alpha).toBe(0)
+  await page.locator('#image-tap-modal').evaluate(n=>n.remove())
+  await page.mouse.move(300,200);await b.hover()
+  await expect(page.locator('[data-prts-body-target-frame]')).toHaveCSS('opacity','1')
+})
