@@ -157,7 +157,7 @@ test('text hit testing handles zoom, wrapped text, native controls, scrolling an
       <p id="native" style="cursor:grab">Native grab</p><p id="unselectable" style="user-select:none">No selection</p>
       <a href="#" id="link">Link</a><button id="button">Copy</button><input id="input">
       <div id="scroller" style="height:40px;overflow:auto"><p id="scroll-text">Scrollable text</p><div style="height:300px"></div></div>
-    </div></article><div id="outside" style="height:60px">Outside</div>
+    </div></article><div class="host_userRow" data-submission-echo><div class="host_bubble" id="echo-text">临时消息文字</div></div><div data-pending-steering><div class="host_bubble" id="pending-text">待发送插话</div></div><div data-chat-flow-kind="steering"><div class="host_bubble" id="steering-text">正式插话</div></div><div data-phase="hero"><span class="host_titleGroup"><span id="hero-title">探索未至之境</span></span></div><div id="outside" style="height:60px">Outside</div>
   </body></html>`)
   await page.evaluate(() => { window.__ModuleLoader__ = { load: entry => { window.prtsTest = entry.factory(() => ({})) } } })
   await page.addScriptTag({ content: await readFile(new URL('../../lib/client.js', import.meta.url), 'utf8') })
@@ -170,6 +170,10 @@ test('text hit testing handles zoom, wrapped text, native controls, scrolling an
       const r = range.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
     }, offset)
     await page.mouse.move(point.x, point.y)
+  }
+  for (const selector of ['#echo-text', '#pending-text', '#steering-text', '#hero-title']) {
+    await hoverCharacter(selector)
+    await expect(page.locator(selector)).toHaveAttribute('data-prts-text-hit', '')
   }
   for (const zoom of [0.8, 1, 1.25]) {
     await page.locator('article').evaluate((e, zoom) => { e.style.zoom = zoom }, zoom)

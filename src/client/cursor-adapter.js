@@ -8,7 +8,8 @@ export function createCursorAdapter({ document, window, assets }) {
   let gestureAssets = assets
   let textTarget
   let lastPoint
-  const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], [data-chat-flow-kind="user"] [class$="_bubble"]'
+  const heroTextSelector = '[data-phase="hero"] [class$="_titleGroup"]'
+  const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) [class$="_bubble"]'
   const controlSelector = 'a[href], button, summary, input, textarea, select, [contenteditable], [role="button"], [role="toolbar"], [role="tab"]'
   function clearTextHit() {
     textTarget?.removeAttribute('data-prts-text-hit')
@@ -25,8 +26,8 @@ export function createCursorAdapter({ document, window, assets }) {
     if (event.pointerType !== 'mouse') return
     lastPoint = { clientX: event.clientX, clientY: event.clientY, pointerType: 'mouse' }
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
-    const content = target?.closest?.(contentSelector)
-    if (!content?.closest('[data-chat-flow-kind], [data-message-role]') || target.closest(controlSelector)) return
+    const content = target?.closest?.(`${contentSelector}, ${heroTextSelector}`)
+    if (!content || (!content.matches(heroTextSelector) && !content.closest('[data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]')) || target.closest(controlSelector)) return
     const style = window.getComputedStyle(target)
     if (style.userSelect === 'none' || !style.cursor.includes('data:image/png')) return
     // Caret APIs return the nearest insertion point even over empty space.
