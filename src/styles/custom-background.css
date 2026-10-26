@@ -485,3 +485,13 @@ background:color-mix(in srgb,var(--prts-panel) 28%,transparent);
 -webkit-backdrop-filter:blur(12px);
 backdrop-filter:blur(12px);
 }
+
+/* The task manager mounts directly in main, outside the conversation root. */
+html[data-dsh-prts] [data-prts-region="operation"] [data-testid="task-manager-page"],
+html[data-dsh-prts] [data-testid="task-manager-page"] :is([class$="_detail"],[class$="_detailNotice"]) {
+background: var(--prts-canvas);
+}
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"] [data-testid="task-manager-page"],
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-testid="task-manager-page"] :is([class$="_detail"],[class$="_detailNotice"]) {
+background: transparent;
+}
