@@ -43,7 +43,7 @@ export function createAvatarStore({window,document}){
   const focus=()=>{if(window.fetch)void refresh().catch(()=>{})}
   window.addEventListener('focus',focus)
   return{
-    snapshot:()=>state,refresh,
+    snapshot:()=>state,refresh,applySnapshot:apply,
     subscribe(fn){listeners.add(fn);fn(state);return()=>listeners.delete(fn)},
     async edit(role){
       const response=await window.fetch(API+'/edit/'+role,{credentials:'same-origin',signal:controller?.signal})

@@ -1,3 +1,4 @@
+import { createAvatarStore } from '../src/client/custom-avatar.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -54,14 +55,14 @@ async function fixture(t) {
   const server=createServer((req,res)=>{const route=routes.find(r=>req.url.startsWith(r.path));if(route)void route.handler(req,res);else {res.statusCode=404;res.end()}})
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve))
   t.after(async()=>{for(const fn of dispose)fn();await emblems.dispose();await backgrounds.dispose();await new Promise(resolve=>server.close(resolve));await rm(directory,{recursive:true,force:true})})
-  let preferences={...DEFAULT_PREFERENCES,enabled:true,bootAnimation:false},revision=1,reject=false,onSave,onResponse
+  let preferences={...DEFAULT_PREFERENCES,enabled:true,bootAnimation:false},revision=1,reject=false,onSave,onResponse,onAvatarConfiguration
   const calls=[],downloads=[]
   const window={fetch:async(path,options)=>{calls.push({path,options});const response=await fetch(`http://127.0.0.1:${server.address().port}`+path,options);await onResponse?.(path,options);return response},
     Blob,URL:{createObjectURL:blob=>{downloads.push(blob);return 'blob:test'},revokeObjectURL(){}},setTimeout:fn=>{fn()},
     document:{body:{append(){}},createElement:()=>({click(){},remove(){}})},
     FileReader:class {readAsDataURL(blob){blob.arrayBuffer().then(bytes=>{this.result='data:image/webp;base64,'+Buffer.from(bytes).toString('base64');this.onload()})}}}
-  const transfer=createThemeTransfer({window,getPreferences:()=>preferences,checkWritable:()=>revision,themeVersion:'test',savePreferences:async(next,expected)=>{if(onSave)await onSave();if(reject||revision!==expected)throw Error('模拟设置冲突');preferences=next;revision++}})
-  return {backgrounds,avatars,emblems,transfer,calls,downloads,get preferences(){return preferences},reject:()=>{reject=true},onSave:fn=>{onSave=fn},onResponse:fn=>{onResponse=fn}}
+  const transfer=createThemeTransfer({window,onAvatarConfiguration:value=>onAvatarConfiguration?.(value),getPreferences:()=>preferences,checkWritable:()=>revision,themeVersion:'test',savePreferences:async(next,expected)=>{if(onSave)await onSave();if(reject||revision!==expected)throw Error('模拟设置冲突');preferences=next;revision++}})
+  return {backgrounds,avatars,emblems,transfer,calls,downloads,window,onAvatarConfiguration:fn=>{onAvatarConfiguration=fn},get preferences(){return preferences},reject:()=>{reject=true},onSave:fn=>{onSave=fn},onResponse:fn=>{onResponse=fn}}
 }
 
 test('configuration-only import and restore never touch asset services',async t=>{
@@ -208,4 +209,26 @@ test('cancel rollback conflict preserves the concurrent change and warns about i
   await assert.rejects(f.transfer.import(value,undefined,controller.signal),/部分素材未能自动恢复/)
   assert.ok(f.backgrounds.snapshot().full)
   assert.equal(f.transfer.hasBackup,true)
+})
+
+
+test('import and rollback update current avatar display without server events or focus',async t=>{
+  const f=await fixture(t)
+  const properties=new Map()
+  const store=createAvatarStore({window:{...f.window,addEventListener(){},removeEventListener(){}},document:{documentElement:{style:{setProperty:(k,v)=>properties.set(k,v),removeProperty:k=>properties.delete(k)}}}})
+  t.after(()=>store.dispose())
+  await store.refresh()
+  f.onAvatarConfiguration(value=>store.applySnapshot(value))
+  const image=await sharp({create:{width:32,height:32,channels:4,background:'#eecc22'}}).png().toBuffer()
+  for(const role of ['user','assistant'])await f.avatars.save({role,image:image.toString('base64'),revision:f.avatars.snapshot().revision})
+  const value=await f.transfer.export(true)
+  for(const role of ['user','assistant'])await f.avatars.save({role,image:null,revision:f.avatars.snapshot().revision})
+  await store.refresh()
+  assert.equal(properties.has('--prts-custom-user-avatar'),false)
+  await f.transfer.import(value)
+  for(const role of ['user','assistant'])assert.equal(properties.get('--prts-custom-'+role+'-avatar'),'url("'+f.avatars.snapshot()[role]+'")')
+  const cleared=structuredClone(value);cleared.assets.avatars={user:null,assistant:null}
+  f.reject()
+  await assert.rejects(f.transfer.import(cleared),/模拟设置冲突/)
+  for(const role of ['user','assistant'])assert.equal(properties.get('--prts-custom-'+role+'-avatar'),'url("'+f.avatars.snapshot()[role]+'")')
 })

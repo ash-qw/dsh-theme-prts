@@ -101,7 +101,7 @@ export function describeThemePackage(value) {
   return `${count} 项主题设置、${transferSlots.filter(k => a.backgrounds[k]).length} 张背景、${transferRoles.filter(k => a.avatars[k]).length} 个头像、${a.emblems.items.length} 个自定义徽记。将替换当前素材及徽记排列，空项恢复为默认。`
 }
 
-export function createThemeTransfer({ window, getPreferences, savePreferences, checkWritable, checkExport = checkWritable, themeVersion }) {
+export function createThemeTransfer({ window, getPreferences, savePreferences, checkWritable, checkExport = checkWritable, themeVersion, onAvatarConfiguration = () => {} }) {
   let busy = false, backup
   const request = async (path, data, signal) => {
     checkTransferCancelled(signal)
@@ -198,7 +198,10 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
       undo.push(async () => {
         const restored = await request(kind + '/configuration', { ...previous, revision: revisions[kind] })
         revisions[kind] = restored.revision
+        if (kind === 'avatars') onAvatarConfiguration(restored)
       })
+      // Apply the acknowledged images locally; SSE remains for other pages.
+      if (kind === 'avatars') onAvatarConfiguration(result)
     }
     try {
       if (value.assets) {

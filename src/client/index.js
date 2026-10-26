@@ -208,6 +208,7 @@ export function applyPrtsPlugin(ctx, environment) {
       document, window, assets, adapter, hostGeometry, customEmblemStore, avatarStore, backgroundStore,
       themeTransfer: themeTransfer ||= createThemeTransfer({ window, getPreferences: () => nativePreferences.value,
         savePreferences: (value, revision) => nativePreferences.replace(value, revision),
+        onAvatarConfiguration: value => avatarStore.applySnapshot(value),
         checkWritable: () => nativePreferences.checkWritable(), checkExport: () => nativePreferences.checkReadable(), themeVersion: version }),
       onSchemeToggle(next, interaction) {
         return theme.setTheme(next, { ...interaction, animate: true })
