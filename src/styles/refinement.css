@@ -508,7 +508,7 @@ html[data-dsh-prts] [data-turn-trigger] {
 }
 
 /* Body interactions lock onto four corners; shell controls keep their own treatment. */
-html[data-dsh-prts] :is([data-chat-flow-kind],[data-message-role]) :is([data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button) {
+html[data-dsh-prts] :is([data-chat-flow-kind],[data-message-role],[data-submission-echo],[data-pending-steering]) :is([data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button) {
   position:relative;
   --prts-control-outline:var(--prts-line);
   &:is(:hover,:focus-visible,:focus-within) {

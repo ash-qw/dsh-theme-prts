@@ -118,3 +118,24 @@ test('rebinds a replaced conversation region and releases its shared frame',()=>
   assert.equal(document.querySelectorAll('[data-prts-body-target-frame]').length,0)
   adapter.dispose();dom.window.close()
 })
+
+
+test('copy controls keep their classification from submission echo to durable message', async () => {
+  const dom = new JSDOM(`<main data-prts-region="operation">
+    <div class="host_userRow" data-submission-echo><button id="copy">复制</button></div>
+    <div class="host_userRow" data-pending-steering><button id="steer">复制</button></div>
+    <li data-submission-echo><button id="queue">删除排队项</button></li>
+  </main>`, { pretendToBeVisual: true })
+  const {document} = dom.window
+  const adapter = createConversationControlAdapter({document, window:dom.window})
+  adapter.start()
+  const copy = document.querySelector('#copy'), row = copy.parentElement
+  assert.equal(copy.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  assert.equal(document.querySelector('#steer').getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  assert.equal(document.querySelector('#queue').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
+  row.removeAttribute('data-submission-echo')
+  row.setAttribute('data-chat-flow-kind','user')
+  await flush(dom.window)
+  assert.equal(copy.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  adapter.dispose();dom.window.close()
+})

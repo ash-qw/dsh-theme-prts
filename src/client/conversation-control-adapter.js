@@ -49,6 +49,8 @@ function classify(button, operation) {
   if (approval) return hasClassSuffix(button, '_reject') ? 'danger' : 'cta'
   if (hasClassSuffix(button, '_modalAction') || button.closest('[role="dialog"]')) return 'cta'
 
+  const userRow = closestWithClassSuffix(button, '_userRow')
+  if (userRow?.matches('[data-submission-echo], [data-pending-steering]')) return 'micro'
   if (button.closest('[data-chat-flow-kind], [data-message-role]')) return 'micro'
   return null
 }
@@ -129,7 +131,7 @@ export function createConversationControlAdapter({ document, window }) {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ['class', 'data-approval-key', 'data-turn-process'],
+        attributeFilter: ['class', 'data-approval-key', 'data-turn-process', 'data-submission-echo', 'data-pending-steering', 'data-chat-flow-kind', 'data-message-role'],
       })
     },
     dispose() {
