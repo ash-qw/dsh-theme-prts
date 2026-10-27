@@ -200,7 +200,7 @@ function mountBodyTargetFrame(document, window, operation) {
         measure();const box=bounds
         if(!state || state.alpha<.01)state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
         const style=window.getComputedStyle(target)
-        frame.style.color=style.getPropertyValue(target.getAttribute('data-prts-conversation-control')==='danger'?'--prts-red':'--prts-yellow')
+        frame.style.color=target.getAttribute('data-prts-conversation-control')==='danger'?style.getPropertyValue('--prts-red'):'var(--prts-corner-color, var(--prts-yellow))'
       }
     }
     if(!settled || !target && state?.alpha>0)wake()

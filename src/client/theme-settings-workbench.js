@@ -171,6 +171,7 @@ export function themeSettingsMarkup() {
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
+              <div data-prts-setting-row="cornerColor"><span><strong>交互提示框颜色</strong><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<button type="button" data-prts-corner-custom title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" hidden></div></div>
             </div>
           </section>
           <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
@@ -531,6 +532,10 @@ export function createThemeSettingsOverlay({
 
   function renderState() {
     if (!panel || !currentPreferences) return
+    const cornerColor = panel.querySelector('[data-prts-corner-color]')
+    if (cornerColor) cornerColor.value = currentPreferences.cornerCustomColor
+    panel.querySelector('[data-prts-corner-preview]')?.style.setProperty('--swatch', currentPreferences.cornerCustomColor)
+    for (const preset of panel.querySelectorAll('[data-prts-corner-preset]')) preset.setAttribute('aria-pressed', String(preset.dataset.prtsCornerPreset === currentPreferences.cornerColor))
     for (const toggle of panel.querySelectorAll('[data-prts-setting-switch]')) {
       const key = toggle.dataset.prtsSettingSwitch
       const enabled = key === 'cursor' ? currentPreferences.cursor === 'prts'
@@ -625,6 +630,8 @@ export function createThemeSettingsOverlay({
     if (event.target === panel) { setOpen(false); return }
     const target = event.target?.closest?.('button')
     if (!target) return
+    if (target.hasAttribute('data-prts-corner-custom')) { panel.querySelector('[data-prts-corner-color]').click(); return }
+    if (target.hasAttribute('data-prts-corner-preset')) { onPreferenceChange('cornerColor', target.dataset.prtsCornerPreset); return }
     if (target.hasAttribute('data-prts-settings-jump')) {
       selectSection(target.dataset.prtsSettingsJump)
       return
@@ -663,6 +670,7 @@ export function createThemeSettingsOverlay({
 
   function onPanelInput(event) {
     const target = event.target
+    if (target?.matches?.('[data-prts-corner-color]')) { onPreferencePreview('cornerColor', target.value); return }
     if (target?.matches?.('[data-prts-preview-reply-limit]')) { onPreferenceChange('previewReplyLimit', Number(target.value)); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       const key = target.dataset.prtsSettingKey
@@ -725,6 +733,7 @@ export function createThemeSettingsOverlay({
   const renderMediaState = () => renderState()
   const commitFromControl = event => {
     const target = event.target
+    if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange('cornerCustomColor', target.value); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       if (event.type === 'change' || event.type === 'focusout') commitSessionFlowColor(target.dataset.prtsSettingKey)
       return

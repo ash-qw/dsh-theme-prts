@@ -14,6 +14,7 @@ const ROOT_ATTRIBUTES = [
   'data-prts-conversation-style',
 ]
 const SESSION_FLOW_COLOR_PROPERTIES = {
+  '--prts-corner-color': 'cornerColor',
   '--prts-session-flow-back': 'sessionFlowColorBack',
   '--prts-session-flow-core': 'sessionFlowColorCore',
   '--prts-session-flow-front': 'sessionFlowColorFront',

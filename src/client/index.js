@@ -223,6 +223,7 @@ export function applyPrtsPlugin(ctx, environment) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
       onPreferencePreview(key, value) {
+        if (key === 'cornerColor') { document.documentElement.style.setProperty('--prts-corner-color', String(value)); return }
         if (key === 'particleTraversalSpeed') {
           particleField.update(updatePreferenceValue(preferences, key, value))
           return

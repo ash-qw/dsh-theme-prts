@@ -62,6 +62,8 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
+    cornerColor: '#f0c800',
+    cornerCustomColor: '#f0c800',
     version: 12,
     enabled: true,
     preset: 'custom',
