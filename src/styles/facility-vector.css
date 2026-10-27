@@ -572,11 +572,11 @@ html[data-dsh-prts] [data-prts-session-pickup-bar]:nth-of-type(10) { --prts-pick
 html[data-dsh-prts] [data-prts-session-pickup-bar]:nth-of-type(11) { --prts-pickup-duration: 560ms; --prts-pickup-delay: -.3s; }
 
 @media (prefers-reduced-motion: no-preference) {
-  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover [data-prts-session-pickup-indicator] {
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover[data-prts-pickup-ready] [data-prts-session-pickup-indicator] {
     animation: prts-session-record-indicator 1.1s ease-in-out infinite;
   }
 
-  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover [data-prts-session-pickup-bar] {
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover[data-prts-pickup-ready] [data-prts-session-pickup-bar] {
     animation: prts-session-pickup-sample var(--prts-pickup-duration) ease-in-out var(--prts-pickup-delay) infinite;
   }
 }
@@ -886,3 +886,6 @@ html[data-dsh-prts] [data-prts-tool-record] > div { display:flex;align-items:bas
 html[data-dsh-prts] [data-prts-tool-record] b { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--prts-cyan);font:11px/1.6 var(--prts-mono); }
 html[data-dsh-prts] [data-prts-tool-record] small { flex:none;color:var(--prts-muted);font-size:10px; }
 html[data-dsh-prts] [data-prts-tool-record] p { display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:4px 0 0; }
+
+/* Show the baseline immediately; only start the pickup after a deliberate hover. */
+html[data-dsh-prts] [data-prts-session-row]:not([data-prts-pickup-ready]) :is([data-prts-session-pickup-bar],[data-prts-session-pickup-indicator]) { visibility:hidden; }

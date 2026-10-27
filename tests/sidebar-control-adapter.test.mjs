@@ -595,3 +595,28 @@ test('unchanged streaming summaries do not rescan all sidebar cards', async () =
   assert.ok(root.textContent.includes('已更名'))
   adapter.dispose();dom.window.close()
 })
+
+test('quiet scrollbar changes skip scans and short pickup hovers cancel activation', async () => {
+  const dom = new JSDOM(`<aside data-prts-region="sessions" class="host_root host_quietBars"><div data-slot="sidebar.workspaces"><div role="tree"><div role="treeitem" aria-selected="false"><span>会话</span></div></div></div></aside>`, {pretendToBeVisual:true})
+  const {document}=dom.window
+  const adapter=createSidebarControlAdapter({document,window:dom.window})
+  adapter.start();await flush(dom.window);await flush(dom.window)
+  const root=document.querySelector('[data-slot="sidebar.workspaces"]'),row=document.querySelector('[role="treeitem"]'),aside=document.querySelector('aside')
+  let scans=0;const query=root.querySelectorAll.bind(root)
+  root.querySelectorAll=selector=>{if(selector==='div[role="treeitem"][aria-selected]')scans++;return query(selector)}
+  for(let i=0;i<4;i++){aside.classList.toggle('host_quietBars');await flush(dom.window)}
+  assert.equal(scans,0)
+  row.setAttribute('aria-selected','true');await flush(dom.window)
+  assert.ok(scans>0)
+  row.dispatchEvent(new dom.window.MouseEvent('pointerover',{bubbles:true}))
+  assert.equal(row.hasAttribute('data-prts-pickup-ready'),false)
+  row.dispatchEvent(new dom.window.MouseEvent('pointerout',{bubbles:true}))
+  await new Promise(r=>dom.window.setTimeout(r,120))
+  assert.equal(row.hasAttribute('data-prts-pickup-ready'),false)
+  row.dispatchEvent(new dom.window.MouseEvent('pointerover',{bubbles:true}))
+  await new Promise(r=>dom.window.setTimeout(r,120))
+  assert.equal(row.hasAttribute('data-prts-pickup-ready'),true)
+  row.dispatchEvent(new dom.window.MouseEvent('pointerout',{bubbles:true}))
+  assert.equal(row.hasAttribute('data-prts-pickup-ready'),false)
+  adapter.dispose();dom.window.close()
+})

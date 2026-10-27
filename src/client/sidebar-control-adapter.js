@@ -862,6 +862,28 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
 
 
+  let pickupRow, pickupTimer, pickupRoot
+  function clearPickup() {
+    if (pickupTimer !== undefined) window.clearTimeout(pickupTimer)
+    pickupTimer = undefined
+    pickupRow?.removeAttribute('data-prts-pickup-ready')
+    pickupRow = undefined
+  }
+  function pickupOver(event) {
+    const row = event.target.closest?.('[data-prts-session-row]')
+    if (row === pickupRow) return
+    clearPickup()
+    if (!row) return
+    pickupRow = row
+    pickupTimer = window.setTimeout(() => {
+      pickupTimer = undefined
+      if (row.isConnected && pickupRow === row) row.setAttribute('data-prts-pickup-ready', '')
+    }, 100)
+  }
+  function pickupOut(event) {
+    if (pickupRow && !pickupRow.contains(event.relatedTarget)) clearPickup()
+  }
+
   function queueScan() {
     if (!adapterActive || scanFrame !== undefined) return
     const requestFrame = window?.requestAnimationFrame?.bind(window) ?? (callback => window?.setTimeout?.(callback, 0))
@@ -1021,8 +1043,18 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (observer || !window?.MutationObserver) return
       const observationRoot = document.querySelector('[data-prts-region="sessions"]')
       if (!observationRoot) return
+      pickupRoot = observationRoot
+      pickupRoot.addEventListener('pointerover', pickupOver)
+      pickupRoot.addEventListener('pointerout', pickupOut)
       observer = new window.MutationObserver(mutations => {
-        const relevant = mutations.filter(mutation => !mutation.target.closest?.('[data-prts-owned-session-summary]'))
+        const relevant = mutations.filter(mutation => {
+          if (mutation.target.closest?.('[data-prts-owned-session-summary]')) return false
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class' && !mutation.target.closest('[role="treeitem"]')) {
+            const stableClasses = value => (value ?? '').split(/\s+/).filter(token => token && !token.endsWith('_quietBars')).sort().join(' ')
+            if (stableClasses(mutation.oldValue) === stableClasses(mutation.target.getAttribute('class'))) return false
+          }
+          return true
+        })
         const freshRow = 'div[role="treeitem"]:not([data-prts-session-row]):not([data-prts-workspace-row])'
         const mountsRows = relevant.some(mutation => mutation.type === 'childList'
           && Array.from(mutation.addedNodes).some(node => node.nodeType === 1
@@ -1040,9 +1072,14 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         childList: true,
         attributes: true,
         attributeFilter: ['aria-expanded', 'aria-selected', 'class', 'data-state'],
+        attributeOldValue: true,
       })
     },
     dispose() {
+      clearPickup()
+      pickupRoot?.removeEventListener('pointerover', pickupOver)
+      pickupRoot?.removeEventListener('pointerout', pickupOut)
+      pickupRoot = undefined
       adapterActive = false
       disconnectSummarySources()
       cancelReveal()
