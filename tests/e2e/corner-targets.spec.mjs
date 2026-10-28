@@ -220,3 +220,30 @@ test('image tap visibly contracts above opaque preview then clears',async({page}
   await page.mouse.move(300,200);await b.hover()
   await expect(page.locator('[data-prts-body-target-frame]')).toHaveCSS('opacity','1')
 })
+
+test('pointer bursts commit only the final target in a frame',async({page})=>{
+  await start(page)
+  await page.evaluate(()=>{
+    const panel=document.createElement('div');panel.id='burst-controls';panel.setAttribute('role','toolbar')
+    panel.style.cssText='position:fixed;left:500px;top:300px;z-index:100;display:flex;gap:16px'
+    panel.innerHTML='<button data-prts-glass-control="model" style="width:60px;height:36px">A</button><button data-prts-glass-control="model" style="width:60px;height:36px">B</button>'
+    document.body.append(panel)
+  })
+  await page.locator('#burst-controls button').first().hover()
+  await expect(page.locator('[data-prts-body-target-frame]')).toHaveCSS('opacity','1')
+  const result=await page.evaluate(async()=>{
+    const panel=document.querySelector('#burst-controls'),buttons=[...panel.children],rects=buttons.map(b=>b.getBoundingClientRect())
+    let changes=0
+    const observer=new MutationObserver(records=>changes+=records.length)
+    observer.observe(panel,{subtree:true,attributes:true,attributeFilter:['data-prts-corner-target']})
+    for(let i=0;i<100;i++){
+      const index=i%2,r=rects[index]
+      buttons[index].dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:r.left+10,clientY:r.top+10}))
+    }
+    await new Promise(resolve=>setTimeout(resolve,120))
+    observer.disconnect()
+    return {changes,selected:buttons[1].hasAttribute('data-prts-corner-target')}
+  })
+  expect(result.selected).toBe(true)
+  expect(result.changes).toBe(2)
+})

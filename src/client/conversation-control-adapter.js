@@ -168,7 +168,15 @@ function mountBodyTargetFrame(document, window, operation) {
   }
   let target=null, hovered=null, focused=null, raf=0, pressed=false, releasePending=false, disposed=false
   let pointer={x:0,y:0}, state=null, settled=false, tween=null, bounds=null, boundsDirty=false, hitDirty=false, exitGoal=null, motionDuration=240, targetArm=7, retiringBounds=null, targetRetires=false
-  const resizeObserver=window.ResizeObserver?new window.ResizeObserver(()=>{boundsDirty=true;wake()}):null
+  let moveRaf=0, pendingMove=null
+  const resizeObserver=window.ResizeObserver?new window.ResizeObserver(entries=>{
+    if(!target)return
+    const entry=entries.find(item=>item.target===target),size=entry?.borderBoxSize?.[0]
+    if(size && bounds && Math.abs(size.inlineSize-bounds.width)<.5 && Math.abs(size.blockSize-bounds.height)<.5)return
+    const box=target.getBoundingClientRect()
+    if(bounds && ['left','top','width','height'].every(key=>bounds[key]===box[key]))return
+    boundsDirty=true;wake()
+  }):null
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')
   const fine=window.matchMedia?.('(hover:hover) and (pointer:fine)')
   let activeModal=null
@@ -181,11 +189,12 @@ function mountBodyTargetFrame(document, window, operation) {
     const candidate=card || pendingAction || node.closest(selector)
     return candidate && !candidate.matches(':disabled,[aria-disabled="true"]') && !candidate.closest('[inert]') ? candidate : null
   }
-  const measure=()=>{bounds=target.getBoundingClientRect();targetArm=7+Math.max(0,Math.min(1,(Math.min(bounds.width,bounds.height)-36)/36))*5;boundsDirty=false}
+  const measure=(box)=>{bounds=box || target.getBoundingClientRect();targetArm=7+Math.max(0,Math.min(1,(Math.min(bounds.width,bounds.height)-36)/36))*5;boundsDirty=false}
   const wake=()=>{if(!raf && !disposed)raf=window.requestAnimationFrame(draw)}
   const choose=()=>{
     const next=(hovered?.isConnected?hovered:null) || (focused?.isConnected?focused:null)
     if(next!==target){
+      const nextBounds=next?.getBoundingClientRect()
       const retire=!next && target && !target.isConnected && targetRetires && releasePending && bounds && !reduced?.matches
       imageRetiring=false
       retiringBounds=retire?{left:bounds.left,top:bounds.top,width:bounds.width,height:bounds.height}:null
@@ -197,12 +206,13 @@ function mountBodyTargetFrame(document, window, operation) {
       if(target){
         targetRetires=hasClassSuffix(target,'_toBottom') || isPendingInteractionAction(target)
         target.setAttribute('data-prts-corner-target','');showFrame()
-        measure();const box=bounds
-        if(!state || state.alpha<.01)state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
-        const style=window.getComputedStyle(target)
-        frame.style.color=target.getAttribute('data-prts-conversation-control')==='danger'?style.getPropertyValue('--prts-red'):'var(--prts-corner-color, var(--prts-yellow))'
+        measure(nextBounds);const box=bounds
+        state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
+        frame.style.opacity='0'
+        frame.style.color=target.getAttribute('data-prts-conversation-control')==='danger'?window.getComputedStyle(target).getPropertyValue('--prts-red'):'var(--prts-corner-color, var(--prts-yellow))'
       }
     }
+    if(!target && !state?.alpha)hideFrame()
     if(!settled || !target && state?.alpha>0)wake()
   }
   function draw(time) {
@@ -229,7 +239,7 @@ function mountBodyTargetFrame(document, window, operation) {
       tween={from:{...state},to:{...goal},start:time,duration:remaining,pressed}
     }
     // All channels share one endpoint; no separate thresholds or late position snap.
-    const progress=reduced?.matches || settled || !tween.duration?1:Math.min(1,(time-tween.start)/tween.duration)
+    const progress=reduced?.matches || settled || !tween.duration || (!state.alpha && !goal.alpha)?1:Math.min(1,(time-tween.start)/tween.duration)
     const ease=1-(1-progress)**3
     for(const key of keys)state[key]=tween.from[key]+(goal[key]-tween.from[key])*ease
     const moving=progress<1
@@ -253,17 +263,28 @@ function mountBodyTargetFrame(document, window, operation) {
     else if(moving)wake()
     else {tween=null;if(!state.alpha)hideFrame()}
   }
-  const move=event=>{
+  const applyMove=event=>{
     if(document.hidden || event.pointerType==='touch' || !fine?.matches)return
     pointer={x:event.clientX,y:event.clientY}
     const next=find(event.target)
     if(next===hovered && (next || !state?.alpha))return
     hovered=next;choose()
   }
-  const leave=()=>{hovered=null;choose()}
+  const clearMove=()=>{window.cancelAnimationFrame(moveRaf);moveRaf=0;pendingMove=null}
+  const flushMove=()=>{
+    const event=pendingMove;clearMove()
+    if(event)applyMove(event)
+  }
+  const move=event=>{
+    if(document.hidden || event.pointerType==='touch' || !fine?.matches)return
+    pendingMove={target:event.target,clientX:event.clientX,clientY:event.clientY,pointerType:event.pointerType}
+    if(!moveRaf)moveRaf=window.requestAnimationFrame(flushMove)
+  }
+  const leave=()=>{clearMove();hovered=null;choose()}
   const focus=event=>{focused=event.target.matches?.(':focus-visible')?find(event.target):null;choose()}
   const blur=()=>{focused=null;choose()}
   const down=event=>{
+    flushMove()
     pointer={x:event.clientX,y:event.clientY}
     if(event.pointerType==='touch')hovered=find(event.target)
     choose()
@@ -277,6 +298,7 @@ function mountBodyTargetFrame(document, window, operation) {
   }
   const up=event=>{release();if(event.pointerType==='touch')hovered=null;choose()}
   const reset=()=>{
+    clearMove()
     target?.removeAttribute('data-prts-corner-target');hideFrame()
     hovered=focused=target=null;state=tween=bounds=exitGoal=retiringBounds=null
     imageRetiring=false
@@ -319,6 +341,7 @@ function mountBodyTargetFrame(document, window, operation) {
   ]
   for(const [node,event,handler] of listeners)node.addEventListener(event,handler)
   return ()=>{
+    clearMove()
     modalObserver?.disconnect();document.removeEventListener('toggle',modalToggle,true)
     disposed=true;target?.removeAttribute('data-prts-corner-target');hideFrame();window.cancelAnimationFrame(raf);resizeObserver?.disconnect()
     document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',reset)
