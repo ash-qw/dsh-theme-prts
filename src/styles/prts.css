@@ -963,7 +963,7 @@ html[data-dsh-prts] [data-prts-row-title] {
   white-space: nowrap;
 }
 
-html[data-dsh-prts] [data-prts-session-row] > span:has(> [data-state]) {
+html[data-dsh-prts] [data-prts-session-row] > span:has(> :is([data-state], [data-session-schedule-mark])) {
   padding-left: 0 !important;
 }
 

@@ -48,7 +48,7 @@ html[data-dsh-prts] [data-prts-session-idle-indicator] {
   fill: var(--prts-dim);
 }
 
-html[data-dsh-prts] [data-prts-session-state] [data-prts-session-idle-indicator] {
+html[data-dsh-prts] :is([data-prts-session-state], [data-prts-session-row]:has([data-session-schedule-mark])) [data-prts-session-idle-indicator] {
   opacity: 0;
 }
 
@@ -824,7 +824,7 @@ html[data-dsh-prts] [data-prts-session-summary-popover]:has(> [data-prts-preview
 }
 
 /* Keep different-sized state markers centered on the same axis. */
-html[data-dsh-prts] [data-prts-session-row] [data-state]:is([data-state="ongoing"], [data-state="done"], [data-state="warning"], [data-state="error"]) {
+html[data-dsh-prts] [data-prts-session-row] :is([data-state="ongoing"], [data-state="done"], [data-state="warning"], [data-state="error"], [data-session-schedule-mark]) {
   flex-shrink: 0;
   margin-left: 20px;
 }

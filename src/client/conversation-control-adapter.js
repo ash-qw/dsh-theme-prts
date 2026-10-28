@@ -23,6 +23,8 @@ function isPendingInteractionAction(button) {
 function classify(button, operation) {
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
+  // Schedule cards use an absolute transparent button as the whole-card hit area.
+  if (button.parentElement?.matches('[data-tool="schedule_create"]') && hasClassSuffix(button, '_cardOpen')) return null
   if (button.querySelector('[data-compaction-disclosure]')) return null
   // Notification headers belong to the card surface, not standalone buttons.
   if (button.parentElement?.matches('[data-turn-trigger]')) return null
@@ -183,8 +185,11 @@ function mountBodyTargetFrame(document, window, operation) {
   const find=node=>{
     if(activeModal && !activeModal.contains(node))return null
     if (!node?.closest || node.closest('[data-prts-workspace-actions],[data-prts-session-actions]')) return null
-    const card=node.closest('[data-presented-file],[data-changed-files]')
+    const schedule=node.closest('[data-tool="schedule_create"]')
+    const scheduleOpen=schedule && [...schedule.children].find(child=>child.tagName==='BUTTON' && hasClassSuffix(child,'_cardOpen') && !child.matches(':disabled,[aria-disabled="true"]'))
     const button=node.closest('button')
+    // The transparent hit layer targets the card; nested actions keep their own frame.
+    const card=node.closest('[data-presented-file],[data-changed-files]') || (scheduleOpen && (!button || button===scheduleOpen)?schedule:null)
     const pendingAction=operation.contains(button) && isPendingInteractionAction(button) ? button : null
     const candidate=card || pendingAction || node.closest(selector)
     return candidate && !candidate.matches(':disabled,[aria-disabled="true"]') && !candidate.closest('[inert]') ? candidate : null
