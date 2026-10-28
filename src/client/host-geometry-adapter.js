@@ -17,7 +17,7 @@ export function createHostGeometryAdapter({ document, window }) {
   const root = document?.documentElement
   let frame
   let sidebar
-  let previousSidebarWidth
+  const sidebarWidths = new Map()
   let resizeObserver
   let frameRequest
   let resizeSettleTimer
@@ -35,7 +35,11 @@ export function createHostGeometryAdapter({ document, window }) {
     }
     if (sidebar?.isConnected) {
       const width = cssPixels(sidebar.getBoundingClientRect().width)
-      if (root.style.getPropertyValue('--prts-sidebar-width') !== width) root.style.setProperty('--prts-sidebar-width', width)
+      for (const node of [sidebar, document.querySelector('[data-prts-nav-rail]')]) {
+        if (!node) continue
+        if (!sidebarWidths.has(node)) sidebarWidths.set(node, [node.style.getPropertyValue('--prts-sidebar-width'), node.style.getPropertyPriority('--prts-sidebar-width')])
+        if (node.style.getPropertyValue('--prts-sidebar-width') !== width) node.style.setProperty('--prts-sidebar-width', width)
+      }
     }
     return top
   }
@@ -103,8 +107,11 @@ export function createHostGeometryAdapter({ document, window }) {
     else root.style.removeProperty(TOP_INSET_PROPERTY)
     previousValue = undefined
     previousPriority = undefined
-    if (previousSidebarWidth) root.style.setProperty('--prts-sidebar-width', previousSidebarWidth)
-    else root.style.removeProperty('--prts-sidebar-width')
+    for (const [node, [value, priority]] of sidebarWidths) {
+      if (value) node.style.setProperty('--prts-sidebar-width', value, priority)
+      else node.style.removeProperty('--prts-sidebar-width')
+    }
+    sidebarWidths.clear()
     sidebar = undefined
     frame = undefined
     observedFrameHeight = undefined
@@ -121,7 +128,6 @@ export function createHostGeometryAdapter({ document, window }) {
       if (started) dispose()
       frame = nextFrame
       sidebar = frame.querySelector?.('[data-prts-region="sessions"]')
-      previousSidebarWidth = root.style.getPropertyValue('--prts-sidebar-width')
       previousValue = root.style.getPropertyValue(TOP_INSET_PROPERTY)
       previousPriority = root.style.getPropertyPriority(TOP_INSET_PROPERTY)
       started = true

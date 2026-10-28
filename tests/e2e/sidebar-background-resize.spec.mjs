@@ -9,7 +9,7 @@ for (const protectedRegion of [false, true]) {
       [data-prts-region="sessions"] { width:56px; flex:none; }
       [data-prts-region="operation"] { flex:1; }
       </style><link rel="stylesheet" href="/src/styles/custom-background.css"></head><body>
-      <div data-prts-region="frame"><div data-prts-region="sessions"></div><div data-prts-region="operation"></div></div>
+      <nav data-prts-nav-rail></nav><div data-prts-region="frame"><div data-prts-region="sessions"></div><div data-prts-region="operation"></div></div>
       </body></html>` }))
     await page.goto('/sidebar-resize-fixture')
     const result = await page.evaluate(async protectedRegion => {
@@ -30,9 +30,9 @@ for (const protectedRegion of [false, true]) {
       await new Promise(resolve => {
         const observer = new ResizeObserver(() => {
           const width = sidebar.clientWidth
-          const declared = parseFloat(root.style.getPropertyValue('--prts-sidebar-width'))
-          const imageWidth = parseFloat(root.style.getPropertyValue('--prts-protected-sidebar-width')) || Math.max(declared, innerHeight * .46)
-          const x = parseFloat(root.style.getPropertyValue('--prts-protected-sidebar-x')) || (declared-imageWidth)/2
+          const declared = parseFloat(sidebar.style.getPropertyValue('--prts-sidebar-width'))
+          const imageWidth = parseFloat(sidebar.style.getPropertyValue('--prts-protected-sidebar-width')) || Math.max(declared, innerHeight * .46)
+          const x = parseFloat(sidebar.style.getPropertyValue('--prts-protected-sidebar-x')) || (declared-imageWidth)/2
           if (declared !== width || x > .01 || x + imageWidth < width - .01) violations.push({width,declared,imageWidth,x})
           samples++
           if (!widths.length) { observer.disconnect(); resolve(); return }
@@ -40,7 +40,12 @@ for (const protectedRegion of [false, true]) {
         })
         observer.observe(sidebar)
       })
+      const rail=document.querySelector('[data-prts-nav-rail]')
+      if(rail.style.getPropertyValue('--prts-sidebar-width')!==sidebar.style.getPropertyValue('--prts-sidebar-width')) violations.push('rail width mismatch')
+      if(root.style.getPropertyValue('--prts-sidebar-width') || root.style.getPropertyValue('--prts-protected-sidebar-x')) violations.push('global wallpaper geometry')
+      if(protectedRegion && rail.style.getPropertyValue('--prts-protected-sidebar-x')!==sidebar.style.getPropertyValue('--prts-protected-sidebar-x')) violations.push('rail position mismatch')
       background.dispose(); geometry.dispose()
+      if(rail.style.getPropertyValue('--prts-sidebar-width') || sidebar.style.getPropertyValue('--prts-protected-sidebar-x')) violations.push('cleanup failed')
       return { violations, samples }
     }, protectedRegion)
     expect(result.samples).toBe(8)

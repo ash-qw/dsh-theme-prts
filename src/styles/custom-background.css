@@ -5,9 +5,10 @@ background: linear-gradient(var(--prts-background-wash), var(--prts-background-w
 }
 html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
 html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] {
+& :is([data-prts-region="sessions"],[data-prts-nav-rail]) {
 --prts-wall-width:var(--prts-protected-sidebar-width,max(calc(var(--prts-sidebar-width,280px) + var(--prts-nav-width)),calc((100dvh - var(--prts-host-top-inset)) * var(--prts-sidebar-image-ratio,1))));
 --prts-wall-x:var(--prts-protected-sidebar-x,calc((var(--prts-sidebar-width,280px) + var(--prts-nav-width) - var(--prts-wall-width)) / 2));
-& :is([data-prts-region="sessions"],[data-prts-nav-rail]){background:linear-gradient(var(--prts-background-wash),var(--prts-background-wash)),var(--prts-background-sidebar) var(--prts-wall-x) var(--prts-protected-sidebar-y, 50%) / var(--prts-wall-width) auto no-repeat}
+background:linear-gradient(var(--prts-background-wash),var(--prts-background-wash)),var(--prts-background-sidebar) var(--prts-wall-x) var(--prts-protected-sidebar-y, 50%) / var(--prts-wall-width) auto no-repeat}
 & [data-prts-region="sessions"]{background-position:center,calc(var(--prts-wall-x) - var(--prts-nav-width)) var(--prts-protected-sidebar-y, 50%)}
 }
 html[data-dsh-prts][data-prts-rail-mode="overlay"]:is([data-prts-background-mode="split"][data-prts-background-sidebar],[data-prts-background-mode="full"][data-prts-background-full]) [data-prts-nav-rail] { background: transparent; }

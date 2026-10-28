@@ -28,18 +28,19 @@ test('projects host inset and shared sidebar wallpaper width and restores the pr
   assert.equal(adapter.start(frame), true)
   assert.equal(document.documentElement.style.getPropertyValue('--prts-host-top-inset'), '56px')
   assert.deepEqual(observed, [frame, sidebar])
-  assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '280px')
+  assert.equal(sidebar.style.getPropertyValue('--prts-sidebar-width'), '280px')
 
   top = 72.5
   resizeCallback([{ target: frame, contentRect: { height: 600 } }])
   await new Promise(resolve => dom.window.setTimeout(resolve, 8))
   assert.equal(document.documentElement.style.getPropertyValue('--prts-host-top-inset'), '72.5px')
 
+  assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '')
   width = 340
   resizeCallback([{ target: sidebar, contentRect: { width } }])
-  assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '340px')
+  assert.equal(sidebar.style.getPropertyValue('--prts-sidebar-width'), '340px')
   adapter.dispose()
-  assert.equal(document.documentElement.style.getPropertyValue('--prts-sidebar-width'), '')
+  assert.equal(sidebar.style.getPropertyValue('--prts-sidebar-width'), '')
   assert.equal(disconnected, 1)
   assert.equal(document.documentElement.style.getPropertyValue('--prts-host-top-inset'), '12px')
 })

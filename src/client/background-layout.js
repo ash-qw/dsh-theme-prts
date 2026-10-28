@@ -5,7 +5,16 @@ export function createBackgroundLayout({window,document}) {
   const raf=window.requestAnimationFrame?.bind(window) ?? (fn=>window.setTimeout(fn,16))
   const caf=window.cancelAnimationFrame?.bind(window) ?? window.clearTimeout.bind(window)
   let state={}, frame, disposed=false, enabled=false, observing=false, hostFrame, operation, sessions
-  const set=(name,value)=>{if(root.style.getPropertyValue(name)!==value) root.style.setProperty(name,value)}
+  const sidebarTargets = new Set()
+  const set=(name,value)=>{
+    const targets=name.startsWith('--prts-protected-sidebar-')?[sessions,document.querySelector('[data-prts-nav-rail]')]:[root]
+    for(const node of targets){
+      if(!node)continue
+      if(node!==root)sidebarTargets.add(node)
+      if(value===null)node.style.removeProperty(name)
+      else if(node.style.getPropertyValue(name)!==value)node.style.setProperty(name,value)
+    }
+  }
   const update=()=>{
     frame=undefined
     if(disposed||!observing)return
@@ -17,6 +26,8 @@ export function createBackgroundLayout({window,document}) {
       for(const node of [hostFrame||operation,sessions])if(node)resize?.observe(node)
     }
     const railWidth=parseFloat(window.getComputedStyle(root).getPropertyValue('--prts-nav-width'))||0
+    const writes=[]
+    const write=(...args)=>writes.push(args)
     for(const slot of ['full','conversation','sidebar']){
       const entry=state[slot]
       const node=slot==='sidebar'?sessions:slot==='conversation'?(hostFrame||operation):operation
@@ -25,15 +36,16 @@ export function createBackgroundLayout({window,document}) {
       const active=entry?.region && width>0 && height>0
       if(active){
         const p=backgroundPlacement(entry.width,entry.height,width,height,entry.region)
-        set(`--prts-protected-${slot}-x`,`${p.x}px`)
-        set(`--prts-protected-${slot}-y`,`${p.y}px`)
-        if(slot==='sidebar')set('--prts-protected-sidebar-width',`${p.width}px`)
+        write(`--prts-protected-${slot}-x`,`${p.x}px`)
+        write(`--prts-protected-${slot}-y`,`${p.y}px`)
+        if(slot==='sidebar')write('--prts-protected-sidebar-width',`${p.width}px`)
       }else{
-        root.style.removeProperty(`--prts-protected-${slot}-x`)
-        root.style.removeProperty(`--prts-protected-${slot}-y`)
-        if(slot==='sidebar')root.style.removeProperty('--prts-protected-sidebar-width')
+        write(`--prts-protected-${slot}-x`,null)
+        write(`--prts-protected-${slot}-y`,null)
+        if(slot==='sidebar')write('--prts-protected-sidebar-width',null)
       }
     }
+    for(const args of writes)set(...args)
   }
   function schedule(){if(!disposed && observing && frame===undefined)frame=raf(update)}
   // ResizeObserver runs after layout, before paint. Deferring again to rAF
@@ -48,6 +60,8 @@ export function createBackgroundLayout({window,document}) {
   const attributes=new window.MutationObserver(schedule)
   function clear(){
     caf(frame);frame=undefined;resize?.disconnect();mutations.disconnect();attributes.disconnect();window.removeEventListener('resize',schedule)
+    for(const node of sidebarTargets)for(const axis of ['x','y','width'])node.style.removeProperty(`--prts-protected-sidebar-${axis}`)
+    sidebarTargets.clear()
     hostFrame=undefined;operation=undefined;sessions=undefined;observing=false
     for(const slot of ['full','conversation','sidebar'])for(const axis of ['x','y','width'])root.style.removeProperty(`--prts-protected-${slot}-${axis}`)
   }
