@@ -407,14 +407,28 @@ const GlassSurface = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const resizeObserver = new ResizeObserver(() => {
+    // PRTS: keep the existing map stretched with the live container while
+    // resizing. Rebuilding its distance field on every intermediate width
+    // defeats the outer composer's settled-shape update.
+    let timer;
+    let committed = '';
+    const commit = () => {
+      timer = undefined;
       const element = containerRef.current;
-      if (element) setBoxSize(`${element.offsetWidth}x${element.offsetHeight}`);
+      if (!element || !element.offsetWidth || !element.offsetHeight) return;
+      const next = `${element.offsetWidth}x${element.offsetHeight}`;
+      if (next !== committed) { committed = next; setBoxSize(next); }
+    };
+    const resizeObserver = new ResizeObserver(() => {
+      clearTimeout(timer);
+      if (!committed) commit();
+      else timer = setTimeout(commit, 160);
     });
 
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      clearTimeout(timer);
       resizeObserver.disconnect();
     };
   }, []);
