@@ -7,6 +7,7 @@ export function createCursorAdapter({ document, window, assets }) {
   let handPhase
   let gestureAssets = assets
   let textTarget
+  let moveFrame, pendingMove
   let lastPoint
   const heroTextSelector = '[data-phase="hero"] [class$="_titleGroup"]'
   const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) [class$="_bubble"]'
@@ -90,6 +91,7 @@ export function createCursorAdapter({ document, window, assets }) {
   let originalPriority
   let appliedCursor
   let appliedPriority
+  let lastHandFrame
   function ownsHandCursor() {
     return handTarget?.style.cursor === appliedCursor
       && handTarget.style.getPropertyPriority('cursor') === appliedPriority
@@ -106,6 +108,7 @@ export function createCursorAdapter({ document, window, assets }) {
     }
     handTarget?.removeAttribute('data-prts-hand-active')
     handTarget = undefined
+    lastHandFrame = undefined
   }
   // Cursor is inherited. Animating a large container still restyles its subtree.
   // Keep those background hits static, while controls retain native animation.
@@ -130,7 +133,9 @@ export function createCursorAdapter({ document, window, assets }) {
   }
   function applyHandFrame() {
     if (stopIfHandChanged() || !handTarget) return
+    if(lastHandFrame === handCursor && ownsHandCursor())return
     handTarget.style.setProperty('cursor', handCursor)
+    lastHandFrame = handCursor
     appliedCursor = handTarget.style.cursor
     appliedPriority = handTarget.style.getPropertyPriority('cursor')
   }
@@ -156,20 +161,27 @@ export function createCursorAdapter({ document, window, assets }) {
   }
   function play(frames, done) {
     clearTimer()
-    let index = 0
+    const started = window.performance.now()
+    let index = 0, deadline = frames[0]?.duration ?? 0
     function next() {
       timer = undefined
       if (stopIfHandChanged()) return
-      // The source ANI ends with a 60-second hold frame. Use the static state instead.
+      const elapsed = window.performance.now() - started
+      // Skip expired frames after a busy main thread; never replay a backlog.
+      while (index < frames.length - 1 && elapsed >= deadline) {
+        index += 1
+        deadline += frames[index]?.duration ?? 0
+      }
+      // The source ANI ends with a 60-second hold frame, which is not animated.
       if (index >= frames.length - 1) { done(); return }
-      const frame = frames[index++]
-      show(frame.url)
+      show(frames[index].url)
       if (!handCursor) return
-      timer = window.setTimeout(next, frame.duration)
+      timer = window.setTimeout(next, Math.max(1, deadline - (window.performance.now() - started)))
     }
     next()
   }
   function down(event) {
+    clearPendingMove()
     if (event.pointerType !== 'mouse' || event.button !== 0 || event.isPrimary === false) return
     updateResize(event)
     updateTextHit(event)
@@ -203,13 +215,32 @@ export function createCursorAdapter({ document, window, assets }) {
     if (handPhase === 'press') return
     releaseHand()
   }
-  function move(event) {
+  function applyMove(event) {
     updateResize(event)
     updateTextHit(event)
     if (handCursor) followHand(event.target?.nodeType === 1 ? event.target : event.target?.parentElement)
     if (pointerId !== undefined && event.pointerId === pointerId && !(event.buttons & 1)) reset()
   }
+  function clearPendingMove() {
+    if (moveFrame !== undefined) window.cancelAnimationFrame?.(moveFrame)
+    moveFrame = undefined
+    pendingMove = undefined
+  }
+  function move(event) {
+    if (event.pointerType !== 'mouse') return
+    // Lost releases must clear synchronously even when the next paint is delayed.
+    if (pointerId !== undefined && event.pointerId === pointerId && !(event.buttons & 1)) reset()
+    if (!window.requestAnimationFrame) { applyMove(event); return }
+    pendingMove = { target:event.target, pointerType:event.pointerType, pointerId:event.pointerId,
+      buttons:event.buttons, clientX:event.clientX, clientY:event.clientY }
+    if (moveFrame === undefined) moveFrame = window.requestAnimationFrame(() => {
+      const latest = pendingMove
+      clearPendingMove()
+      if (latest?.target?.isConnected) applyMove(latest)
+    })
+  }
   function resetInteraction() {
+    clearPendingMove()
     reset()
     clearResize()
     clearTextHit()

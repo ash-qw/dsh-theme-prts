@@ -8,8 +8,9 @@ function setup() {
   const { window } = dom
   const { document } = window
   const timers = new Map()
-  let id = 0
-  window.setTimeout = fn => { timers.set(++id, fn); return id }
+  let id = 0, now = 0
+  Object.defineProperty(window.performance, "now", { value: () => now })
+  window.setTimeout = (fn, delay=0) => { const due=now+delay;timers.set(++id, () => { now=Math.max(now,due);fn() }); return id }
   window.clearTimeout = key => timers.delete(key)
   window.matchMedia = () => ({ matches: false })
   const assets = { hotspot: [7, 6], textHotspot: [24, 24], textClick: [{ url: 'text-click', duration: 16 }, { url: 'end', duration: 60000 }], hold: 'hold', press: [{ url: 'press', duration: 16 }, { url: 'end', duration: 60000 }], release: [{ url: 'release', duration: 16 }, { url: 'end', duration: 60000 }] }
@@ -23,7 +24,7 @@ function setup() {
     target.dispatchEvent(event)
   }
   const tick = () => { const next = timers.entries().next().value; if (next) { timers.delete(next[0]); next[1]() } }
-  return { dom, window, document, adapter, active, frame, fire, tick, timers }
+  return { dom, window, document, adapter, active, frame, fire, tick, timers, assets, advance:ms=>{now+=ms} }
 }
 
 test('normal press, hold and release preserve native text cursors and ignore secondary/touch input', () => {
@@ -165,3 +166,41 @@ for (const change of ['value', 'priority', 'remove']) {
     })
   }
 }
+
+test('pointer bursts coalesce style reads and disposal cancels pending movement',()=>{
+  const s=setup(),frames=new Map();let id=0,reads=0
+  s.assets.resize={ew:"resize"}
+  s.window.requestAnimationFrame=fn=>{frames.set(++id,fn);return id}
+  s.window.cancelAnimationFrame=id=>frames.delete(id)
+  const original=s.window.getComputedStyle.bind(s.window)
+  s.window.getComputedStyle=(...args)=>{reads++;return original(...args)}
+  for(let i=0;i<100;i++)s.fire('pointermove',{clientX:i,clientY:10})
+  assert.equal(reads,0);assert.equal(frames.size,1)
+  frames.values().next().value()
+  assert.equal(reads,1);assert.equal(frames.size,0)
+  s.fire('pointermove');s.adapter.dispose()
+  assert.equal(frames.size,0)
+  s.dom.window.close()
+})
+
+test('late animation callbacks skip expired frames and finish without replaying them',()=>{
+  const s=setup()
+  s.assets.press=[{url:'first',duration:16},{url:'second',duration:16},{url:'third',duration:16},{url:'end',duration:60000}]
+  s.fire('pointerdown');assert.match(s.frame(),/first/)
+  s.advance(35);s.tick();assert.match(s.frame(),/third/)
+  s.advance(1000);s.tick();assert.match(s.frame(),/hold/)
+  assert.equal(s.timers.size,0)
+  s.fire('pointerup');s.advance(1000);s.tick()
+  assert.equal(s.frame(),'');assert.equal(s.timers.size,0)
+  s.adapter.dispose();s.dom.window.close()
+})
+
+test('identical adjacent frames do not rewrite the native cursor',()=>{
+  const s=setup()
+  s.assets.press=[{url:'same',duration:16},{url:'same',duration:16},{url:'end',duration:60000}]
+  s.fire('pointerdown')
+  const observer=new s.window.MutationObserver(()=>{})
+  observer.observe(s.document.querySelector('button'),{attributes:true,attributeFilter:['style']})
+  s.tick();assert.equal(observer.takeRecords().length,0)
+  s.adapter.dispose();observer.disconnect();s.dom.window.close()
+})
