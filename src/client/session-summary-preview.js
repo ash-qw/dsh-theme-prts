@@ -293,12 +293,29 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       const height = Math.max(1, (viewport?.height ?? window.innerHeight) - 16)
       const place = (surface, reference, preferredTop, noticeOwner, anchorBottom = preferredTop) => {
         surface.style.maxWidth = 'none'
-        surface.style.maxHeight = 'none'
+        let fixedEdge
+        if (surface === panel) {
+          // Pick a direction once, before async replies arrive; keep the same edge
+          // while content grows and let the existing scroll surface absorb overflow.
+          if (!current.placement) {
+            const below = top + height - preferredTop
+            const above = anchorBottom - top
+            current.placement = below < 160 && above > below
+              ? { direction: 'above', edge: anchorBottom }
+              : { direction: 'below', edge: preferredTop }
+          }
+          fixedEdge = Math.max(top, Math.min(current.placement.edge, top + height))
+          const available = current.placement.direction === 'above' ? fixedEdge - top : top + height - fixedEdge
+          surface.style.maxHeight = Math.max(1, available) + 'px'
+          surface.setAttribute('data-prts-preview-direction', current.placement.direction)
+        } else surface.style.maxHeight = 'none'
         const bounds = surface.getBoundingClientRect()
         const x = reference ? reference.right + 10 : left
-        const fitsVertically = y => y >= top && y + bounds.height <= top + height
+        const fitsVertically = y => y >= top - 1 && y + bounds.height <= top + height + 1
         const above = anchorBottom - bounds.height
-        const y = !fitsVertically(preferredTop) && fitsVertically(above) ? above : preferredTop
+        const y = surface === panel
+          ? current.placement.direction === 'above' ? fixedEdge - bounds.height : fixedEdge
+          : !fitsVertically(preferredTop) && fitsVertically(above) ? above : preferredTop
         const insufficient = Boolean(reference) && (x < left || x + bounds.width > left + width || !fitsVertically(y))
         surface.toggleAttribute('data-prts-preview-no-space', insufficient)
         const noticeKey = surface === panel ? 'spaceNotice' : 'detailSpaceNotice'
@@ -319,6 +336,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         surface.style.top = y + 'px'
         return !insufficient
       }
+      updateReplyAvailability()
       const menu = current.anchor?.closest('[data-prts-session-summary-popover]')
       const reference = menu?.getBoundingClientRect()
       const row = current.anchor?.getBoundingClientRect()
@@ -343,6 +361,8 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       current.spaceNotice?.remove()
       current.detailSpaceNotice?.remove()
       panel.removeAttribute('data-prts-preview-no-space')
+      panel.removeAttribute('data-prts-preview-direction')
+      panel.style.removeProperty('max-height')
       positionObserver?.disconnect()
       window.cancelAnimationFrame(positionFrame)
       window.removeEventListener('resize', schedulePosition)
@@ -537,8 +557,24 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
       detailEntry?.removeAttribute('data-prts-reply-active')
       detailEntry = undefined
     }
+    const replyIsTruncated = item => {
+      const summary = item.querySelector('span')
+      return item.dataset.prtsSummaryTruncated === 'true' || summary.scrollHeight > summary.clientHeight + 1 || summary.scrollWidth > summary.clientWidth + 1
+    }
+    const updateReplyAvailability = () => {
+      const entries = [...body.querySelectorAll('[data-prts-reply-entry]')].map(item => [item, replyIsTruncated(item)])
+      for (const [item, truncated] of entries) {
+        const needed = truncated || item.dataset.prtsReplyTruncated === 'true'
+        item.toggleAttribute('data-prts-reply-overflow', truncated)
+        item.toggleAttribute('data-prts-reply-complete', !needed)
+        item.tabIndex = needed ? 0 : -1
+        item.setAttribute('aria-disabled', String(!needed))
+        if (!needed && detailEntry === item) hideDetail()
+      }
+    }
     const showDetail = (reply, index, item, refresh = false) => {
       keep()
+      if (!reply.tool && item.hasAttribute('data-prts-reply-complete')) { hideDetail(); return }
       if (!refresh && detailKey === reply.key && current.detail && !current.detail.hidden) return
       if (!current.detail) {
         const detail = panel.ownerDocument.createElement('section')
@@ -708,8 +744,15 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
           icon.append(outline)
           heading.prepend(icon)
           const summary = panel.ownerDocument.createElement('span')
-          summary.textContent = current.contentCache(reply.text).summary
-          item.append(heading, summary)
+          const content = current.contentCache(reply.text)
+          summary.textContent = content.summary
+          item.dataset.prtsReplyTruncated = String(content.needsDetail)
+          item.dataset.prtsSummaryTruncated = String(content.truncated)
+          const ellipsis = panel.ownerDocument.createElement('i')
+          ellipsis.setAttribute('data-prts-reply-ellipsis', '')
+          ellipsis.setAttribute('aria-hidden', 'true')
+          ellipsis.textContent = '…'
+          item.append(heading, summary, ellipsis)
           item.addEventListener('pointermove', () => showDetail(reply, index, item))
           item.addEventListener('focus', () => showDetail(reply, index, item))
           item.addEventListener('click', () => showDetail(reply, index, item))
@@ -725,6 +768,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         if (scrollAnchor?.isConnected) body.scrollTop += scrollAnchor.getBoundingClientRect().top - anchorTop
         else if (previousTop === 0) body.scrollTop = 0
         historyKeys = replies
+        schedulePosition()
         previousText = undefined
         previousQuestion = undefined
         return

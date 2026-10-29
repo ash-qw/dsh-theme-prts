@@ -424,7 +424,9 @@ test('running preview appends completed replies without showing streamed fragmen
   await expect(detail).toContainText('第一条完成')
   await expect(detail).not.toContainText('第二条已完成')
   await reply.locator('[data-prts-reply-entry]').first().hover()
-  await expect(detail).toContainText('第二条已完成')
+  await expect(detail).toHaveCount(0)
+  await expect(reply.locator('[data-prts-reply-entry]').first()).toHaveAttribute('data-prts-reply-complete', '')
+  await reply.locator('[data-prts-reply-entry]').last().hover()
   await detail.hover()
   await page.waitForTimeout(400)
   await expect(reply).toBeVisible()
@@ -437,6 +439,7 @@ for(const next of ['done','question','approval']){
   test('open running preview transitions in place to '+next,async({page})=>{
     await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
     await page.goto('/tests/fixtures/rc7-harness.html')
+    await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['reply'],nodes:new Map([['reply',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'当前进度正常。详细结果。'.repeat(25)}]}}]])}))
     await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
     await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
     const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
@@ -472,7 +475,7 @@ for(const limit of [5,10,0]) test(`running preview retains latest replies with l
   await page.addInitScript(limit=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,previewReplyLimit:limit})),limit)
   await page.goto('/tests/fixtures/rc7-harness.html')
   await page.evaluate(()=>{
-    const nodes=Array.from({length:12},(_,i)=>[String(i),{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'正文 '+(i+1)}]}}])
+    const nodes=Array.from({length:12},(_,i)=>[String(i),{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'正文 '+(i+1)+'。详细结果'.repeat(30)}]}}])
     window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:nodes.map(([key])=>key),nodes:new Map(nodes)})
   })
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
@@ -952,6 +955,7 @@ test('running hover previews latest tool calls while no prose is emitted',async(
 for(const unreadFirst of [false,true]) test(`current session completion removes its open previews when read: unreadFirst=${unreadFirst}`,async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
   await page.goto('/tests/fixtures/rc7-harness.html')
+    await page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['reply'],nodes:new Map([['reply',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'当前进度正常。详细结果。'.repeat(25)}]}}]])}))
   await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
   await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
   const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
@@ -1051,4 +1055,65 @@ test('tool detail lists the current segment with fixed geometry and preserves sc
   await expect(page.locator('[data-prts-tool-entry]:visible')).toHaveCount(0)
   await expect(detail).toHaveCount(0)
   await expect(panel).toContainText('检查完成')
+})
+
+
+test('running preview only expands replies with hidden content or structure',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced'})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  await page.evaluate(()=>{
+    const texts=['检查完成。','宽'.repeat(90),'x'.repeat(120),'[查看结果](https://example.com)']
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:texts.map((_,i)=>String(i)),nodes:new Map(texts.map((text,i)=>[String(i),{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text}]}}]))})
+  })
+  await page.locator('[data-prts-session-summary-trigger="ongoing"]').hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  const short=panel.locator('[data-prts-reply-entry]').filter({hasText:'检查完成。'})
+  await expect(short).toHaveAttribute('data-prts-reply-complete','')
+  await expect(short).toHaveAttribute('tabindex','-1')
+  await expect(short.locator('[data-prts-reply-ellipsis]')).toBeHidden()
+  await short.hover()
+  await short.evaluate(el=>{el.focus();el.click()})
+  await expect(page.locator('[data-prts-reply-detail]:visible')).toHaveCount(0)
+  for(const text of ['宽'.repeat(10),'x'.repeat(10),'查看结果']) {
+    const item=panel.locator('[data-prts-reply-entry]').filter({hasText:text})
+    await expect(item).not.toHaveAttribute('data-prts-reply-complete','')
+    const cue=item.locator('[data-prts-reply-ellipsis]')
+    if(text==='查看结果') await expect(cue).toBeHidden()
+    else { await expect(cue).toBeVisible(); await expect(cue).toHaveCSS('color','rgb(240, 230, 214)') }
+    await item.hover()
+    await expect(page.locator('[data-prts-reply-detail]:visible')).toContainText(text)
+    await short.hover()
+    await expect(page.locator('[data-prts-reply-detail]:visible')).toHaveCount(0)
+  }
+})
+
+for (const direction of ['below','above']) test(`growing reply preview keeps its ${direction} edge and scrolls at the viewport boundary`,async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false,motion:'reduced',previewReplyLimit:0})))
+  await page.goto('/tests/fixtures/rc7-harness.html')
+  const trigger=page.locator('[data-prts-session-summary-trigger="ongoing"]')
+  await trigger.evaluate((el,direction)=>{
+    const header=el.closest('[data-prts-session-summary-header]')
+    Object.assign(header.style,{position:'fixed',width:'280px',top:(innerHeight-(direction==='above'?80:300))+'px'})
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:['0'],nodes:new Map([['0',{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'短回复'}]}}]])})
+  },direction)
+  await trigger.hover()
+  await page.locator('[data-prts-session-summary-item="fixture-session"]').hover()
+  const panel=page.locator('[data-prts-summary-reply]:not([data-prts-reply-detail]):visible')
+  await expect(panel).toHaveAttribute('data-prts-preview-direction',direction)
+  await expect(panel).toContainText('短回复')
+  const before=await panel.boundingBox()
+  await page.mouse.move(before.x+15,direction==='above'?before.y+before.height-10:before.y+10)
+  await page.evaluate(()=>{
+    const nodes=Array.from({length:20},(_,i)=>[String(i),{kind:'assistant-step',data:{status:'settled',blocks:[{kind:'text',text:'完成结果 '+i+'。详细说明。'.repeat(15)}]}}])
+    window.__PRTS_FIXTURE_RUNTIME__.previewChat.set({order:nodes.map(([id])=>id),nodes:new Map(nodes)})
+  })
+  await expect(panel.locator('[data-prts-reply-entry]')).toHaveCount(20)
+  await page.waitForTimeout(450)
+  await expect(panel).toBeVisible()
+  const after=await panel.boundingBox()
+  expect(Math.abs(direction==='above'?after.y+after.height-before.y-before.height:after.y-before.y)).toBeLessThan(1)
+  expect(after.y).toBeGreaterThanOrEqual(7)
+  expect(after.y+after.height).toBeLessThanOrEqual(page.viewportSize().height-7)
+  expect(await panel.evaluate(el=>el.scrollHeight>el.clientHeight || [...el.querySelectorAll('[data-prts-preview-body]')].some(body=>body.scrollHeight>body.clientHeight))).toBe(true)
 })

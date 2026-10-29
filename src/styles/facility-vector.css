@@ -889,3 +889,12 @@ html[data-dsh-prts] [data-prts-tool-record] p { display:-webkit-box;-webkit-box-
 
 /* Show the baseline immediately; only start the pickup after a deliberate hover. */
 html[data-dsh-prts] [data-prts-session-row]:not([data-prts-pickup-ready]) :is([data-prts-session-pickup-bar],[data-prts-session-pickup-indicator]) { visibility:hidden; }
+
+html[data-dsh-prts] [data-prts-reply-entry][data-prts-reply-complete] { cursor:text; }
+
+/* Reserve the cue's width so showing it never changes the truncation measurement. */
+html[data-dsh-prts] [data-prts-reply-entry] > span { display:block;-webkit-line-clamp:unset;max-height:3.2em;color:#b8bec6; }
+html[data-dsh-prts] [data-prts-reply-ellipsis] { flex:0 0 12px;align-self:flex-end;color:#f0e6d6;font:600 14px/1.4 var(--prts-body);visibility:hidden; }
+html[data-dsh-prts] [data-prts-reply-overflow] > [data-prts-reply-ellipsis] { visibility:visible; }
+
+html[data-dsh-prts] [data-prts-reply-overflow] > span { color:#f0e6d6; }

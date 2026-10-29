@@ -325,7 +325,7 @@ test('latest tool respects turn and visibility and includes nested dispatches', 
 test('removing the summary anchor closes sticky previews and releases ownership',async()=>{
   const {dom,panel}=fixture();let notify,released=0,unsubscribed=0
   let status={running:true}
-  const snapshot=chat(['完成']);snapshot.nodes.get('0').data.status='settled'
+  const snapshot=chat(['完成。'.repeat(60)]);snapshot.nodes.get('0').data.status='settled'
   const preview=createSessionSummaryPreview({document:dom.window.document,window:dom.window,
     sessions:{retain:()=>({ready:Promise.resolve({}),release:()=>released++})},
     getSessionStatus:()=>({getSnapshot:()=>new Map([['a',status]]),subscribe:fn=>{notify=fn;return()=>unsubscribed++}}),
