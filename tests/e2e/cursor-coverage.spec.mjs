@@ -264,12 +264,30 @@ test('link gestures use link frames and resize cursors preserve native dragging 
   expect(await handle.evaluate(e => e.style.cursor)).toBe('ew-resize')
 })
 
-test('cursor setting is one accessible sliding switch with keyboard and persistence support', async ({ page }) => {
-  await page.goto('/tests/fixtures/rc7-harness.html')
-  await page.evaluate(() => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({ version: 12, enabled: true, cursor: 'prts', bootAnimation: false })))
-  await page.reload()
-  await page.locator('[data-prts-rail-brand]').click()
-  await page.locator('[data-prts-settings-jump="interaction"]').click()
+test('cursor setting is one accessible sliding switch with keyboard and host persistence support', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('prtsFixtureNativeConfig')) {
+      localStorage.setItem('prtsFixtureNativeConfig', JSON.stringify({ revision: 1, value: {
+        preferencesInitialized: true, enabled: true, cursor: 'prts', bootAnimation: false,
+      } }))
+    }
+  })
+  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
+  const openSettings = async () => {
+    await page.locator('[data-prts-rail-brand]').click()
+    await page.locator('[data-prts-settings-jump="interaction"]').click()
+  }
+  const savedCursor = () => page.evaluate(() => window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.cursor)
+  const reloadFromHost = async () => {
+    // A browser cache must not hide a missing Host save.
+    await page.evaluate(() => {
+      localStorage.removeItem('dsh.ui.prts.host-cache.v1')
+      localStorage.removeItem('dsh.ui.prts.v1')
+    })
+    await page.reload()
+    await openSettings()
+  }
+  await openSettings()
   const toggle = page.getByRole('switch', { name: 'PRTS 光标', exact: true })
   await expect(toggle).toHaveCount(1)
   await expect(toggle).toHaveAttribute('aria-checked', 'true')
@@ -278,10 +296,16 @@ test('cursor setting is one accessible sliding switch with keyboard and persiste
   await expect(page.locator('[data-prts-setting-row="cursor"] button')).toHaveCount(1)
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-checked', 'false')
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).cursor)).toBe('system')
+  await expect.poll(savedCursor).toBe('system')
+  await reloadFromHost()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await expect(page.locator('html')).toHaveAttribute('data-prts-cursor', 'system')
   await toggle.press('Space')
   await expect(toggle).toHaveAttribute('aria-checked', 'true')
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dsh.ui.prts.v1')).cursor)).toBe('prts')
+  await expect.poll(savedCursor).toBe('prts')
+  await reloadFromHost()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('html')).toHaveAttribute('data-prts-cursor', 'prts')
 })
 
 test('boolean settings use switches and flow details appear only when relevant', async ({ page }) => {
