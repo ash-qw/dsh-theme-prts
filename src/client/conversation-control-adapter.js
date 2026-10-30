@@ -146,7 +146,7 @@ export function createConversationControlAdapter({ document, window }) {
   }
 }
 
-// One shared frame follows body targets, including transitions between neighboring controls.
+// One shared frame for card transitions and nearby compact controls.
 function mountBodyTargetFrame(document, window, operation) {
   // Nonvisual hosts can still mount the theme without an animation clock.
   if (!window?.requestAnimationFrame || !window?.cancelAnimationFrame) return () => {}
@@ -157,9 +157,46 @@ function mountBodyTargetFrame(document, window, operation) {
   const corners=Array.from({length:4},()=>frame.appendChild(document.createElement('i')))
   document.body.append(frame)
   if(frame.showPopover)frame.setAttribute('popover','manual')
+  let ghost=null, ghostCorners=[], ghostAnimations=[]
+  const clearGhost=()=>{
+    for(const animation of ghostAnimations)animation.cancel()
+    if(ghost)ghost.style.opacity='0'
+  }
+  const retireGhost=()=>{
+    // Allocate one reusable layer and five animations per adapter lifetime.
+    // Repeated handoffs must not churn body portals or their observers.
+    if(!ghost){
+      ghost=frame.cloneNode(true)
+      ghost.removeAttribute('data-prts-body-target-frame')
+      ghost.setAttribute('data-prts-body-target-ghost','')
+      ghost.removeAttribute('data-pressed')
+      ghost.style.opacity='0'
+      ghostCorners=[...ghost.children]
+      document.body.append(ghost)
+      ghostAnimations=[...ghostCorners,ghost].map(node=>{
+        const animation=node.animate([],{duration:80,easing:'ease-out',fill:'forwards'})
+        animation.cancel()
+        return animation
+      })
+      ghostAnimations[4].onfinish=()=>{
+        if(ghostAnimations[4]?.playState==='finished')clearGhost()
+      }
+    }
+    ghost.style.color=frame.style.color
+    ghost.style.setProperty('--prts-arm-scale',frame.style.getPropertyValue('--prts-arm-scale'))
+    if(ghost.showPopover && !ghost.matches(':popover-open'))ghost.showPopover()
+    for(const [index,corner] of corners.entries()){
+      const from=corner.style.transform
+      const dx=index%2?-4:4,dy=index<2?4:-4
+      ghostAnimations[index].effect.setKeyframes([{transform:from},{transform:from+' translate('+dx+'px,'+dy+'px)'}])
+    }
+    ghostAnimations[4].effect.setKeyframes([{opacity:frame.style.opacity},{opacity:0}])
+    for(const animation of ghostAnimations){animation.currentTime=0;animation.play()}
+  }
   let layer=null, imageRetiring=false
   const hideFrame=()=>{
     if(frame.hidePopover && frame.matches(':popover-open'))frame.hidePopover()
+    if(ghost?.hidePopover && ghost.matches(':popover-open'))ghost.hidePopover()
   }
   const showFrame=()=>{
     if(!frame.showPopover)return
@@ -171,6 +208,8 @@ function mountBodyTargetFrame(document, window, operation) {
   let target=null, hovered=null, focused=null, raf=0, pressed=false, releasePending=false, disposed=false
   let pointer={x:0,y:0}, state=null, settled=false, tween=null, bounds=null, boundsDirty=false, hitDirty=false, exitGoal=null, motionDuration=240, targetArm=7, retiringBounds=null, targetRetires=false
   let moveRaf=0, pendingMove=null
+  let spring=false, springTime=null, springStart=null, velocity={}
+  let departed=null
   const resizeObserver=window.ResizeObserver?new window.ResizeObserver(entries=>{
     if(!target)return
     const entry=entries.find(item=>item.target===target),size=entry?.borderBoxSize?.[0]
@@ -182,10 +221,11 @@ function mountBodyTargetFrame(document, window, operation) {
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')
   const fine=window.matchMedia?.('(hover:hover) and (pointer:fine)')
   let activeModal=null
+  const cardSelector='[data-presented-file],[data-changed-files],[data-tool="schedule_create"]'
   const find=node=>{
     if(activeModal && !activeModal.contains(node))return null
     if (!node?.closest || node.closest('[data-prts-workspace-actions],[data-prts-session-actions]')) return null
-    const container=node.closest('[data-presented-file],[data-changed-files],[data-tool="schedule_create"]')
+    const container=node.closest(cardSelector)
     const button=node.closest('button')
     let cardTarget=null
     if(container){
@@ -209,20 +249,55 @@ function mountBodyTargetFrame(document, window, operation) {
     const next=(hovered?.isConnected?hovered:null) || (focused?.isConnected?focused:null)
     if(next!==target){
       const nextBounds=next?.getBoundingClientRect()
+      const now=window.performance.now()
+      const previous=target || (departed && now-departed.time<=100?departed.node:null)
+      const previousBounds=target?bounds:departed?.bounds
+      const card=previous?.closest(cardSelector)
+      const sameCard=Boolean(target && card && card===next?.closest(cardSelector))
+      const compact=(node,box)=>node?.matches('button,a[href],[role="button"],[role="link"]')
+        && box?.width>0 && box.width<=160 && box.height>0 && box.height<=64
+      const nearby=Boolean(next && previous?.isConnected && !card && !next.closest(cardSelector)
+        && compact(previous,previousBounds) && compact(next,nextBounds)
+        && previous.closest('dialog,[role="dialog"]')===next.closest('dialog,[role="dialog"]'))
+      const eligible=Boolean(next && previous?.isConnected && (sameCard || nearby)
+        && state?.alpha>0 && !reduced?.matches)
+      // Maximum corner travel catches wide-card -> edge-button transitions,
+      // even when the two centers happen to be close.
+      const travel=eligible?Math.max(
+        Math.hypot(state.x-(nextBounds.left-5),state.y-(nextBounds.top-5)),
+        Math.hypot(state.x+state.w-(nextBounds.right+5),state.y-(nextBounds.top-5)),
+        Math.hypot(state.x-(nextBounds.left-5),state.y+state.h-(nextBounds.bottom+5)),
+        Math.hypot(state.x+state.w-(nextBounds.right+5),state.y+state.h-(nextBounds.bottom+5))):0
+      const scale=eligible?Math.max(state.w/(nextBounds.width+10),(nextBounds.width+10)/state.w,state.h/(nextBounds.height+10),(nextBounds.height+10)/state.h):1
+      const morph=eligible && (sameCard || travel<=96 && scale<=2)
+      const handoff=morph && (travel>96 || scale>2)
+      if(!next && target)departed={node:target,bounds,time:now}
+      else if(next)departed=null
+      clearGhost()
+      if(handoff && frame.animate)retireGhost()
+      spring=morph && !handoff;springStart=null
+      if(!spring){springTime=null;velocity={}}
       const retire=!next && target && !target.isConnected && targetRetires && releasePending && bounds && !reduced?.matches
       imageRetiring=false
       retiringBounds=retire?{left:bounds.left,top:bounds.top,width:bounds.width,height:bounds.height}:null
       target?.removeAttribute('data-prts-corner-target')
       if(retire){hovered=focused=target=null;boundsDirty=false;resizeObserver?.disconnect();wake();return}
-      pressed=false;releasePending=false;settled=false;tween=null;exitGoal=null;motionDuration=240;target=next;boundsDirty=true
+      pressed=false;releasePending=false;settled=false;tween=null;exitGoal=null;motionDuration=morph?120:240;target=next;boundsDirty=true
       resizeObserver?.disconnect()
       if(target)resizeObserver?.observe(target)
       if(target){
         targetRetires=hasClassSuffix(target,'_toBottom') || isPendingInteractionAction(target)
         target.setAttribute('data-prts-corner-target','');showFrame()
         measure(nextBounds);const box=bounds
-        state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
-        frame.style.opacity='0'
+        // Preserve the last painted geometry when interrupted: no restart from
+        // the pointer, opacity flash, queued animations, or extra layout reads.
+        if(handoff){
+          state={x:box.left-12,y:box.top-12,w:box.width+24,h:box.height+24,alpha:0,arm:targetArm}
+          frame.style.opacity='0'
+        }else if(!morph){
+          state={x:(hovered?pointer.x:box.left+box.width/2)-10,y:(hovered?pointer.y:box.top+box.height/2)-10,w:20,h:20,alpha:0,arm:7}
+          frame.style.opacity='0'
+        }
         frame.style.color=target.getAttribute('data-prts-conversation-control')==='danger'?window.getComputedStyle(target).getPropertyValue('--prts-red'):'var(--prts-corner-color, var(--prts-yellow))'
       }
     }
@@ -248,15 +323,40 @@ function mountBodyTargetFrame(document, window, operation) {
     const edgeRight=pixel(goal.x+goal.w),edgeBottom=pixel(goal.y+goal.h)
     goal.x=pixel(goal.x);goal.y=pixel(goal.y);goal.w=edgeRight-goal.x;goal.h=edgeBottom-goal.y
     const keys=['x','y','w','h','alpha','arm']
-    if(!tween || keys.some(key=>tween.to[key]!==goal[key])){
-      const remaining=tween && tween.pressed===pressed?Math.max(0,tween.start+tween.duration-time):motionDuration
-      tween={from:{...state},to:{...goal},start:time,duration:remaining,pressed}
+    let moving=false
+    if(spring && target && !pressed && !reduced?.matches){
+      // Exact critically damped solution: stable at variable frame rates, with
+      // velocity retained across target changes. No physics substep loop.
+      const dt=springTime===null?0:Math.max(0,(time-springTime)/1000)
+      springTime=time;springStart ??= time
+      const omega=48, decay=Math.exp(-omega*dt)
+      for(const key of keys){
+        const offset=state[key]-goal[key],speed=velocity[key] || 0
+        const coefficient=speed+omega*offset
+        state[key]=goal[key]+(offset+coefficient*dt)*decay
+        velocity[key]=(speed-omega*coefficient*dt)*decay
+        const tolerance=key==='alpha'?.002:.08
+        if(Math.abs(state[key]-goal[key])>tolerance || Math.abs(velocity[key])>tolerance*48)moving=true
+      }
+      // Stop together, with a bounded tail even after a busy main-thread frame.
+      if(!moving || time-springStart>=400){
+        Object.assign(state,goal);velocity={};spring=false;springTime=null;moving=false
+      }
+    }else{
+      spring=false;springTime=null;springStart=null
+      if(!tween || keys.some(key=>tween.to[key]!==goal[key])){
+        const remaining=tween && tween.pressed===pressed?Math.max(0,tween.start+tween.duration-time):motionDuration
+        tween={from:{...state},to:{...goal},start:time,duration:remaining,pressed}
+      }
+      // Keep instantaneous velocity available if a card morph interrupts entry.
+      const progress=reduced?.matches || settled || !tween.duration || (!state.alpha && !goal.alpha)?1:Math.min(1,(time-tween.start)/tween.duration)
+      const ease=1-(1-progress)**3
+      for(const key of keys){
+        state[key]=tween.from[key]+(goal[key]-tween.from[key])*ease
+        velocity[key]=progress<1?(goal[key]-tween.from[key])*3*(1-progress)**2*1000/tween.duration:0
+      }
+      moving=progress<1
     }
-    // All channels share one endpoint; no separate thresholds or late position snap.
-    const progress=reduced?.matches || settled || !tween.duration || (!state.alpha && !goal.alpha)?1:Math.min(1,(time-tween.start)/tween.duration)
-    const ease=1-(1-progress)**3
-    for(const key of keys)state[key]=tween.from[key]+(goal[key]-tween.from[key])*ease
-    const moving=progress<1
     const x=state.x,y=state.y
     const right=state.x+state.w-7,bottom=state.y+state.h-7
     const positions=[[x,y],[right,y],[x,bottom],[right,bottom]]
@@ -298,7 +398,7 @@ function mountBodyTargetFrame(document, window, operation) {
   const focus=event=>{focused=event.target.matches?.(':focus-visible')?find(event.target):null;choose()}
   const blur=()=>{focused=null;choose()}
   const down=event=>{
-    flushMove()
+    flushMove();clearGhost()
     pointer={x:event.clientX,y:event.clientY}
     if(event.pointerType==='touch')hovered=find(event.target)
     choose()
@@ -312,10 +412,11 @@ function mountBodyTargetFrame(document, window, operation) {
   }
   const up=event=>{release();if(event.pointerType==='touch')hovered=null;choose()}
   const reset=()=>{
-    clearMove()
+    clearGhost();clearMove()
     target?.removeAttribute('data-prts-corner-target');hideFrame()
     hovered=focused=target=null;state=tween=bounds=exitGoal=retiringBounds=null
     imageRetiring=false
+    spring=false;springTime=springStart=null;velocity={};departed=null
     pressed=false;releasePending=false;settled=true;boundsDirty=hitDirty=false
     resizeObserver?.disconnect();window.cancelAnimationFrame(raf);raf=0
     frame.style.opacity='0';frame.removeAttribute('data-pressed')
@@ -355,11 +456,12 @@ function mountBodyTargetFrame(document, window, operation) {
   ]
   for(const [node,event,handler] of listeners)node.addEventListener(event,handler)
   return ()=>{
-    clearMove()
+    clearGhost();clearMove()
     modalObserver?.disconnect();document.removeEventListener('toggle',modalToggle,true)
     disposed=true;target?.removeAttribute('data-prts-corner-target');hideFrame();window.cancelAnimationFrame(raf);resizeObserver?.disconnect()
     document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',reset)
     for(const [node,event,handler] of listeners)node.removeEventListener(event,handler)
+    ghost?.remove();ghost=null;ghostAnimations=[];ghostCorners=[]
     frame.remove()
   }
 }

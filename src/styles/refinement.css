@@ -520,7 +520,7 @@ html[data-dsh-prts] :is([data-chat-flow-kind],[data-message-role],[data-submissi
   }
   &:active{transform:none}
 }
-html[data-dsh-prts] [data-prts-body-target-frame] {
+html[data-dsh-prts] :is([data-prts-body-target-frame],[data-prts-body-target-ghost]) {
   position:fixed;inset:auto;left:0;top:0;width:0;height:0;margin:0;padding:0;border:0;background:transparent;overflow:visible;z-index:100;pointer-events:none;opacity:0;--prts-corner-width:1px;
   & > i {
     position:absolute;left:0;top:0;width:7px;height:7px;will-change:transform;

@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 
-for(const attribute of ['data-presented-file','data-changed-files']) test(`${attribute} gives nested actions priority over the card`,async({page})=>{
+for(const attribute of ['data-presented-file','data-changed-files','data-tool="schedule_create"']) test(`${attribute} gives nested actions priority over the card`,async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
   await page.goto('/tests/fixtures/rc2-harness.html')
   await expect(page.locator('[data-prts-session-row]').first()).toBeVisible()
@@ -10,6 +10,7 @@ for(const attribute of ['data-presented-file','data-changed-files']) test(`${att
     host.style.cssText='position:fixed;left:450px;top:250px;width:600px;z-index:30'
     host.innerHTML=`<div id="test-card" ${attribute} style="position:relative;min-height:130px;padding:12px;display:block">
       ${attribute==='data-presented-file'?'<button class="native_cardPreview" aria-label="预览图片" style="position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0"></button>':''}
+      ${attribute.startsWith('data-tool')?'<button class="native_cardOpen" aria-label="打开定时任务" style="position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0"></button>':''}
       <div id="card-copy" style="position:relative;pointer-events:none;height:40px">图片文件.jpg</div>
       <div style="position:relative;display:flex;gap:12px">
         <button id="folder"><svg width="16" height="16"><path d="M1 1h14v14H1z"/></svg></button>
@@ -27,6 +28,39 @@ for(const attribute of ['data-presented-file','data-changed-files']) test(`${att
   const hoverCard=()=>card.hover({position:{x:20,y:15}})
   await hoverCard()
   await expect(card).toHaveAttribute('data-prts-corner-target','')
+  const frame=page.locator('[data-prts-body-target-frame]')
+  await expect(frame).toHaveCSS('opacity','1')
+  // Long transitions hand off near the destination instead of sweeping across the card.
+  const samples=await page.evaluate(async()=>{
+    const frame=document.querySelector('[data-prts-body-target-frame]')
+    const read=()=>({alpha:Number(frame.style.opacity),x:new DOMMatrix(frame.firstElementChild.style.transform).m41})
+    const move=node=>{
+      const box=node.getBoundingClientRect()
+      node.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:box.x+10,clientY:box.y+10}))
+    }
+    const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve))
+    const start=read()
+    move(document.querySelector('#download'))
+    await tick();await tick();await tick()
+    const middle=read()
+    const destination=document.querySelector('#download').getBoundingClientRect()
+    const ghosts=document.querySelectorAll('[data-prts-body-target-ghost]').length
+    const ghost=document.querySelector('[data-prts-body-target-ghost]')
+    move(document.querySelector('#test-card'))
+    await tick();await tick()
+    const reverse=read()
+    await new Promise(resolve=>setTimeout(resolve,450))
+    return {reused:ghost===document.querySelector('[data-prts-body-target-ghost]'),start,middle,reverse,end:read(),destinationX:destination.x,ghosts,remainingGhosts:[...document.querySelectorAll('[data-prts-body-target-ghost]')].filter(g=>g.getAnimations({subtree:true}).length).length}
+  })
+  expect(samples.middle.alpha).toBeGreaterThan(0)
+  expect(samples.middle.alpha).toBeLessThan(1)
+  expect(samples.ghosts).toBe(1)
+  expect(samples.reused).toBe(true)
+  expect(samples.remainingGhosts).toBe(0)
+  expect(Math.abs(samples.middle.x-(samples.destinationX-5))).toBeLessThanOrEqual(7.5)
+  expect(samples.middle.x).toBeGreaterThan(samples.start.x)
+  expect(Math.abs(samples.reverse.x-samples.start.x)).toBeLessThanOrEqual(7.5)
+  expect(samples.end.x).toBeCloseTo(samples.start.x,1)
   for(const id of ['folder','menu','download','role-action']){
     const action=page.locator('#'+id)
     await action.hover()
@@ -41,6 +75,12 @@ for(const attribute of ['data-presented-file','data-changed-files']) test(`${att
     await hoverCard()
     await expect(card).toHaveAttribute('data-prts-corner-target','')
   }
+  await page.locator('#download').hover()
+  await expect(frame).toHaveCSS('opacity','1')
+  await page.locator('#role-action').hover()
+  await expect(page.locator('#role-action')).toHaveAttribute('data-prts-corner-target','')
+  await expect(frame).toHaveCSS('opacity','1')
+  await expect.poll(()=>page.locator('[data-prts-body-target-ghost]').evaluateAll(nodes=>nodes.reduce((n,g)=>n+g.getAnimations({subtree:true}).length,0))).toBe(0)
   for(const id of ['disabled','aria-disabled']){
     await page.locator('#'+id).hover()
     await expect(page.locator('[data-prts-corner-target]')).toHaveCount(0)
@@ -48,4 +88,36 @@ for(const attribute of ['data-presented-file','data-changed-files']) test(`${att
   await page.locator('#folder').focus()
   await page.keyboard.press('Tab')
   await expect(page.locator('#menu')).toHaveAttribute('data-prts-corner-target','')
+})
+
+test('nearby standalone buttons continue across a short gap without restarting entry',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('dsh.ui.prts.v1',JSON.stringify({version:12,enabled:true,bootAnimation:false})))
+  await page.goto('/tests/fixtures/rc2-harness.html')
+  await expect(page.locator('[data-prts-session-row]').first()).toBeVisible()
+  await page.evaluate(()=>{
+    const host=document.createElement('div')
+    host.id='nearby-buttons'
+    host.style.cssText='position:fixed;left:500px;top:250px;display:flex;gap:12px;z-index:30'
+    host.innerHTML='<button data-prts-glass-control id="near-a" style="width:32px;height:32px">A</button><button data-prts-glass-control id="near-b" style="width:32px;height:32px">B</button>'
+    document.body.append(host)
+  })
+  await page.locator('#near-a').hover()
+  await expect(page.locator('[data-prts-body-target-frame]')).toHaveCSS('opacity','1')
+  const sample=await page.evaluate(async()=>{
+    const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve))
+    const move=(node,x,y)=>node.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:x,clientY:y}))
+    const a=document.querySelector('#near-a').getBoundingClientRect()
+    const b=document.querySelector('#near-b').getBoundingClientRect()
+    move(document.querySelector('#nearby-buttons'),a.right+5,a.top+16)
+    await tick();await tick()
+    move(document.querySelector('#near-b'),b.x+16,b.y+16)
+    await tick();await tick()
+    const frame=document.querySelector('[data-prts-body-target-frame]')
+    return {alpha:Number(frame.style.opacity),x:new DOMMatrix(frame.firstElementChild.style.transform).m41,destination:b.x-5}
+  })
+  expect(sample.alpha).toBeGreaterThan(.75)
+  expect(sample.x).toBeLessThan(sample.destination-1)
+  await expect(page.locator('#near-b')).toHaveAttribute('data-prts-corner-target','')
+  await expect.poll(()=>page.locator('[data-prts-body-target-ghost]').evaluateAll(nodes=>nodes.reduce((n,g)=>n+g.getAnimations({subtree:true}).length,0))).toBe(0)
+  await expect(page.locator('[data-prts-body-target-frame]')).toHaveCSS('opacity','1')
 })
