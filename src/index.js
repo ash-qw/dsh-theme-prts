@@ -12,9 +12,10 @@ export const PACKAGE_ID = '@ash-qw/dsh-theme-prts'
 export const THEME_PLUGIN_ID = 'dsh-theme-prts'
 export const inject = ['tools', 'attachments', 'connection', 'webServer']
 
+// Leave new palette fields absent until normalization can inherit the legacy color.
 export const Config = Schema.object(Object.fromEntries([
   ...Object.entries(DEFAULT_PREFERENCES).map(([key, value]) => [key,
-    (typeof value === 'boolean' ? Schema.boolean() : typeof value === 'number' ? Schema.number() : Schema.string()).default(value).volatile(),
+    (typeof value === 'boolean' ? Schema.boolean() : typeof value === 'number' ? Schema.number() : Schema.string()).default(['cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource'].includes(key) ? undefined : value).volatile(),
   ]),
   ['preferencesInitialized', Schema.boolean().default(false).volatile()],
 ]))

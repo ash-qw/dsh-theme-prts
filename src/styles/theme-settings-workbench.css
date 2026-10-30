@@ -1043,5 +1043,55 @@ html[data-dsh-prts] [data-prts-corner-presets] { display:flex;flex-wrap:wrap;gap
   & > button[aria-pressed="true"]::after { content:"";position:absolute;width:8px;height:4px;border-left:2px solid #172025;border-bottom:2px solid #172025;transform:translateY(-1px) rotate(-45deg); }
   & > button:focus-visible { outline:2px solid var(--prts-ink);outline-offset:2px; }
 }
-html[data-dsh-prts] [data-prts-corner-presets] > [data-prts-corner-custom] { display:flex;align-items:center;gap:8px;width:auto;height:32px;margin-left:8px;padding:5px 10px;border:1px solid var(--prts-line-strong);border-radius:4px;background:var(--prts-panel-raised);color:var(--prts-ink);font:12px/1 var(--prts-body);white-space:nowrap; }
-html[data-dsh-prts] [data-prts-corner-presets] > [data-prts-corner-custom]:is(:hover,:focus-visible) { border-color:var(--prts-ink);background:color-mix(in srgb,var(--prts-ink) 8%,var(--prts-panel-raised)); }
+html[data-dsh-prts] [data-prts-corner-presets] [data-prts-corner-custom] { display:flex;align-items:center;gap:8px;width:auto;height:32px;margin-left:8px;padding:5px 10px;border:1px solid var(--prts-line-strong);border-radius:4px;background:var(--prts-panel-raised);color:var(--prts-ink);font:12px/1 var(--prts-body);white-space:nowrap; }
+html[data-dsh-prts] [data-prts-corner-presets] [data-prts-corner-custom]:is(:hover,:focus-visible) { border-color:var(--prts-ink);background:color-mix(in srgb,var(--prts-ink) 8%,var(--prts-panel-raised)); }
+
+
+/* Resolve palette in CSS so app scheme changes never require pointer work. */
+html[data-dsh-prts] { --prts-corner-color: var(--prts-corner-color-dark, #f0c800); }
+html[data-dsh-prts][data-prts-scheme="light"] { --prts-corner-color: var(--prts-corner-color-light, #f0c800); }
+[data-prts-corner-heading] { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+[data-prts-corner-modes] { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--prts-line-strong); border-radius: 6px; }
+[data-prts-corner-modes] button { padding: 4px 7px; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 11px; opacity: .6; cursor: pointer; }
+[data-prts-corner-modes] button[aria-pressed="true"] { background: color-mix(in srgb, currentColor 12%, transparent); opacity: 1; }
+[data-prts-corner-picker] { position: relative; display: inline-flex; }
+[data-prts-corner-picker] input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+html[data-dsh-prts] [data-prts-setting-row="cornerColor"] > span { flex-basis: 100%; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-heading] { display: flex; align-items: center; gap: 12px; }
+html[data-dsh-prts] [data-prts-corner-heading] strong { font: 550 var(--prts-settings-text)/1.5 var(--prts-body); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-modes] { display: inline-flex; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-modes] button { font: 11px/1.4 var(--prts-body); }
+
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync] { margin-left: auto; padding: 4px 7px; border: 0; border-radius: 4px; background: transparent; color: var(--prts-muted); font: 11px/1.4 var(--prts-body); cursor: pointer; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync]:hover { color: var(--prts-ink); background: var(--prts-panel-raised); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-editor] { position: absolute; z-index: 10; right: 0; bottom: calc(100% + 10px); width: 252px; padding: 16px; display: grid; gap: 12px; border: 1px solid var(--prts-line-strong); border-radius: 10px; background: var(--prts-panel-raised); color: var(--prts-ink); box-shadow: 0 12px 36px #0005; cursor: auto; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-editor][hidden] { display: none; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-editor-title] { font: 550 12px/1.4 var(--prts-body); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-sample] { display: block; height: 44px; border-radius: 6px; box-shadow: inset 0 0 0 1px #8884; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-hex-label] { display: flex; align-items: center; gap: 12px; font: 11px/1.5 var(--prts-mono); color: var(--prts-muted); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-hex] { min-width: 0; width: 100%; padding: 6px 8px; border: 1px solid var(--prts-line-strong); border-radius: 4px; background: var(--prts-canvas); color: var(--prts-ink); font: 12px/1.4 var(--prts-mono); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-hex][aria-invalid="true"] { border-color: var(--prts-red); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-channel] { display: grid; grid-template-columns: 12px 1fr 25px; gap: 10px; align-items: center; font: 11px/1.5 var(--prts-mono); color: var(--prts-muted); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-channel-index] { appearance: none; width: 100%; min-width: 0; height: 8px; margin: 0; padding: 0; border: 0; border-radius: 8px; cursor: pointer; }
+html[data-dsh-prts] [data-prts-color-channel-index]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border: 2px solid white; border-radius: 50%; background: #283036; box-shadow: 0 1px 4px #0008; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-actions] { display: flex; justify-content: flex-end; gap: 8px; padding-top: 3px; }
+html[data-dsh-prts] [data-prts-color-actions] button { padding: 6px 10px; border: 1px solid var(--prts-line-strong); border-radius: 4px; color: var(--prts-ink); background: transparent; font: 12px/1.4 var(--prts-body); cursor: pointer; }
+html[data-dsh-prts] [data-prts-color-actions] button:hover { background: color-mix(in srgb,var(--prts-ink) 10%,transparent); }
+html[data-dsh-prts] [data-prts-color-actions] [data-prts-color-apply] { background: var(--prts-ink); color: var(--prts-canvas); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row="cornerColor"] { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row="cornerColor"] > span { width: 100%; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-presets] { justify-content: flex-start; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-editor] { max-width: calc(100vw - 72px); max-height: 310px; overflow-y: auto; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-color-editor][data-open-below] { bottom: auto; top: calc(100% + 10px); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row="cornerColor"] { flex-wrap: nowrap; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-settings-common] [data-prts-setting-row="cornerColor"] > span { flex: none; width: auto; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-modes][hidden] { display: none; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync] { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync] i { display: block; position: relative; width: 28px; height: 16px; border-radius: 10px; background: var(--prts-line-strong); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync] i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--prts-ink); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync][aria-checked="true"] i { background: var(--prts-yellow); }
+html[data-dsh-prts] [data-prts-theme-settings] [data-prts-corner-sync][aria-checked="true"] i::after { transform: translateX(12px); background: var(--prts-canvas); }
+html[data-dsh-prts] [data-prts-corner-presets] [data-prts-corner-custom][aria-pressed="true"] { border-color: var(--prts-ink); background: color-mix(in srgb,var(--prts-ink) 10%,var(--prts-panel-raised)); }
+
+html[data-dsh-prts] [data-prts-corner-custom] [data-prts-corner-preview] { position: relative; }
+html[data-dsh-prts] [data-prts-corner-custom][aria-pressed="true"] [data-prts-corner-preview]::after { content: ""; position: absolute; left: 4px; top: 5px; width: 8px; height: 4px; border-left: 2px solid #172025; border-bottom: 2px solid #172025; transform: rotate(-45deg); }

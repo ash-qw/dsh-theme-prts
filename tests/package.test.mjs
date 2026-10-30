@@ -156,7 +156,7 @@ test('build embeds local CSS, emblems, and particle-field assets', async () => {
   assert.match(client, /function findOrthogonalLayout\(/)
   assert.doesNotMatch(client, /createBlueNoiseTargets|createLatticeTargets/)
   assert.equal((client.match(/data:image\/png;base64,/g) || []).length, 49, 'only the avatar, active hand/link frames, static text, resize, grab and unavailable cursors should be embedded')
-  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 40960, 'browser bundle should stay within the material budget plus 40 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews')
+  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 56320, 'browser bundle should stay within the material budget plus 55 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews and independent day/night palettes and themed color editor and persistent linked palettes and source migration')
   assert.doesNotMatch(client, /createRhodesFallbackTargets/)
   assert.doesNotMatch(client, /topographic-map\.svg|topographic-tech\.svg|data-prts-terrain-layer/)
   assert.doesNotMatch(client, /Amiya|阿米娅|dossier|data-prts-details-toggle/i)

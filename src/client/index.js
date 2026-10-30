@@ -223,7 +223,11 @@ export function applyPrtsPlugin(ctx, environment) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
       onPreferencePreview(key, value) {
-        if (key === 'cornerColor') { document.documentElement.style.setProperty('--prts-corner-color', String(value)); return }
+        if (key === 'cornerColor' || key === 'cornerColorLight') {
+          const properties = preferences.cornerColorLinked ? ['--prts-corner-color-light', '--prts-corner-color-dark'] : [key === 'cornerColorLight' ? '--prts-corner-color-light' : '--prts-corner-color-dark']
+          for (const property of properties) document.documentElement.style.setProperty(property, String(value))
+          return
+        }
         if (key === 'particleTraversalSpeed') {
           particleField.update(updatePreferenceValue(preferences, key, value))
           return

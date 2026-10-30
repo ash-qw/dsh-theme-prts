@@ -39,8 +39,12 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   bakerBlur: 8,
   classicUserBlur: 8,
   cursor: 'prts',
+  cornerColorLinked: false,
+  cornerColorSource: 'dark',
   cornerColor: '#f0c800',
   cornerCustomColor: '#f0c800',
+  cornerColorLight: '#f0c800',
+  cornerCustomColorLight: '#f0c800',
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
@@ -107,7 +111,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   background: Object.freeze(['texture', 'backgroundMode', 'backgroundDim', 'heroContrast', 'sidebarOpacity', 'rightSidebarOpacity', 'railOpacity', 'bakerOpacity', 'classicUserOpacity', 'sidebarBlur', 'rightSidebarBlur', 'railBlur', 'bakerBlur', 'classicUserBlur']),
   particles: Object.freeze(['conversationParticleDensity', 'heroParticleDensity', 'particleTraversalSpeed']),
   material: Object.freeze(['glass', 'composerGlass']),
-  accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor', 'cornerColor', 'cornerCustomColor']),
+  accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor', 'cornerColorLinked', 'cornerColorSource', 'cornerColor', 'cornerCustomColor', 'cornerColorLight', 'cornerCustomColorLight']),
   aiTools: Object.freeze(['aiToolsEnabled']),
   navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
@@ -231,8 +235,12 @@ export function normalizePreferences(value) {
     backgroundDim: typeof input.backgroundDim === 'number' && Number.isFinite(input.backgroundDim) ? Math.min(.9, Math.max(0, input.backgroundDim)) : .45,
     composerGlass: booleanOr(input.composerGlass, DEFAULT_PREFERENCES.composerGlass),
     bootAnimation: booleanOr(input.bootAnimation, DEFAULT_PREFERENCES.bootAnimation),
+    cornerColorLinked: booleanOr(input.cornerColorLinked, false),
+    cornerColorSource: input.cornerColorSource === 'light' ? 'light' : 'dark',
     cornerCustomColor: colorOr(input.cornerCustomColor, DEFAULT_PREFERENCES.cornerCustomColor),
     cornerColor: colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor),
+    cornerColorLight: colorOr(input.cornerColorLight, colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor)),
+    cornerCustomColorLight: colorOr(input.cornerCustomColorLight, colorOr(input.cornerCustomColor, DEFAULT_PREFERENCES.cornerCustomColor)),
     cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
@@ -263,6 +271,11 @@ export function normalizePreferences(value) {
     bakerGroupAvatars: booleanOr(input.bakerGroupAvatars, DEFAULT_PREFERENCES.bakerGroupAvatars),
     conversationStyle: enumOr(input.conversationStyle, CONVERSATION_STYLES, DEFAULT_PREFERENCES.conversationStyle),
   }
+  // Preserve the active color from the interim shared-palette format on upgrade.
+  if (input.cornerColorSource == null && input.cornerColorLinked === true) {
+    normalized.cornerColor = colorOr(input.cornerColorShared, normalized.cornerColor)
+    normalized.cornerCustomColor = colorOr(input.cornerCustomColorShared, normalized.cornerCustomColor)
+  }
   normalized.preset = matchedVisualPreset(normalized)
   return normalized
 }
@@ -287,9 +300,16 @@ export function updatePreferenceValue(value, key, nextValue) {
   if (key === 'preset') return applyVisualPreset(value, nextValue)
   if (key === 'particleDetail') return applyParticleDetail(value, nextValue)
   const current = normalizePreferences(value)
-  if (key === 'cornerCustomColor') {
-    const color = colorOr(nextValue, current.cornerCustomColor)
-    return normalizePreferences({ ...current, cornerColor: color, cornerCustomColor: color })
+  if (key === 'cornerColorLink') {
+    const enabled = nextValue === 'light' || nextValue === 'dark'
+    return normalizePreferences({ ...current, cornerColorLinked: enabled,
+      ...(enabled ? { cornerColorSource: nextValue } : {}) })
+  }
+  if (['cornerColor', 'cornerColorLight', 'cornerCustomColor', 'cornerCustomColorLight'].includes(key)) {
+    const color = colorOr(nextValue, current[key])
+    const custom = key.startsWith('cornerCustom')
+    const colorKey = custom ? key.replace('cornerCustomColor', 'cornerColor') : key
+    return normalizePreferences({ ...current, [colorKey]: color, ...(custom ? { [key]: color } : {}) })
   }
   if (key === 'sessionFlowPalette') {
     const palette = enumOr(nextValue, SESSION_FLOW_PALETTE_IDS, current.sessionFlowPalette)

@@ -19,7 +19,8 @@ const ROOT_ATTRIBUTES = [
   'data-prts-background-mode',
 ]
 const SESSION_FLOW_COLOR_PROPERTIES = {
-  '--prts-corner-color': 'cornerColor',
+  '--prts-corner-color-dark': 'cornerColor',
+  '--prts-corner-color-light': 'cornerColorLight',
   '--prts-session-flow-back': 'sessionFlowColorBack',
   '--prts-session-flow-core': 'sessionFlowColorCore',
   '--prts-session-flow-front': 'sessionFlowColorFront',
@@ -766,7 +767,7 @@ export function createThemeController({ document, window, cssText, service, curs
       root.dataset.prtsSessionGlow = preferences.sessionGlow ? 'on' : 'off'
       root.dataset.prtsSessionFlowPalette = preferences.sessionFlowPalette
       root.dataset.prtsSessionFlowSpeed = String(preferences.sessionFlowSpeed)
-      for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences[key])
+      for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences.cornerColorLinked && (key === 'cornerColor' || key === 'cornerColorLight') ? preferences[preferences.cornerColorSource === 'light' ? 'cornerColorLight' : 'cornerColor'] : preferences[key])
       root.dataset.prtsConversationStyle = preferences.conversationStyle
       root.toggleAttribute('data-prts-baker-loading', preferences.bakerLoading === true)
       root.dataset.prtsBackgroundMode = preferences.backgroundMode

@@ -62,8 +62,12 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
+    cornerColorLinked: false,
+    cornerColorSource: 'dark',
     cornerColor: '#f0c800',
     cornerCustomColor: '#f0c800',
+    cornerColorLight: '#f0c800',
+    cornerCustomColorLight: '#f0c800',
     version: 12,
     enabled: true,
     preset: 'custom',
@@ -375,4 +379,48 @@ test('AI tools default on and can be disabled independently of visual settings',
   assert.equal(api.normalizePreferences(JSON.parse(JSON.stringify(changed))).aiToolsEnabled,false)
   assert.equal(api.resetPreferenceGroup(changed,'navigation').aiToolsEnabled,false)
   assert.equal(api.resetPreferenceGroup(changed,'aiTools').aiToolsEnabled,true)
+})
+
+test('palette migration, independent custom memory and linked palette', () => {
+ const old=api.normalizePreferences({cornerColor:'#112233',cornerCustomColor:'#445566'})
+ assert.equal(old.cornerColorLight,'#112233')
+ assert.equal(old.cornerCustomColorLight,'#445566')
+ const edited=api.updatePreferenceValue(old,'cornerCustomColorLight','#abcdef')
+ assert.equal(edited.cornerColor,'#112233')
+ const preset=api.updatePreferenceValue(edited,'cornerColorLight','#ffffff')
+ const synced=api.updatePreferenceValue(preset,'cornerColorLink','light')
+ assert.equal(synced.cornerColorLight,'#ffffff')
+ assert.equal(synced.cornerColorSource,'light')
+ assert.equal(synced.cornerColor,'#112233')
+ assert.equal(synced.cornerCustomColorLight,'#abcdef')
+ assert.equal(synced.cornerCustomColor,'#445566')
+ assert.deepEqual(api.normalizePreferences(JSON.parse(JSON.stringify(synced))),synced)
+})
+
+
+test('linked mode references its source without copying or overwriting the other palette', () => {
+ for (const mode of ['light','dark']) {
+   const colorKey=mode==='light'?'cornerColorLight':'cornerColor'
+   const customKey=mode==='light'?'cornerCustomColorLight':'cornerCustomColor'
+   const otherKey=mode==='light'?'cornerColor':'cornerColorLight'
+   let prefs=api.normalizePreferences({cornerColor:'#112233',cornerColorLight:'#aabbcc'})
+   const other=prefs[otherKey]
+   prefs=api.updatePreferenceValue(prefs,'cornerColorLink',mode)
+   assert.equal(prefs.cornerColorSource,mode)
+   prefs=api.updatePreferenceValue(prefs,customKey,'#654321')
+   prefs=api.normalizePreferences(JSON.parse(JSON.stringify(prefs)))
+   prefs=api.updatePreferenceValue(prefs,'cornerColorLink',false)
+   assert.equal(prefs[colorKey],'#654321')
+   assert.equal(prefs[customKey],'#654321')
+   assert.equal(prefs[otherKey],other)
+   assert.equal(Object.hasOwn(prefs,'cornerColorShared'),false)
+ }
+})
+test('interim active shared palette migrates into the night source without losing its selected color', () => {
+ const prefs=api.normalizePreferences({cornerColorLinked:true,cornerColorShared:'#123456',cornerCustomColorShared:'#abcdef',cornerColorLight:'#ffffff'})
+ assert.equal(prefs.cornerColorSource,'dark')
+ assert.equal(prefs.cornerColor,'#123456')
+ assert.equal(prefs.cornerCustomColor,'#abcdef')
+ assert.equal(prefs.cornerColorLight,'#ffffff')
+ assert.deepEqual(api.normalizePreferences(prefs),prefs)
 })

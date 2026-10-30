@@ -171,7 +171,7 @@ export function themeSettingsMarkup() {
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
-              <div data-prts-setting-row="cornerColor"><span><strong>交互提示框颜色</strong><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<button type="button" data-prts-corner-custom title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" hidden></div></div>
+              <div data-prts-setting-row="cornerColor"><span><span data-prts-corner-heading><strong>交互提示框颜色</strong><span data-prts-corner-modes role="group" aria-label="编辑配色模式"><button type="button" data-prts-corner-mode="light" aria-pressed="false">☀ 日间</button><button type="button" data-prts-corner-mode="dark" aria-pressed="false">☾ 夜间</button></span><button type="button" data-prts-corner-sync role="switch" aria-checked="false" title="开启后，日间和夜间共用颜色"><span>日夜共用</span><i aria-hidden="true"></i></button></span><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small><small data-prts-setting-note>开启后，日夜都使用当前选定模式的配色，修改也保存到该模式；关闭后各用各的，另一套配色不变。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<span data-prts-corner-picker><button type="button" data-prts-corner-custom aria-expanded="false" title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" tabindex="-1"><span data-prts-color-editor hidden role="group" aria-label="自定义提示框颜色"><span data-prts-color-editor-title>自定义颜色</span><span data-prts-color-sample></span><label data-prts-color-hex-label>HEX<input data-prts-color-hex aria-label="HEX 颜色" maxlength="7" spellcheck="false"></label><label data-prts-color-channel><span>R</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="0" aria-label="R 通道"><output>0</output></label><label data-prts-color-channel><span>G</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="1" aria-label="G 通道"><output>0</output></label><label data-prts-color-channel><span>B</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="2" aria-label="B 通道"><output>0</output></label><span data-prts-color-actions><button type="button" data-prts-color-cancel>取消</button><button type="button" data-prts-color-apply>应用颜色</button></span></span></span></div></div>
             </div>
           </section>
           <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
@@ -285,6 +285,35 @@ export function createThemeSettingsOverlay({
   const nativeModal = typeof panel?.showModal === 'function' && typeof panel?.close === 'function'
   let isOpen = false
   let previousFocus
+  let colorDraft = '#f0c800'
+  function closeColorEditor(restoreFocus = false) {
+    const editor = panel?.querySelector('[data-prts-color-editor]')
+    if (!editor || editor.hidden) return
+    editor.hidden = true
+    panel.querySelector('[data-prts-corner-custom]').setAttribute('aria-expanded', 'false')
+    onPreferencePreview(cornerKey(), currentPreferences[cornerKey()])
+    if (restoreFocus) panel.querySelector('[data-prts-corner-custom]').focus()
+  }
+  function renderColorDraft() {
+    const editor = panel.querySelector('[data-prts-color-editor]')
+    editor.querySelector('[data-prts-color-sample]').style.background = colorDraft
+    const hex = editor.querySelector('[data-prts-color-hex]')
+    hex.value = colorDraft.toUpperCase()
+    hex.removeAttribute('aria-invalid')
+    const channels = [1, 3, 5].map(start => parseInt(colorDraft.slice(start, start + 2), 16))
+    for (const slider of editor.querySelectorAll('[data-prts-color-channel-index]')) {
+      const index = Number(slider.dataset.prtsColorChannelIndex)
+      slider.value = channels[index]
+      slider.nextElementSibling.value = channels[index]
+      const end = [...channels], start = [...channels]
+      start[index] = 0; end[index] = 255
+      slider.style.background = 'linear-gradient(to right,rgb(' + start.join(',') + '),rgb(' + end.join(',') + '))'
+    }
+  }
+  let cornerEditMode = 'dark'
+  const cornerMode = () => currentPreferences?.cornerColorLinked ? currentPreferences.cornerColorSource : cornerEditMode
+  const cornerKey = () => cornerMode() === 'light' ? 'cornerColorLight' : 'cornerColor'
+  const cornerCustomKey = () => cornerMode() === 'light' ? 'cornerCustomColorLight' : 'cornerCustomColor'
   let currentPreferences
   let currentStatus
   let currentPersistence = { phase: 'idle', revision: 0 }
@@ -342,6 +371,8 @@ export function createThemeSettingsOverlay({
     const value = Boolean(next)
     if (value === isOpen) return isOpen
     if (!value) {
+      closeColorEditor()
+      if (currentPreferences) onPreferencePreview(cornerKey(), currentPreferences[cornerKey()])
       commitParticleTraversalSpeed()
       commitSessionFlowSpeed()
       commitSessionFlowColors()
@@ -351,6 +382,8 @@ export function createThemeSettingsOverlay({
     document.documentElement.toggleAttribute('data-prts-settings-open', isOpen)
     panel.setAttribute('aria-hidden', String(!isOpen))
     if (isOpen) {
+      cornerEditMode = document.documentElement.getAttribute('data-prts-scheme') === 'light' ? 'light' : 'dark'
+      renderState()
       previousFocus = document.activeElement
       onOpen()
       showPanel()
@@ -532,10 +565,18 @@ export function createThemeSettingsOverlay({
 
   function renderState() {
     if (!panel || !currentPreferences) return
+    panel.querySelector('[data-prts-corner-modes]').hidden = currentPreferences.cornerColorLinked
+    panel.querySelector('[data-prts-corner-sync]').setAttribute('aria-checked', String(currentPreferences.cornerColorLinked))
+    for (const mode of panel.querySelectorAll('[data-prts-corner-mode]')) mode.setAttribute('aria-pressed', String(mode.dataset.prtsCornerMode === cornerEditMode))
     const cornerColor = panel.querySelector('[data-prts-corner-color]')
-    if (cornerColor) cornerColor.value = currentPreferences.cornerCustomColor
-    panel.querySelector('[data-prts-corner-preview]')?.style.setProperty('--swatch', currentPreferences.cornerCustomColor)
-    for (const preset of panel.querySelectorAll('[data-prts-corner-preset]')) preset.setAttribute('aria-pressed', String(preset.dataset.prtsCornerPreset === currentPreferences.cornerColor))
+    if (cornerColor) cornerColor.value = currentPreferences[cornerCustomKey()]
+    panel.querySelector('[data-prts-corner-preview]')?.style.setProperty('--swatch', currentPreferences[cornerCustomKey()])
+    const customButton = panel.querySelector('[data-prts-corner-custom]')
+    const customApplied = currentPreferences[cornerKey()] === currentPreferences[cornerCustomKey()]
+    customButton.setAttribute('aria-pressed', String(customApplied))
+    customButton.title = customApplied ? '自定义颜色已应用，点击编辑' : '选择自定义颜色'
+    customButton.querySelector('span').textContent = '自定义'
+    for (const preset of panel.querySelectorAll('[data-prts-corner-preset]')) preset.setAttribute('aria-pressed', String(preset.dataset.prtsCornerPreset === currentPreferences[cornerKey()]))
     for (const toggle of panel.querySelectorAll('[data-prts-setting-switch]')) {
       const key = toggle.dataset.prtsSettingSwitch
       const enabled = key === 'cursor' ? currentPreferences.cursor === 'prts'
@@ -628,10 +669,29 @@ export function createThemeSettingsOverlay({
 
   function onPanelClick(event) {
     if (event.target === panel) { setOpen(false); return }
+    if (!event.target?.closest?.('[data-prts-corner-picker]')) closeColorEditor()
     const target = event.target?.closest?.('button')
     if (!target) return
-    if (target.hasAttribute('data-prts-corner-custom')) { panel.querySelector('[data-prts-corner-color]').click(); return }
-    if (target.hasAttribute('data-prts-corner-preset')) { onPreferenceChange('cornerColor', target.dataset.prtsCornerPreset); return }
+    if (target.hasAttribute('data-prts-corner-mode')) { onPreferencePreview(cornerKey(), currentPreferences[cornerKey()]); cornerEditMode = target.dataset.prtsCornerMode; renderState(); return }
+    if (target.hasAttribute('data-prts-corner-sync')) { if (currentPreferences.cornerColorLinked) cornerEditMode = currentPreferences.cornerColorSource; onPreferenceChange('cornerColorLink', currentPreferences.cornerColorLinked ? false : cornerEditMode); return }
+    if (target.hasAttribute('data-prts-color-cancel')) { closeColorEditor(true); return }
+    if (target.hasAttribute('data-prts-color-apply')) {
+      if (panel.querySelector('[data-prts-color-hex]').getAttribute('aria-invalid') === 'true') return
+      onPreferenceChange(cornerCustomKey(), colorDraft); closeColorEditor(true); return
+    }
+    if (target.hasAttribute('data-prts-corner-custom')) {
+      const editor = panel.querySelector('[data-prts-color-editor]')
+      if (!editor.hidden) { closeColorEditor(); return }
+      colorDraft = currentPreferences[cornerCustomKey()]
+      renderColorDraft(); editor.hidden = false
+      editor.removeAttribute('data-open-below')
+      const scroller = panel.querySelector('[data-prts-theme-settings-scroll]')
+      if (editor.getBoundingClientRect().top < (scroller?.getBoundingClientRect().top ?? 0)) editor.setAttribute('data-open-below', '')
+      target.setAttribute('aria-expanded', 'true')
+      editor.querySelector('[data-prts-color-hex]').focus()
+      return
+    }
+    if (target.hasAttribute('data-prts-corner-preset')) { onPreferenceChange(cornerKey(), target.dataset.prtsCornerPreset); return }
     if (target.hasAttribute('data-prts-settings-jump')) {
       selectSection(target.dataset.prtsSettingsJump)
       return
@@ -670,7 +730,20 @@ export function createThemeSettingsOverlay({
 
   function onPanelInput(event) {
     const target = event.target
-    if (target?.matches?.('[data-prts-corner-color]')) { onPreferencePreview('cornerColor', target.value); return }
+    if (target?.matches?.('[data-prts-color-channel-index], [data-prts-color-hex]')) {
+      if (target.hasAttribute('data-prts-color-hex')) {
+        const value = target.value.trim()
+        if (!/^#?[0-9a-f]{6}$/i.test(value)) { target.setAttribute('aria-invalid', 'true'); return }
+        colorDraft = (value.startsWith('#') ? value : '#' + value).toLowerCase()
+      } else {
+        const channels = [...panel.querySelectorAll('[data-prts-color-channel-index]')].map(input => Number(input.value).toString(16).padStart(2, '0'))
+        colorDraft = '#' + channels.join('')
+      }
+      renderColorDraft()
+      onPreferencePreview(cornerKey(), colorDraft)
+      return
+    }
+    if (target?.matches?.('[data-prts-corner-color]')) { onPreferencePreview(cornerKey(), target.value); return }
     if (target?.matches?.('[data-prts-preview-reply-limit]')) { onPreferenceChange('previewReplyLimit', Number(target.value)); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       const key = target.dataset.prtsSettingKey
@@ -713,7 +786,7 @@ export function createThemeSettingsOverlay({
       selectSection(tabs[next].dataset.prtsSettingsJump, true)
       return
     }
-    if (event.key === 'Escape') { event.preventDefault(); setOpen(false); return }
+    if (event.key === 'Escape') { event.preventDefault(); if (!panel.querySelector('[data-prts-color-editor]').hidden) { event.stopPropagation(); closeColorEditor(true) } else setOpen(false); return }
     if (nativeModal || event.key !== 'Tab') return
     const nodes = focusable()
     if (!nodes.length) return
@@ -733,7 +806,7 @@ export function createThemeSettingsOverlay({
   const renderMediaState = () => renderState()
   const commitFromControl = event => {
     const target = event.target
-    if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange('cornerCustomColor', target.value); return }
+    if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange(cornerCustomKey(), target.value); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       if (event.type === 'change' || event.type === 'focusout') commitSessionFlowColor(target.dataset.prtsSettingKey)
       return
