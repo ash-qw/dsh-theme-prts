@@ -176,9 +176,9 @@ export function themeSettingsMarkup() {
           </section>
           <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
             <div data-prts-preview-settings><div data-prts-preview-master>
-            ${previewSetting('aiToolsEnabled', '允许 AI 定制主题', '默认开启 · 共 5 个工具 · 影响此 DSH 实例的所有会话')}
+            ${previewSetting('aiToolsEnabled', '允许 AI 定制主题', '默认开启 · 12 个定制工具，另有只读状态入口 · 影响此 DSH 实例的所有会话')}
             </div></div>
-            <p>开启后，AI 可以通过工具调整粒子徽记和 Baker 头像。关闭后，后续模型请求不再提供这些工具，手动设置不受影响；已有对话中的工具记录不会删除。</p>
+            <p>开启后，AI 可以通过工具调整粒子徽记、Baker 头像和背景图片、保护区域、背景模式、遮罩与材质，以及导入、导出主题配置。关闭后停止提供定制工具，仅保留只读状态入口，提示 AI 请你手动开启开关，不自行改文件绕过。手动设置不受影响；已有对话中的工具记录不会删除。</p>
             <section>
               <h3>粒子徽记 <small>3 个工具</small></h3>
               <p>将会话中的图片制作成粒子徽记，用于新会话页面或正文轮换。</p>
@@ -200,6 +200,29 @@ export function themeSettingsMarkup() {
                 <dt><code>prts_avatar_apply</code></dt><dd>替换用户或 AI 头像、基于现有原图重新裁剪，或恢复默认头像。</dd>
               </dl><p>单图最大 5 MB、2500 万像素；裁剪支持 1～4 倍缩放。修改立即影响此实例所有会话，不会自动切换会话样式。替换后不保留旧原图；恢复默认会删除自定义原图。</p></details>
             </section>
+            <section>
+              <h3>会话背景 <small>4 个工具</small></h3>
+              <p>使用上传、AI 生成或搜索下载的图片设置背景，也可以调整重要区域保护、背景模式、遮罩和材质。</p>
+              <ol><li>提供图片，或让具备相应工具的 AI 生成、寻找图片。</li><li>让 AI 将图片设为完整背景、左侧边栏背景或会话正文背景，再启用对应模式。</li></ol>
+              <blockquote>“找一张适合阅读的背景图，设为完整背景，尽量保住图中的人物。”</blockquote>
+              <details><summary>工具说明与限制</summary><dl>
+                <dt><code>prts_background_inspect</code></dt><dd>查看背景、模式、遮罩、材质及会话可用图片。</dd>
+                <dt><code>prts_background_preview</code></dt><dd>预览候选或已保存图片的日夜遮罩、裁剪效果，不修改主题；不包含气泡、文字和毛玻璃。</dd>
+                <dt><code>prts_background_apply</code></dt><dd>替换或移除图片，设置或清除保护区域。</dd>
+                <dt><code>prts_background_configure</code></dt><dd>切换默认、分区或完整背景，调整遮罩及五个区域的模糊度、底色不透明度。</dd>
+              </dl><p>支持 PNG、JPEG、WebP、AVIF，单图最大 10 MB、4000 万像素。图片在同一实例共享，模式、遮罩和材质在同一 profile 同步。替换或移除不保留旧图；切回默认背景会保留素材。图片列表按最近出现排序，并标记同名图片的最近版本。生成与搜索需要会话已有相应工具，下载或生成的本地图片可先用 read_image 读取，无需重新上传。工具不会自动启用主题总开关。</p></details>
+            </section>
+            <section>
+              <h3>主题导入与导出 <small>3 个工具</small></h3>
+              <p>在会话中导出主题文件，或上传主题文件，让 AI 先检查内容再导入。</p>
+              <blockquote>“导出当前主题，包含素材。” “检查这个主题文件，告诉我会覆盖哪些设置。”</blockquote>
+              <details><summary>工具说明与限制</summary><dl>
+                <dt><code>prts_theme_export</code></dt><dd>导出可下载的主题附件，默认包含背景、头像和徽记，也可仅导出设置。</dd>
+                <dt><code>prts_theme_import_preview</code></dt><dd>预检文件，列出配置变化、素材覆盖范围和无法保留的字段，不修改主题。</dd>
+                <dt><code>prts_theme_import</code></dt><dd>使用预检结果导入，先保存备份附件；失败时尝试回退已写入的素材。</dd>
+              </dl><p>与设置界面文件互通，最大 160 MB。完整导入会清理被替换的旧背景和头像，并为自定义徽记生成新草稿；草稿约 200 份时清理较旧且未受保护的记录，正在使用的徽记受保护。预检 15 分钟内有效，仅限当前会话，配置发生变化后需重新预检。导入可能关闭主题或 AI 工具，请先核对变化；需要恢复时可重新导入备份文件。</p></details>
+            </section>
+            <details><summary>工具关闭时的提示</summary><p><code>prts_theme_status</code> 始终可用，仅报告开关状态和手动开启位置，不读取素材、不修改配置。AI 应先检查此状态；关闭时先提醒你开启，不通过脚本、接口或文件编辑绕过开关。</p></details>
           </section>
           <section data-prts-settings-section="assistance" role="tabpanel" id="prts-page-assistance" aria-labelledby="prts-tab-assistance" tabindex="0" hidden>
             <section data-prts-preview-settings>

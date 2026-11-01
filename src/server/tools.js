@@ -2,23 +2,28 @@ import { draftView, stateView, fault } from './emblems.js'
 
 export function sessionImages(agent) {
   if(!agent?.session)throw fault(400,'请在 DSH 会话中调用此工具')
-  const images=new Map(), calls=new Map()
+  const images=new Map(), calls=new Map();let order=0
   for(const event of agent.session.snapshotEvents()) {
     if(event.type==='tool/call')calls.set(event.data.callId,event.data.name)
     const uploaded=event.type==='user/message'
     const message=uploaded?event.data:event.type==='tool/result'?event.data.message:null
     const toolName=calls.get(message?.toolCallId ?? message?.source?.callId)
     // Preview attachments are rendered particle images, not editable source images.
-    if(!message || message.isError || toolName==='prts_emblem_preview')continue
+    if(!message || message.isError || ['prts_emblem_preview','prts_background_preview'].includes(toolName))continue
     for(const part of message.content ?? []) {
       const ref=part.attachment
       if(!ref || typeof ref.attachmentId!=='string' || !ref.attachmentId)continue
       if(part.type!=='image' && !(part.type==='file' && (/^image\/(png|jpeg|webp|gif|avif)$/.test(ref.mediaType || '') || /\.(png|jpe?g|webp|gif|avif)$/i.test(ref.name || ''))))continue
-      if(images.has(ref.attachmentId))continue
-      images.set(ref.attachmentId,{...ref,attachmentKind:part.type,origin:uploaded?'upload':'tool',...(toolName?{toolName}:{})})
+      images.set(ref.attachmentId,{...ref,attachmentKind:part.type,origin:uploaded?'upload':'tool',...(toolName?{toolName}:{}),
+        lastSeenOrder:++order,...(Number.isFinite(event.createdAt)?{lastSeenAt:new Date(event.createdAt).toISOString()}:{})})
     }
   }
-  return [...images.values()]
+  const result=[...images.values()].sort((a,b)=>b.lastSeenOrder-a.lastSeenOrder),names=new Set()
+  return result.map(image=>{
+    const latestForName=Boolean(image.name && !names.has(image.name))
+    if(image.name)names.add(image.name)
+    return {...image,latestForName}
+  })
 }
 export function emblemTools(service,attachments) {
   const output={schema:{type:'object'},render:(_args,value)=>[{type:'text',text:JSON.stringify(value)},...(value.previewImage&&value.imageForModel?[{type:'image',attachment:value.previewImage}]:[])]}
@@ -42,7 +47,7 @@ export function emblemTools(service,attachments) {
         const ref=images.find(e=>e.attachmentId===args.attachmentId)
         if(!ref)throw fault(404,'当前会话没有这张图片，请先上传图片或用 read_image 读取生成图，再重新读取图片列表')
         if(ref.bytes>8*1024*1024)throw fault(400,'图片超过 8 MB')
-        const {attachmentKind,origin,toolName,...attachment}=ref
+        const {attachmentKind,origin,toolName,lastSeenOrder,lastSeenAt,latestForName,...attachment}=ref
         if(attachmentKind==='file') {
           const chunks=[];let total=0
           for await(const chunk of attachments.readFileStream(attachment,exec.signal)) {

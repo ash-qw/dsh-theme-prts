@@ -8,6 +8,14 @@ import { fault } from './emblems.js'
 
 export const BACKGROUND_API = '/prts-theme-api/backgrounds'
 const BACKGROUND_SLOTS = ['full', 'sidebar', 'conversation']
+export async function prepareBackgroundImage(bytes) {
+  try {
+    const input=sharp(bytes,{limitInputPixels:40000000,animated:false})
+    const metadata=await input.metadata()
+    if(!['png','jpeg','webp','avif'].includes(metadata.format))throw Error('format')
+    return await input.rotate().resize({width:3840,height:2160,fit:'inside',withoutEnlargement:true}).webp({quality:86}).toBuffer({resolveWithObject:true})
+  }catch{throw fault(400,'无法读取图片，请使用 PNG、JPEG、WebP 或 AVIF（最多 4000 万像素）')}
+}
 export async function createBackgroundService(directory) {
   await mkdir(directory, { recursive: true, mode: 0o700 })
   const configurationPath = join(directory, 'configuration.json')
@@ -23,8 +31,9 @@ export async function createBackgroundService(directory) {
       if (!BACKGROUND_SLOTS.some(slot => state[slot]?.id === id)) throw fault(404, '背景不存在')
       return readFile(join(directory, id + '.webp'))
     },
-    save(data) {
+    save(data, signal) {
       const task = queue.then(async () => {
+        signal?.throwIfAborted()
         if (!BACKGROUND_SLOTS.includes(data?.slot)) throw fault(400, '背景区域无效')
         if (data.revision !== state.revision) throw fault(409, '背景已在其他页面更新，请重新操作')
         const regionOnly = Object.hasOwn(data, 'region') && !Object.hasOwn(data, 'image')
@@ -35,20 +44,17 @@ export async function createBackgroundService(directory) {
           if (!isBase64(data.image) || data.image.length > 14 * 1024 * 1024) throw fault(400, '请上传不超过 10 MB 的图片')
           const bytes = Buffer.from(data.image, 'base64')
           if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw fault(400, '请上传不超过 10 MB 的图片')
-          try {
-            const input = sharp(bytes, { limitInputPixels: 40000000, animated: false })
-            const metadata = await input.metadata()
-            if (!['png', 'jpeg', 'webp', 'avif'].includes(metadata.format)) throw Error('format')
-            const result = await input.rotate().resize({ width: 3840, height: 2160, fit: 'inside', withoutEnlargement: true }).webp({ quality: 86 }).toBuffer({ resolveWithObject: true })
-            output = result.data
-            entry = { id: randomUUID(), width: result.info.width, height: result.info.height, region: data.region ?? null }
-          } catch { throw fault(400, '无法读取图片，请使用 PNG、JPEG、WebP 或 AVIF（最多 4000 万像素）') }
+          const result=await prepareBackgroundImage(bytes)
+          output=result.data
+          entry={id:randomUUID(),width:result.info.width,height:result.info.height,region:data.region ?? null}
         }
+        signal?.throwIfAborted()
         const next = { ...state, revision: state.revision + 1, [data.slot]: entry }
         const temporary = configurationPath + '.' + randomUUID() + '.tmp'
         try {
           if (output) await writeFile(join(directory, entry.id + '.webp'), output, { mode: 0o600 })
           await writeFile(temporary, JSON.stringify(next), { mode: 0o600 })
+          signal?.throwIfAborted()
           await rename(temporary, configurationPath)
         } catch (error) {
           if (output) await rm(join(directory, entry.id + '.webp'), { force: true }).catch(() => {})

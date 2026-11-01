@@ -32,7 +32,7 @@ test('plugin registers route and worker cleanup with Cordis effects',async()=>{
   process.env.DSH_HOME=directory
   const cleanups=[],removed=[]
   try{
-    await apply({inject(names, fn) { assert.deepEqual(names, ['settings']); },attachments:{},tools:{register:()=>()=>removed.push('tool')},connection:{admit:()=>({})},
+    await apply({inject(names, fn) { assert.ok(['settings','systemPrompt'].includes(names[0])); },attachments:{},tools:{register:()=>()=>removed.push('tool')},connection:{admit:()=>({})},
       webServer:{register:route=>()=>removed.push(route.path)},
       effect:body=>{cleanups.push(body());return()=>{}},
       on(name){assert.equal(name,'app-boot/config-reload');return()=>{}}})
@@ -53,8 +53,8 @@ for(const enabled of [undefined,false,true])test(`AI tool registration follows t
     await apply({inject(){},on(){return()=>{}},attachments:{},tools:{register:tool=>{registered.add(tool.name);return()=>registered.delete(tool.name)}},connection:{admit:()=>({})},
       webServer:{register:route=>{routes.add(route.path);return()=>routes.delete(route.path)}},
       effect:body=>{cleanups.push(body());return()=>{}}},enabled===undefined?undefined:{aiToolsEnabled:enabled})
-    assert.equal(registered.size,enabled===false?0:5)
-    if(enabled!==false)assert.deepEqual([...registered].sort(),['prts_avatar_apply','prts_avatar_inspect','prts_emblem_apply','prts_emblem_inspect','prts_emblem_preview'])
+    assert.equal(registered.size,enabled===false?1:13)
+    if(enabled!==false)assert.deepEqual([...registered].sort(),['prts_avatar_apply','prts_avatar_inspect','prts_background_apply','prts_background_configure','prts_background_inspect','prts_background_preview','prts_emblem_apply','prts_emblem_inspect','prts_emblem_preview','prts_theme_export','prts_theme_import','prts_theme_import_preview','prts_theme_status'])
     assert.ok(routes.has(AVATAR_API));assert.ok(routes.has(API));assert.equal(routes.size,3)
     for(const dispose of cleanups)await dispose()
     assert.equal(registered.size,0);assert.equal(routes.size,0)
@@ -67,18 +67,27 @@ for(const enabled of [undefined,false,true])test(`AI tool registration follows t
  test('volatile AI switch unregisters and restores tools without removing manual APIs',async()=>{
   const old=process.env.DSH_HOME,directory=await mkdtemp(tmpdir()+'/prts-tool-live-')
   process.env.DSH_HOME=directory
-  let enabled=true,notify,unsubscribed=false
+  let enabled=true,notify,unsubscribed=false,statusTool,oldApply,prompt,disposePrompt
   const cleanups=[],tools=new Set(),routes=new Set()
   try{
-    await apply({inject(){},attachments:{},on(name,fn){assert.equal(name,'app-boot/config-reload');notify=fn;return()=>{unsubscribed=true}},
-      tools:{register(tool){assert.ok(!tools.has(tool.name));tools.add(tool.name);return()=>tools.delete(tool.name)}},connection:{admit:()=>({})},
+    await apply({inject(names,fn){if(names[0]==='systemPrompt')fn({
+      systemPrompt:{context(value){prompt=value;return()=>{prompt=null}}},
+      effect(register){disposePrompt=register()},
+    })},attachments:{},on(name,fn){assert.equal(name,'app-boot/config-reload');notify=fn;return()=>{unsubscribed=true}},
+      tools:{register(tool){if(tool.name==='prts_theme_status')statusTool=tool;if(tool.name==='prts_background_apply')oldApply=tool;assert.ok(!tools.has(tool.name));tools.add(tool.name);return()=>tools.delete(tool.name)}},connection:{admit:()=>({})},
       webServer:{register:route=>{routes.add(route.path);return()=>routes.delete(route.path)}},effect:body=>{cleanups.push(body());return()=>{}}},
       {aiToolsEnabled:{get:()=>enabled}})
-    assert.equal(tools.size,5);notify();assert.equal(tools.size,5)
-    enabled=false;notify();assert.equal(tools.size,0);assert.equal(routes.size,3)
-    enabled=true;notify();assert.equal(tools.size,5);assert.equal(routes.size,3)
+    assert.equal(tools.size,13);notify();assert.equal(tools.size,13)
+    enabled=false;notify();assert.equal(tools.size,1);assert.equal(routes.size,3)
+    assert.equal((await statusTool.execute()).enabled,false)
+    assert.match(prompt.text(),/当前已关闭/);assert.equal(prompt.required,true)
+    assert.throws(()=>oldApply.execute({},{}),/手动打开/)
+    assert.ok(tools.has('prts_theme_status'))
+    enabled=true;notify();assert.equal(tools.size,13);assert.equal(routes.size,3)
+    assert.equal((await statusTool.execute()).enabled,true)
+    assert.match(prompt.text(),/当前已开启/)
     for(const dispose of cleanups)await dispose()
-    assert.equal(tools.size,0);assert.equal(routes.size,0);assert.equal(unsubscribed,true)
+    assert.equal(tools.size,0);assert.equal(routes.size,0);assert.equal(unsubscribed,true);disposePrompt();assert.equal(prompt,null)
   }finally{
     if(old===undefined)delete process.env.DSH_HOME;else process.env.DSH_HOME=old
     await rm(directory,{recursive:true,force:true})

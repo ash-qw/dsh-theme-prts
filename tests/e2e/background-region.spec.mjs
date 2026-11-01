@@ -112,7 +112,7 @@ for(const slot of ['full','sidebar','conversation'])test(`modal background prote
   expect(await box.evaluate(el=>parseFloat(el.style.width))).toBeCloseTo(51)
   await editor.screenshot({path:`/tmp/prts-protection-modal-${slot}.png`})
   await page.setViewportSize({width:480,height:900})
-  await expect.poll(()=>page.evaluate(slot=>document.documentElement.style.getPropertyValue(`--prts-protected-${slot}-x`),slot)).not.toBe('')
+  await expect.poll(()=>page.evaluate(slot=>(slot==='sidebar'?document.querySelector('[data-prts-region="sessions"]'):document.documentElement).style.getPropertyValue(`--prts-protected-${slot}-x`),slot)).not.toBe('')
   expect(await editor.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
   await editor.screenshot({path:`/tmp/prts-protection-modal-${slot}-narrow.png`})
   await editor.locator('[data-prts-region-clear]').click();await expect(box).toBeHidden()

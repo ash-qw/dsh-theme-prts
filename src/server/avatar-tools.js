@@ -43,7 +43,7 @@ export function avatarTools(service,attachments){
         const ref=images.find(image=>image.attachmentId===args.attachmentId)
         if(!ref)throw fault(404,'当前会话没有这张图片，请先上传或用 read_image 读取图片，再 inspect')
         if(ref.bytes>limit)throw fault(400,'图片超过 5 MB')
-        const {attachmentKind,origin,toolName,...attachment}=ref
+        const {attachmentKind,origin,toolName,lastSeenOrder,lastSeenAt,latestForName,...attachment}=ref
         let bytes
         if(attachmentKind==='file'){
           const chunks=[];let size=0

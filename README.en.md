@@ -110,3 +110,36 @@ Import displays a summary before confirmation. Preferences-only files preserve d
 Reading, exporting, importing and restoring show progress by stage. Reading and exporting can be cancelled. Cancelling an import or restore waits for the current write to settle, then attempts to roll back written assets. Cancellation is unavailable during final saving and rollback. The import or export section stays highlighted while its operation is active.
 
 A backup download starts before each import. Keep that file for recovery after a refresh, or use **恢复导入前配置** in the current page to restore the state before the latest import. Failed imports attempt to roll back confirmed asset writes. Connection loss or concurrent edits can prevent full recovery; the UI reports failures so the saved backup can be imported after checking the current state.
+
+
+### Set backgrounds from a DSH conversation
+
+Ask the AI to use an uploaded picture, generate one, or find and download one with the tools available in that conversation. For locally generated/downloaded images, use `read_image` first, then `prts_background_inspect` to obtain the attachment ID. Images returned directly by conversation tools also work; no manual re-upload is needed. These background tools do not themselves search, generate, or fetch URLs.
+
+- `prts_background_inspect`: inspect images, dimensions, protected regions, image revision, current profile settings/revision, and available conversation attachments.
+- `prts_background_apply`: replace/remove a full, sidebar, or conversation image, or change its protected region. Use the image revision. Region coordinates are normalized to the EXIF-oriented image; replacing clears the old region unless a new one is supplied.
+- `prts_background_configure`: update only the specified mode (`off/split/full`) and dimming (`0..0.9`, higher means more faded), using `settings.revision`. Optional `material.blur` (integer pixels, 0..32) and `material.opacity` (0..1, higher means more opaque) support `sidebar`, `rightSidebar`, `rail` (settings rail), `baker` (Baker bubbles), and `classicUser` (classic user messages). Inspect returns these values and the conversation style. Bubble materials require the matching conversation style and a full or conversation wallpaper; saving values does not activate either. Only supplied fields change; invalid values are rejected.
+
+Saving an image and enabling its mode are separate steps; check the returned `activeSlots`. The theme master switch is never enabled automatically. Images are instance-wide; mode and dimming sync within the profile. Existing format/size limits apply. Replacing/removing deletes the old image, whereas switching to the default background retains assets. Conflicts require a fresh inspection. All three tools follow the existing AI customization switch.
+
+
+### Import and export themes from a conversation
+
+`prts_theme_export` returns a downloadable `.prts-theme.json` attachment, including assets by default (`includeAssets: false` exports settings only). Upload a theme file or use a file attachment returned by a tool in the same conversation, then call `prts_theme_import_preview` to see the summary, settings changes, replacement scope, and ignored fields. Without an attachment ID, it lists JSON files in that conversation.
+
+After the user authorizes importing, call `prts_theme_import` with the preview ID. Previews expire after 15 minutes, are conversation-specific, and become stale when settings or relevant assets change. A backup attachment must be saved before any changes. Failed or cancelled imports attempt to roll back confirmed asset writes and return the error and backup; concurrent edits can prevent complete recovery.
+
+Files interoperate with the settings UI, with the same 160 MB limit. Full exports include background protected regions, avatar originals/crops, and emblem sources/order. Settings-only imports retain assets, and missing older settings retain current values. Settings affect the profile; assets affect the instance. Imported settings can disable the theme or AI tools, so review the preview. Export and backup attachments can be imported again.
+
+
+### Tool status and background visual previews
+
+`prts_theme_status` remains available when AI customization is off. It reports only the switch status and manual activation instructions. The 12 customization tools are removed while disabled; agents are instructed to ask the user to enable the switch under the Rhodes Island emblem → AI tools, rather than enable it themselves or bypass it with shell, HTTP, or file edits. Execution guards reject stale customization calls after disabling. This guides agent behavior; it does not sandbox other general-purpose tools in the conversation.
+
+Image lists now sort by last appearance, expose `lastSeenOrder`, event-backed `lastSeenAt` when available, and `latestForName`. These describe conversation appearances, not filesystem modification times.
+
+`prts_background_preview` previews either an attachment or a saved background without applying it. It defaults to the current dimming and both light/dark schemes, since the server cannot infer the active browser scheme. Width/height, dimming, scheme, and protected region can be overridden. Candidate images use the same orientation, resizing, and WebP pipeline as saving. Outputs simulate cover cropping and sRGB dimming, with crop coordinates rounded to source pixels; they exclude text, bubbles, and glass materials and are not live screenshots. PNG file attachments are returned, with image content also supplied to vision-capable models. Preview receipts are excluded from source image discovery.
+
+Full imports delete replaced background WebP files and replace avatar originals; backups contain recovery data. Each custom emblem creates a new draft/preview, while identical source bytes share content-addressed storage. At roughly 200 drafts, older unprotected drafts are pruned; applied emblems remain protected. Repeated full imports grow the draft count. Import previews report these effects explicitly.
+
+When the host exposes runtime context registration, each model request also receives the current switch state and these handling instructions proactively.

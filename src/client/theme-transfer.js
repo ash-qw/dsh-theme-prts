@@ -101,7 +101,7 @@ export function describeThemePackage(value) {
   return `${count} 项主题设置、${transferSlots.filter(k => a.backgrounds[k]).length} 张背景、${transferRoles.filter(k => a.avatars[k]).length} 个头像、${a.emblems.items.length} 个自定义徽记。将替换当前素材及徽记排列，空项恢复为默认。`
 }
 
-export function createThemeTransfer({ window, getPreferences, savePreferences, checkWritable, checkExport = checkWritable, themeVersion, onAvatarConfiguration = () => {} }) {
+export function createThemeTransfer({ window, getPreferences, savePreferences, checkWritable, checkExport = checkWritable, themeVersion, onAvatarConfiguration = () => {}, onDownload, readImage = (blob, signal) => readTransferFile(window, blob, signal, undefined, true), backupNotice = '导入前备份已发起下载，可重新导入恢复。' }) {
   let busy = false, backup
   const request = async (path, data, signal) => {
     checkTransferCancelled(signal)
@@ -128,7 +128,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
           if (!/^[a-f0-9-]{36}$/.test(entry.id)) throw Error('背景引用无效')
           const response = await window.fetch('/prts-theme-api/backgrounds/image/' + entry.id, { credentials: 'same-origin', signal })
           if (!response.ok) throw Error('无法导出背景图片')
-          backgrounds[slot] = await readTransferFile(window, await response.blob(), signal, undefined, true)
+          backgrounds[slot] = await readImage(await response.blob(), signal)
         }
       }
       progress({ value: 0.35, label: '正在读取头像…' })
@@ -169,6 +169,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
     try { return await fn() } finally { busy = false }
   }
   function download(value, name = 'theme') {
+    if (onDownload) return onDownload(value, name)
     const blob = new window.Blob([JSON.stringify(value)], { type: 'application/json' })
     if (blob.size > THEME_PACKAGE_LIMIT) throw Error('主题文件超过 160 MB，请减少素材后重试')
     const url = window.URL.createObjectURL(blob), link = window.document.createElement('a')
@@ -185,7 +186,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
     progress({ value: 0.3, label: '正在生成导入前备份…' })
     await new Promise(resolve => window.setTimeout(resolve, 0))
     checkTransferCancelled(signal)
-    download(backup, 'before-import')
+    await download(backup, 'before-import')
     let completed = 0
     const total = value.assets ? value.assets.emblems.items.length + 7 : 1
     const step = label => progress({ value: 0.35 + 0.65 * completed / total, label })
@@ -229,7 +230,7 @@ export function createThemeTransfer({ window, getPreferences, savePreferences, c
       let failures = 0
       for (const restore of undo.reverse()) { try { await restore() } catch { failures++ } }
       if (signal?.aborted && !failures && error.name === 'AbortError') throw Error('操作已取消，已回退已写入的素材。')
-      throw Error(`${error.message}。${failures ? '部分素材未能自动恢复。' : '已回退已确认写入的素材。'}若连接中断，请检查实际状态；导入前备份已发起下载，可重新导入恢复。`)
+      throw Error(`${error.message}。${failures ? '部分素材未能自动恢复。' : '已回退已确认写入的素材。'}若连接中断，请检查实际状态；${backupNotice}`)
     }
   }
   return {
