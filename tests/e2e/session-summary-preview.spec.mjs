@@ -1,3 +1,4 @@
+import { selectPageOption } from '../helpers/page-controls.mjs'
 import {test,expect} from '@playwright/test'
 
 test('status list stays open while the pointer crosses into its top-layer popover',async({page})=>{
@@ -502,9 +503,9 @@ test('reply limit setting persists and follows the running preview switch',async
   await page.locator('[data-prts-settings-jump="assistance"]').click()
   const row=page.locator('[data-prts-setting-row="previewReplyLimit"]')
   await expect(row.locator('select')).toHaveValue('5')
-  await row.locator('select').selectOption('10')
+  await selectPageOption(row.locator('select'),'10')
   await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewReplyLimit)).toBe(10)
-  await row.locator('select').selectOption('5')
+  await selectPageOption(row.locator('select'),'5')
   await expect.poll(()=>page.evaluate(()=>window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value.previewReplyLimit)).toBe(5)
   await page.locator('[data-prts-setting-switch="previewOngoing"]').click()
   await expect(row).toBeHidden()

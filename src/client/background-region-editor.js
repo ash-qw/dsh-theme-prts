@@ -76,7 +76,8 @@ export function mountBackgroundRegionEditor({section,window,store}) {
     event.preventDefault();const bounds=stage.getBoundingClientRect();if(!bounds.width||!bounds.height)return
     const x=clamp((event.clientX-bounds.left)/bounds.width,0,1),y=clamp((event.clientY-bounds.top)/bounds.height,0,1)
     drag={x,y,bounds,initial:{...draft},corner:event.target.dataset.prtsRegionHandle,id:event.pointerId}
-    stage.style.cursor=window.getComputedStyle(event.target).cursor
+    const cursorStyle=window.getComputedStyle(event.target)
+    stage.style.cursor=cursorStyle.getPropertyValue('--prts-source-cursor').trim() || cursorStyle.cursor
     stage.setPointerCapture?.(event.pointerId);draw()
   }
   function adjust(initial,dx,dy,corner){

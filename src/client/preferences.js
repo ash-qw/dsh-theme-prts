@@ -241,7 +241,7 @@ export function normalizePreferences(value) {
     cornerColor: colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor),
     cornerColorLight: colorOr(input.cornerColorLight, colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor)),
     cornerCustomColorLight: colorOr(input.cornerCustomColorLight, colorOr(input.cornerCustomColor, DEFAULT_PREFERENCES.cornerCustomColor)),
-    cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
+    cursor: ['system', 'prts-follower'].includes(input.cursor) ? input.cursor : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
     particleTraversalSpeed: particleTraversalSpeedOr(

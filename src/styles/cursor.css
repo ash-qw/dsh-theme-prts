@@ -1,10 +1,12 @@
 /* Native cursor; gesture frames override the resting image without a DOM overlay. */
 @media (any-pointer: fine) {
   html[data-dsh-prts][data-prts-cursor="prts"] {
-    --prts-hand-cursor: var(--prts-hand-frame, url("__PRTS_HAND__") 7 6);
+    --prts-rest-hand-cursor: url("__PRTS_HAND__") 7 6;
+    --prts-hand-cursor: var(--prts-hand-frame, var(--prts-rest-hand-cursor));
     --prts-text-cursor: var(--prts-text-frame, url("__PRTS_TEXT__") 24 24);
     --prts-sort-cursor: url("__PRTS_GRABBING__") 22 19, grabbing;
-    --prts-link-cursor: url("__PRTS_LINK__") 7 7;
+    --prts-rest-link-cursor: url("__PRTS_LINK__") 7 7;
+    --prts-link-cursor: var(--prts-rest-link-cursor);
     cursor: var(--prts-hand-cursor), default;
   }
   html[data-dsh-prts][data-prts-cursor="prts"] :is(button, a[href], summary, [role="button"], [role="tab"], [role="treeitem"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [data-prts-workspace-row], [data-prts-session-row], .dsh-partner-sidebar-row, select, input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], input[type="color"], input[type="range"]) {
@@ -41,3 +43,25 @@ html[data-dsh-prts] [data-prts-region-stage] [data-prts-region-handle] { cursor:
 html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="e"],[data-prts-region-handle="w"]) { cursor:ew-resize!important; }
 html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="nw"],[data-prts-region-handle="se"]) { cursor:nwse-resize!important; }
 html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="ne"],[data-prts-region-handle="sw"]) { cursor:nesw-resize!important; }
+
+/* A single renderer owns every in-page cursor state. State classification
+   reads mirrored cursor metadata, so hiding never needs to be toggled to read. */
+html[data-dsh-prts][data-prts-follower-visible],
+html[data-dsh-prts][data-prts-follower-visible] :is(*,#prts-cursor-layer-specificity) {
+  cursor:none!important;
+}
+.prts-cursor-follower {
+  position:fixed;top:0;left:0;width:1px;height:1px;z-index:2147483647;
+  pointer-events:none!important;user-select:none;contain:layout style;
+  margin:0;padding:0;border:0;background:transparent;overflow:visible;right:auto;bottom:auto;
+}
+.prts-cursor-follower[hidden] { display:none!important; }
+.prts-cursor-follower * { pointer-events:none!important; }
+.prts-cursor-follower img { position:absolute;max-width:none!important;max-height:none!important; }
+
+/* Known DSH horizontal resize boundaries must have their native image before
+   pointer events fire, including the chat width handle and its hit children. */
+html[data-dsh-prts][data-prts-cursor="prts"] :is([class$="_widthHandle"],[class$="_detailsResizeHandle"],.dsh-ssh-workbench-resizer),
+html[data-dsh-prts][data-prts-cursor="prts"] :is([class$="_widthHandle"],[class$="_detailsResizeHandle"],.dsh-ssh-workbench-resizer) * {
+  cursor: url("__PRTS_RESIZE_EW__") 16 16, col-resize;
+}

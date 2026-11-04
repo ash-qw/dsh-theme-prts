@@ -43,7 +43,7 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - day/night modes synchronized with Harness, three appearance presets, and four material levels;
 - city silhouettes, faction particle marks, session waveforms, and a P.R.T.S. startup sequence;
 - computer, tablet, and phone screen layouts, with reduced-motion and reduced-transparency accommodations;
-- PRTS hand cursors with press, hold, and release feedback (large background containers stay static to avoid long-conversation stalls), link hand cursors for clickable elements, four static resize directions, and a static I-beam cursor over text fields and conversation text; turn off “PRTS 光标” in theme settings to use system cursors;
+- PRTS hand cursors with press, hold, and release feedback (Standard mode uses full animation for up to 128 descendants, a pressed/resting response for 129–256, and static cursors above 256), link hand cursors for clickable elements, four static resize directions, and a static I-beam cursor over text fields and conversation text; choose System cursor under Cursor mode in theme settings;
 - no runtime network requests, analytics, or telemetry.
 
 Cursor artwork comes from [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4), extracted and adapted for web cursors. See [third-party notices](THIRD_PARTY_NOTICES.md#prts-hand-and-text-cursors) for provenance, adaptations, and licensing boundaries.
@@ -143,3 +143,7 @@ Image lists now sort by last appearance, expose `lastSeenOrder`, event-backed `l
 Full imports delete replaced background WebP files and replace avatar originals; backups contain recovery data. Each custom emblem creates a new draft/preview, while identical source bytes share content-addressed storage. At roughly 200 drafts, older unprotected drafts are pruned; applied emblems remain protected. Repeated full imports grow the draft count. Import previews report these effects explicitly.
 
 When the host exposes runtime context registration, each model request also receives the current switch state and these handling instructions proactively.
+
+### Experimental cursor
+
+Under interaction settings, the cursor mode dropdown offers System cursor, PRTS Native cursor and PRTS Follow cursor (experimental). The opt-in Mouse Follower mode animates PRTS images in an isolated DOM layer without a descendant-count cutoff for ordinary backgrounds or large cards. Text, disabled, grab, resize, crop and in-page dialog states share the same renderer. Browser-native menus, iframe boundaries and native drag-and-drop still return control to the browser. Position easing and trails are disabled, but main-thread congestion can still delay movement. Existing preferences remain unchanged; switch back to PRTS Native cursor at any time.

@@ -75,9 +75,15 @@ const cursorAnimation = JSON.parse(await readFile(resolve(root, 'src/assets/curs
 const cursorImage = async file => `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors', file))).toString('base64')}`
 const cursorAssets = {
   hotspot: cursorAnimation.hotspot,
+  rest: await cursorImage('prts-hand.png'),
   textHotspot: cursorAnimation.textHotspot,
+  text: await cursorImage('prts-text.png'),
+  grab: await cursorImage('prts-grab.png'),
+  grabbing: await cursorImage('prts-grabbing.png'),
+  unavailable: await cursorImage('prts-not-allowed.png'),
   link: {
     hotspot: cursorAnimation.link.hotspot,
+    rest: await cursorImage('prts-link.png'),
     hold: await cursorImage('prts-link-hold.png'),
     press: await Promise.all(cursorAnimation.link.press.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
     release: await Promise.all(cursorAnimation.link.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
@@ -88,6 +94,7 @@ const cursorAssets = {
   release: await Promise.all(cursorAnimation.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
 }
 const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'))
+  .replaceAll('__PRTS_RESIZE_EW__', await cursorImage('prts-resize-ew.png'))
   .replaceAll('__PRTS_HAND__', `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors/prts-hand.png'))).toString('base64')}`)
   .replaceAll('__PRTS_TEXT__', await cursorImage('prts-text.png'))
   .replaceAll('__PRTS_LINK__', await cursorImage('prts-link.png'))
@@ -135,6 +142,7 @@ const clientModulePaths = [
   'src/client/preferences.js',
   'src/client/native-preferences.js',
   'src/client/file-drop.js',
+  'src/client/page-controls.js',
   'src/client/theme-transfer.js',
   'src/client/theme-transfer-panel.js',
   'src/client/emblem-reorder.js',
@@ -160,7 +168,6 @@ const clientModulePaths = [
   'src/client/session-card-reveal.js',
   'src/client/sidebar-control-adapter.js',
   'src/client/rc7-adapter.js',
-  'src/client/cursor-adapter.js',
   'src/client/theme-controller-v2.js',
   'src/client/status-projection.js',
   'src/client/ui-store.js',
@@ -199,6 +206,15 @@ const MarkdownIt = (() => {
   return module.exports;
 })();`
 
+const followerVendor = await buildVendor({
+  entryPoints: [resolve(root, 'src/client/cursor-follower.js')],
+  bundle: true, write: false, format: 'iife', globalName: 'PrtsFollower', minify: true,
+  legalComments: 'inline',
+})
+const followerLicense = await readFile(resolve(root, 'node_modules/mouse-follower/LICENSE'), 'utf8')
+const followerBundle = '/* Mouse Follower\n' + followerLicense + '\n*/\n' +
+  followerVendor.outputFiles[0].text + '\nconst createFollowerCursorAdapter = PrtsFollower.createCursorAdapter;'
+
 const glassVendor = await buildVendor({
   entryPoints: [resolve(root, 'src/vendor/react-bits/GlassSurface.jsx')],
   bundle: true, write: false, format: 'iife', globalName: 'PrtsGlassSurface',
@@ -226,6 +242,7 @@ const client = `window.__ModuleLoader__.load({
       emblemMasks: ${JSON.stringify(factionEmblemMasks)},
       heroEmblemMask: ${JSON.stringify(heroEmblemMask)}
     });
+    ${followerBundle}
     ${glassBundle}
     ${markdownBundle}
     ${bundledSource}

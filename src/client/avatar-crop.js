@@ -9,11 +9,19 @@ export function mountAvatarCrop({panel,window,load,onSave}){
     <div data-crop-tools><label>缩放 <input type="range" min="1" max="4" step=".01" value="1" aria-label="头像裁剪缩放"></label><button type="button" data-crop-center>重置裁剪</button></div>
     <p role="status" data-prts-avatar-crop-status></p>
     <footer><button type="button" data-crop-reset>恢复默认</button><span></span><button type="button" data-crop-cancel>取消</button><button type="button" data-crop-save>保存头像</button></footer>`
+  const confirmation=panel.ownerDocument.createElement('dialog')
+  confirmation.className='prts-page-confirm'
+  confirmation.setAttribute('aria-labelledby','prts-avatar-reset-title')
+  confirmation.innerHTML='<strong id="prts-avatar-reset-title">恢复默认头像？</strong><p>当前头像图片及裁剪设置将被移除。</p><footer><button type="button" data-keep>保留头像</button><button type="button" data-confirm>恢复默认</button></footer>'
+  dialog.append(confirmation)
+  confirmation.querySelector('[data-keep]').onclick=()=>confirmation.close()
+  confirmation.addEventListener('cancel',e=>{e.stopPropagation()})
+  confirmation.addEventListener('keydown',e=>{if(e.key==='Escape')e.stopPropagation()})
   panel.append(dialog)
   const canvas=dialog.querySelector('canvas'),zoom=dialog.querySelector('input[type=range]'),status=dialog.querySelector('[role=status]')
   let bitmap,original,role,crop={zoom:1,x:.5,y:.5},drag,busy=false,disposed=false,generation=0,previousFocus,revision,hasCustom=false,ready=false
   const clean=()=>{bitmap?.close();bitmap=null;original=null;drag=null}
-  const close=()=>{generation++;dialog.close?.();clean();previousFocus?.focus?.({preventScroll:true})}
+  const close=()=>{generation++;confirmation.close?.();dialog.close?.();clean();previousFocus?.focus?.({preventScroll:true})}
   const draw=()=>{
     zoom.value=String(crop.zoom)
     if(!bitmap){canvas.getContext('2d').clearRect(0,0,320,320);return}
@@ -103,8 +111,13 @@ export function mountAvatarCrop({panel,window,load,onSave}){
     catch{status.textContent='图片无法读取，请选择不超过 5 MB、2500 万像素的图片'}
     finally{busy=false;controls()}
   })
-  dialog.querySelector('[data-crop-reset]').addEventListener('click',async()=>{
-    if(busy||!hasCustom||!window.confirm('恢复默认头像将移除当前图片及裁剪设置，是否继续？'))return
+  dialog.querySelector('[data-crop-reset]').addEventListener('click',()=>{
+    if(busy||!hasCustom)return
+    confirmation.showModal();confirmation.querySelector('[data-keep]').focus()
+  })
+  confirmation.querySelector('[data-confirm]').addEventListener('click',async()=>{
+    if(busy||!hasCustom)return
+    confirmation.close()
     busy=true;controls()
     try{await onSave(role,null,undefined,revision);if(!disposed)close()}
     catch(error){status.textContent=error.message}

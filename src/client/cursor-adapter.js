@@ -2,12 +2,15 @@
 export function createCursorAdapter({ document, window, assets }) {
   const root = document?.documentElement
   let listening = false
+  let animate = true
   let pointerId
   let timer
+  let compact = false, pressedAt = 0
   let handPhase
   let gestureAssets = assets
   let textTarget
   let moveFrame, pendingMove
+  let textRange
   let lastPoint
   const heroTextSelector = '[data-phase="hero"] [class$="_titleGroup"]'
   const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) [class$="_bubble"]'
@@ -23,14 +26,19 @@ export function createCursorAdapter({ document, window, assets }) {
     textTarget = nextTarget
     textTarget?.setAttribute('data-prts-text-hit', '')
   }
-  function findTextHit(event) {
+  function prepareTextHit(target, semanticOnly = true) {
+    const content = target?.closest?.(`${contentSelector}, ${heroTextSelector}`)
+    if (!content || (!content.matches(heroTextSelector) && !content.closest('[data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]')) || target.closest(controlSelector)) return {target}
+    const style = window.getComputedStyle(target)
+    if (style.userSelect === 'none' || (!semanticOnly && !style.cursor.includes('data:image/png'))) return {target}
+    return {target,content}
+  }
+  function findTextHit(event, semanticOnly = false, prepared) {
     if (event.pointerType !== 'mouse') return
     lastPoint = { clientX: event.clientX, clientY: event.clientY, pointerType: 'mouse' }
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
-    const content = target?.closest?.(`${contentSelector}, ${heroTextSelector}`)
-    if (!content || (!content.matches(heroTextSelector) && !content.closest('[data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]')) || target.closest(controlSelector)) return
-    const style = window.getComputedStyle(target)
-    if (style.userSelect === 'none' || !style.cursor.includes('data:image/png')) return
+    const {content} = prepared?.target===target ? prepared : prepareTextHit(target,semanticOnly)
+    if (!content) return
     // Caret APIs return the nearest insertion point even over empty space.
     // Check its adjacent character rectangles before treating it as a text hit.
     const caret = document.caretPositionFromPoint?.(event.clientX, event.clientY)
@@ -38,8 +46,8 @@ export function createCursorAdapter({ document, window, assets }) {
     const node = caret?.offsetNode ?? fallback?.startContainer
     const offset = caret?.offset ?? fallback?.startOffset
     if (node?.nodeType !== 3 || !content.contains(node) || node.parentElement?.closest(controlSelector)) return
-    if (window.getComputedStyle(node.parentElement).userSelect === 'none') return
-    const range = document.createRange()
+    if (node.parentElement !== target && window.getComputedStyle(node.parentElement).userSelect === 'none') return
+    const range = textRange ||= document.createRange()
     for (const index of [offset - 1, offset]) {
       if (index < 0 || index >= node.length) continue
       range.setStart(node, index)
@@ -111,7 +119,7 @@ export function createCursorAdapter({ document, window, assets }) {
     lastHandFrame = undefined
   }
   // Cursor is inherited. Animating a large container still restyles its subtree.
-  // Keep those background hits static, while controls retain native animation.
+  // Use one pressed pose for medium containers; keep larger backgrounds static.
   const maxAnimatedDescendants = 128
   function canAnimate(target) {
     return target && target.getElementsByTagName('*').length <= maxAnimatedDescendants
@@ -119,8 +127,9 @@ export function createCursorAdapter({ document, window, assets }) {
   function followHand(target) {
     if (stopIfHandChanged()) return
     if (target === handTarget && target !== textTarget) return
+    if(compact && handTarget && target!==handTarget){reset();return}
     restoreHandTarget()
-    if (!canAnimate(target) || !handCursor || target === textTarget) return
+    if ((!compact && !canAnimate(target)) || !handCursor || target === textTarget) return
     const cursor = window.getComputedStyle(target).cursor
     if (!cursor.includes('data:image/png') || /(?:,\s*(?:text|grab|grabbing|not-allowed|no-drop)|resize)$/.test(cursor)) return
     handTarget = target
@@ -150,6 +159,7 @@ export function createCursorAdapter({ document, window, assets }) {
     handCursor = undefined
     root?.style.removeProperty('--prts-text-frame')
     handPhase = undefined
+    compact=false
   }
   function show(url) {
     const [x, y] = gestureAssets.hotspot
@@ -187,13 +197,19 @@ export function createCursorAdapter({ document, window, assets }) {
     updateTextHit(event)
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
     reset()
+    if (!animate) return
     const cursor = target ? window.getComputedStyle(target).cursor : ''
     if (!cursor.includes('data:image/png')) return
-    if (/(?:,\s*(?:text|grab|grabbing|not-allowed|no-drop)|resize)$/.test(cursor) || !canAnimate(target)) return
+    if (/(?:,\s*(?:text|grab|grabbing|not-allowed|no-drop)|resize)$/.test(cursor)) return
+    const descendants=target.getElementsByTagName('*').length
+    if(descendants>256)return
+    compact=descendants>maxAnimatedDescendants
+    pressedAt=window.performance.now()
     gestureAssets = /,\s*pointer$/.test(cursor) && assets.link ? assets.link : assets
     pointerId = event.pointerId
-    handCursor = cursor
+    handCursor = compact ? `url("${gestureAssets.hold}") ${gestureAssets.hotspot[0]} ${gestureAssets.hotspot[1]}, pointer` : cursor
     followHand(target)
+    if(compact){handPhase='hold';return}
     if (reduced()) { clearTimer(); show(gestureAssets.hold); return }
     handPhase = 'press'
     play(gestureAssets.press, () => {
@@ -212,6 +228,12 @@ export function createCursorAdapter({ document, window, assets }) {
     if (pointerId === undefined || event.pointerId !== pointerId || event.button !== 0) return
     pointerId = undefined
     if (reduced()) { reset(); return }
+    if(compact){
+      const remaining=80-(window.performance.now()-pressedAt)
+      if(remaining>0)timer=window.setTimeout(reset,remaining)
+      else reset()
+      return
+    }
     if (handPhase === 'press') return
     releaseHand()
   }
@@ -252,16 +274,26 @@ export function createCursorAdapter({ document, window, assets }) {
     if (event.target === window) resetInteraction()
   }
   function visibility() { if (document.hidden) resetInteraction() }
-  const events = [['pointerdown', down], ['pointerup', up], ['pointermove', move], ['pointercancel', resetInteraction], ['blur', blur], ['dragstart', resetInteraction], ['pointerout', leave], ['scroll', refreshTextHit], ['resize', refreshTextHit]]
+  function over(event) {
+    if (animate || event.pointerType !== 'mouse') return
+    clearPendingMove()
+    applyMove(event)
+  }
+  const events = [['pointerdown', down], ['pointerup', up], ['pointermove', move], ['pointerover', over], ['pointercancel', resetInteraction], ['blur', blur], ['dragstart', resetInteraction], ['pointerout', leave], ['scroll', refreshTextHit], ['resize', refreshTextHit]]
   function dispose() {
     resetInteraction()
+    textRange=undefined
     if (!listening) return
     for (const [name, handler] of events) window.removeEventListener(name, handler, true)
     document.removeEventListener('visibilitychange', visibility)
     listening = false
   }
   return {
+    prepareTextHit,
+    textHit: (event, prepared) => findTextHit(event, true, prepared),
     update(preferences) {
+      if (animate && preferences.cursorAnimation === false) reset()
+      animate = preferences.cursorAnimation !== false
       if (!root || !assets || !preferences.enabled || preferences.cursor !== 'prts') { dispose(); return }
       if (listening) return
       for (const [name, handler] of events) window.addEventListener(name, handler, true)

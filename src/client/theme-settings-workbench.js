@@ -1,3 +1,4 @@
+import { mountPageControls } from './page-controls.js'
 import { themeTransferMarkup, mountThemeTransfer } from './theme-transfer-panel.js'
 import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
@@ -13,8 +14,14 @@ const SETTINGS_FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+const CURSOR_DESCRIPTIONS = {
+  system: '使用系统默认外观，由浏览器与系统处理移动，不播放 PRTS 点击动画。',
+  prts: '由系统移动 PRTS 光标，页面繁忙时仍较跟手。小控件播放完整点击动画，中等容器仅显示按下与恢复，大容器保持静态。',
+  'prts-follower': '由页面绘制并跟随鼠标，普通区域均可播放 PRTS 按压动画。页面繁忙时可能跟随延迟；文字、缩放等区域显示对应形态。',
+}
+
 const COMMON_CONTROLS = [
-  ['cursor', 'PRTS 光标', [['system', '关闭'], ['prts', '开启']]],
+  ['cursor', '光标模式', [['system', '系统光标'], ['prts', 'PRTS 原生光标'], ['prts-follower', 'PRTS 跟随光标（实验）']]],
   ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
   ['motion', '动态效果', []],
   ['sessionFlow', '当前会话流线', [['false', '关闭'], ['true', '开启']]],
@@ -23,9 +30,9 @@ const COMMON_CONTROLS = [
 ]
 
 const SESSION_FLOW_COLOR_CONTROLS = [
-  ['sessionFlowColorBack', '后层'],
-  ['sessionFlowColorCore', '中层'],
   ['sessionFlowColorFront', '前层'],
+  ['sessionFlowColorCore', '中层'],
+  ['sessionFlowColorBack', '后层'],
 ]
 
 const PARTICLE_OPTIONS = [
@@ -62,10 +69,14 @@ function settingButtons(key, label, options) {
       : key === 'sessionFlowPalette'
         ? '<small data-prts-setting-note>同时适配日间与夜间模式</small>'
       : ''
-  if (['heroContrast', 'composerGlass', 'bakerLoading', 'motion', 'cursor', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'aiToolsEnabled', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
+  if (['heroContrast', 'composerGlass', 'bakerLoading', 'motion', 'railDefaultHidden', 'sessionFlow', 'sessionGlow', 'bakerGroupAvatars', 'conversationEmblem', 'sessionPreview', 'aiToolsEnabled', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning'].includes(key)) return `<div data-prts-setting-row="${key}">
     <span><strong>${label}</strong>${note}</span>
     <button type="button" role="switch" aria-label="${label}" aria-checked="false" data-prts-setting-switch="${key}" ${key === 'cursor' ? 'data-prts-cursor-switch' : ''}><span aria-hidden="true"></span></button>
   </div>`
+  if (key === 'cursor') return `<label data-prts-setting-row="cursor">
+    <span><strong>光标模式</strong><small id="prts-cursor-description" data-prts-setting-note data-prts-cursor-description></small></span>
+    <select data-prts-cursor-mode aria-label="光标模式" aria-describedby="prts-cursor-description">${options.map(([value,text])=>`<option value="${value}" data-description="${CURSOR_DESCRIPTIONS[value]}">${text}</option>`).join('')}</select>
+  </label>`
   const sample = value => key === 'sessionFlowPalette'
     ? `<i data-prts-option-sample="${key}" data-prts-option-sample-value="${value}" aria-hidden="true"></i>`
     : ''
@@ -88,11 +99,11 @@ function sessionFlowPreviewMarkup() {
     ['core', 'M 3 24 C 30 35 61 7 94 23 C 124 37 148 7 177 20'],
     ['front', 'M 3 18 C 34 4 66 30 96 12 C 125 -1 148 30 177 24'],
   ]
-  return `<svg data-prts-session-flow-preview viewBox="0 0 180 42" aria-label="三色流线预览" role="img">
+  return `<svg data-prts-session-flow-preview viewBox="0 0 180 42" preserveAspectRatio="none" aria-label="三色流线预览" role="img">
     ${filaments.map(([strand, path]) => `<g data-prts-session-flow-preview-filament="${strand}">
-      <path data-prts-session-flow-preview-layer="halo" d="${path}"></path>
-      <path data-prts-session-flow-preview-layer="body" d="${path}"></path>
-      <path data-prts-session-flow-preview-layer="core" d="${path}"></path>
+      <path vector-effect="non-scaling-stroke" data-prts-session-flow-preview-layer="halo" d="${path}"></path>
+      <path vector-effect="non-scaling-stroke" data-prts-session-flow-preview-layer="body" d="${path}"></path>
+      <path vector-effect="non-scaling-stroke" data-prts-session-flow-preview-layer="core" d="${path}"></path>
     </g>`).join('')}
   </svg>`
 }
@@ -608,6 +619,10 @@ export function createThemeSettingsOverlay({
       toggle.setAttribute('aria-checked', String(enabled))
       toggle.classList.toggle('is-active', enabled)
     }
+    const cursorSelect = panel.querySelector('[data-prts-cursor-mode]')
+    if (cursorSelect) cursorSelect.value = currentPreferences.cursor
+    const cursorDescription = panel.querySelector('[data-prts-cursor-description]')
+    if (cursorDescription) cursorDescription.textContent = CURSOR_DESCRIPTIONS[currentPreferences.cursor]
     const replyLimitSelect = panel.querySelector('[data-prts-preview-reply-limit]')
     if (replyLimitSelect) replyLimitSelect.value = String(currentPreferences.previewReplyLimit)
     const replyLimitRow = panel.querySelector('[data-prts-setting-row="previewReplyLimit"]')
@@ -829,6 +844,7 @@ export function createThemeSettingsOverlay({
   const renderMediaState = () => renderState()
   const commitFromControl = event => {
     const target = event.target
+    if (target?.matches?.('[data-prts-cursor-mode]')) { if (event.type === 'change') onPreferenceChange('cursor', target.value); return }
     if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange(cornerCustomKey(), target.value); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       if (event.type === 'change' || event.type === 'focusout') commitSessionFlowColor(target.dataset.prtsSettingKey)
@@ -839,6 +855,7 @@ export function createThemeSettingsOverlay({
     if (target.dataset.prtsSettingKey === 'sessionFlowSpeed') commitSessionFlowSpeed()
   }
 
+  const pageControls = mountPageControls({panel,window})
   trigger?.addEventListener('click', toggle)
   panel?.addEventListener('click', onPanelClick)
   selectSection('appearance')
@@ -878,6 +895,7 @@ export function createThemeSettingsOverlay({
     close: () => setOpen(false),
     toggle,
     dispose() {
+      pageControls.dispose()
       transferEditor.dispose()
       customEditor.dispose()
       avatarEditor.dispose()

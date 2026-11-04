@@ -264,7 +264,7 @@ test('link gestures use link frames and resize cursors preserve native dragging 
   expect(await handle.evaluate(e => e.style.cursor)).toBe('ew-resize')
 })
 
-test('cursor setting is one accessible sliding switch with keyboard and host persistence support', async ({ page }) => {
+test('cursor modes persist through host saves and reloads', async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('prtsFixtureNativeConfig')) {
       localStorage.setItem('prtsFixtureNativeConfig', JSON.stringify({ revision: 1, value: {
@@ -288,24 +288,27 @@ test('cursor setting is one accessible sliding switch with keyboard and host per
     await openSettings()
   }
   await openSettings()
-  const toggle = page.getByRole('switch', { name: 'PRTS 光标', exact: true })
-  await expect(toggle).toHaveCount(1)
-  await expect(toggle).toHaveAttribute('aria-checked', 'true')
-  await expect(toggle).toHaveCSS('width', '42px')
-  await expect(toggle).toHaveCSS('height', '24px')
-  await expect(page.locator('[data-prts-setting-row="cursor"] button')).toHaveCount(1)
-  await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  const cursorSelect = page.getByRole('combobox', {name:'光标模式'})
+  await cursorSelect.click()
+  await expect(page.locator('.prts-page-popup [role=option]')).toHaveCount(3)
+  await page.keyboard.press('Escape')
+  await cursorSelect.click()
+  await page.getByRole('option',{name:'系统光标',exact:true}).click()
   await expect.poll(savedCursor).toBe('system')
   await reloadFromHost()
-  await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await expect(page.locator('html')).toHaveAttribute('data-prts-cursor', 'system')
-  await toggle.press('Space')
-  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await cursorSelect.click()
+  await page.getByRole('option',{name:'PRTS 跟随光标（实验）',exact:true}).click()
+  await expect.poll(savedCursor).toBe('prts-follower')
+  await reloadFromHost()
+  await expect.poll(savedCursor).toBe('prts-follower')
+  await expect(page.locator('.prts-cursor-follower')).toHaveCount(1)
+  await cursorSelect.click()
+  await page.getByRole('option',{name:'PRTS 原生光标',exact:true}).click()
   await expect.poll(savedCursor).toBe('prts')
   await reloadFromHost()
-  await expect(toggle).toHaveAttribute('aria-checked', 'true')
   await expect(page.locator('html')).toHaveAttribute('data-prts-cursor', 'prts')
+  await expect(page.locator('.prts-cursor-follower')).toHaveCount(0)
 })
 
 test('boolean settings use switches and flow details appear only when relevant', async ({ page }) => {

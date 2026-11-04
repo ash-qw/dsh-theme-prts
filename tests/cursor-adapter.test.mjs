@@ -115,7 +115,7 @@ test('hand animation stays local, restores inline cursors and leaves large backg
   assert.equal(observer.takeRecords().length, 0)
   const background = s.document.createElement('div')
   background.style.cursor = original
-  background.innerHTML = '<span>Content</span>'.repeat(150)
+  background.innerHTML = '<span>Content</span>'.repeat(257)
   s.document.body.append(background)
   s.fire('pointerdown', {}, background)
   assert.equal(s.timers.size, 0)
@@ -203,4 +203,35 @@ test('identical adjacent frames do not rewrite the native cursor',()=>{
   observer.observe(s.document.querySelector('button'),{attributes:true,attributeFilter:['style']})
   s.tick();assert.equal(observer.takeRecords().length,0)
   s.adapter.dispose();observer.disconnect();s.dom.window.close()
+})
+
+
+for(const count of [128,129,256,257])test('standard cursor feedback boundary '+count,()=>{
+ const s=setup(),area=s.document.createElement('div')
+ area.style.cursor='url(data:image/png;base64,AA),pointer'
+ area.innerHTML='<span>x</span>'.repeat(count);s.document.body.append(area)
+ const original=area.style.cursor
+ s.fire('pointerdown',{},area)
+ if(count<=128){assert.match(area.style.cursor,/press/);s.tick()}
+ else if(count<=256){assert.match(area.style.cursor,/hold/);assert.equal(s.timers.size,0)}
+ else{assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)}
+ s.fire('pointerup',{},area)
+ if(count>128&&count<=256){assert.match(area.style.cursor,/hold/);assert.equal(s.timers.size,1)}
+ for(let i=0;i<5&&s.timers.size;i++)s.tick()
+ assert.equal(area.style.cursor,original)
+ assert.equal(s.timers.size,0)
+ s.adapter.dispose();s.dom.window.close()
+})
+test('compact feedback holds without looping and cancels when leaving or losing focus',()=>{
+ const s=setup(),area=s.document.createElement('div')
+ area.style.cursor='url(data:image/png;base64,AA),pointer'
+ area.innerHTML='<span>x</span>'.repeat(200);s.document.body.append(area)
+ const original=area.style.cursor
+ s.fire('pointerdown',{},area);s.advance(500);s.fire('pointerup',{},area)
+ assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
+ s.fire('pointerdown',{},area);s.fire('pointermove',{},area.firstChild)
+ assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
+ s.fire('pointerdown',{},area);s.fire('pointerup',{},area);s.fire('blur',{},s.window)
+ assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
+ s.adapter.dispose();s.dom.window.close()
 })

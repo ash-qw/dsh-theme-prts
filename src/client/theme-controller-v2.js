@@ -1,4 +1,4 @@
-import { createCursorAdapter } from './cursor-adapter.js'
+import { createCursorAdapter as createFollowerCursorAdapter } from './cursor-follower.js'
 import { normalizePreferences } from './preferences.js'
 
 export const SCHEME_COMMIT_PROGRESS = .15
@@ -80,7 +80,7 @@ export function createThemeController({ document, window, cssText, service, curs
     return { apply() {}, sync() {}, refresh() {}, setTheme() {}, beginThemeTransition() { return gesture }, toggle() {}, dispose() {} }
   }
 
-  const cursor = createCursorAdapter({ document, window, assets: cursorAssets })
+  const cursor = createFollowerCursorAdapter({ document, window, assets: cursorAssets })
   const root = document.documentElement
   let style
   let disposed = false
@@ -761,7 +761,7 @@ export function createThemeController({ document, window, cssText, service, curs
       root.dataset.prtsTexture = preferences.texture
       root.dataset.prtsGlass = preferences.glass
       root.dataset.prtsMotion = preferences.motion
-      root.dataset.prtsCursor = preferences.cursor
+      root.dataset.prtsCursor = preferences.cursor === 'prts-follower' ? 'prts' : preferences.cursor
       root.dataset.prtsParticlePattern = 'orthogonal'
       root.dataset.prtsSessionFlow = preferences.sessionFlow ? 'on' : 'off'
       root.dataset.prtsSessionGlow = preferences.sessionGlow ? 'on' : 'off'
