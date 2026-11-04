@@ -169,3 +169,35 @@ test('read-only Host settings can be exported but not imported',()=>{
   assert.equal(typeof x.store.checkReadable(),'number')
   assert.throws(()=>x.store.checkWritable(),/无法保存/)
 })
+
+for (const cursor of ['system', 'prts', 'prts-follower']) {
+  for (const source of ['light', 'dark']) {
+    test(`upgrade preserves ${cursor} and ${source} palette despite stale browser cache`, async () => {
+      const palette = {cornerColorLinked:true,cornerColorSource:source,cornerColor:'#123456',cornerCustomColor:'#234567',cornerColorLight:'#abcdef',cornerCustomColorLight:'#fedcba'}
+      const x = setup({cursor,...palette}, {...DEFAULT_PREFERENCES,cursor:'prts-follower'})
+      x.data.set('dsh.ui.prts.host-cache.v1',JSON.stringify({...DEFAULT_PREFERENCES,cursor:'prts-follower'}))
+      x.store.dispose()
+      const store = createNativePreferences({storage:x.storage,onChange(){}})
+      store.bind(x.form)
+      await tick()
+      assert.equal(store.value.cursor,cursor)
+      for (const [key,value] of Object.entries(palette)) assert.equal(store.value[key],value,key)
+      assert.equal(x.writes.length,0,'upgrade must not write defaults over existing preferences')
+      store.update({...store.value,bootAnimation:!store.value.bootAnimation})
+      await tick()
+      assert.deepEqual(x.writes[0].ops.map(op=>op.path[0]),['bootAnimation','preferencesInitialized'])
+      store.dispose()
+    })
+  }
+}
+
+test('fresh installation uses native PRTS cursor without saving experimental defaults', async () => {
+  const x = setup()
+  x.state({value:{preferencesInitialized:false}})
+  assert.equal(x.store.value.cursor,'prts')
+  x.store.bind(x.form)
+  await tick()
+  assert.equal(x.store.value.cursor,'prts')
+  assert.equal(x.writes.length,0)
+  x.store.dispose()
+})
