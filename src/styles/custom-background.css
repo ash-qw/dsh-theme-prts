@@ -3,8 +3,8 @@ html[data-dsh-prts] { --prts-background-wash: color-mix(in srgb, var(--prts-canv
 html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="frame"], [data-prts-nav-rail]) {
 background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-full) var(--prts-protected-full-x, 50%) var(--prts-protected-full-y, 50%) / cover fixed;
 }
-html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
-html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] {
+html[data-dsh-prts][data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
+html[data-dsh-prts][data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] {
 & :is([data-prts-region="sessions"],[data-prts-nav-rail]) {
 --prts-wall-width:var(--prts-protected-sidebar-width,max(calc(var(--prts-sidebar-width,280px) + var(--prts-nav-width)),calc((100dvh - var(--prts-host-top-inset)) * var(--prts-sidebar-image-ratio,1))));
 --prts-wall-x:var(--prts-protected-sidebar-x,calc((var(--prts-sidebar-width,280px) + var(--prts-nav-width) - var(--prts-wall-width)) / 2));
