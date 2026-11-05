@@ -52,7 +52,10 @@ export function resolveRc7Regions(document, report = () => {}) {
     return null
   }
 
-  const frame = closestCommonContainer(root, [sidebar, center, auxiliary])
+  const centerColumn = center.parentElement?.parentElement === auxiliary.parentElement
+    ? center.parentElement
+    : center
+  const frame = closestCommonContainer(root, [sidebar, centerColumn, auxiliary])
   if (!frame) {
     report('common layout container is unavailable')
     return null
@@ -62,7 +65,7 @@ export function resolveRc7Regions(document, report = () => {}) {
     root,
     frame,
     sidebar,
-    center,
+    center: centerColumn,
     auxiliary,
     sidebarSlot,
     centerSlot,

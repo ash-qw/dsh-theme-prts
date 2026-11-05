@@ -180,7 +180,7 @@ for (const cursor of ['system', 'prts', 'prts-follower']) {
       const store = createNativePreferences({storage:x.storage,onChange(){}})
       store.bind(x.form)
       await tick()
-      assert.equal(store.value.cursor,cursor)
+      assert.equal(store.value.cursor,cursor==='prts-follower'?'prts':cursor)
       for (const [key,value] of Object.entries(palette)) assert.equal(store.value[key],value,key)
       assert.equal(x.writes.length,0,'upgrade must not write defaults over existing preferences')
       store.update({...store.value,bootAnimation:!store.value.bootAnimation})

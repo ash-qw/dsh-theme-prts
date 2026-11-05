@@ -15,7 +15,7 @@ export function createCursorAdapter({document, window, assets}) {
   const root = document.documentElement
   let follower, img, point, moveFrame, timer, family, resting, pressed = false, phase
   let semantics, captureTarget, layerContext, stateObserver, watchedTarget, nativePicker
-  let textContext, renderedX, renderedY
+  let textContext, renderedX, renderedY, nativeScrollbar=false
   let eventTarget, semanticTarget, semanticValue, pose, poseKind, dirty = true, hitDirty = true
   let suspended = false, visible = false, currentUrl, ready = false
   const staticPose=(rest,hotspot)=>({rest,hotspot})
@@ -78,7 +78,7 @@ export function createCursorAdapter({document, window, assets}) {
     play(family.release,()=>{stop();sync()})
   }
   function sync() {
-    if (!follower || !ready || !point || nativePicker || suspended || document.hidden || document.pointerLockElement) return hide()
+    if (!follower || !ready || !point || nativePicker || nativeScrollbar || suspended || document.hidden || document.pointerLockElement) return hide()
     const hit=hitDirty || !eventTarget?.isConnected ? document.elementFromPoint(point.x,point.y) : eventTarget
     eventTarget=hit;hitDirty=false
     if(!hit || hit.closest('iframe'))return hide()
@@ -138,6 +138,7 @@ export function createCursorAdapter({document, window, assets}) {
   function flush() { moveFrame=undefined;sync() }
   function move(event) {
     if(event.pointerType!=='mouse')return
+    if(nativeScrollbar){if(event.buttons)return;nativeScrollbar=false}
     resumePicker(event)
     if(suspended && !event.buttons)suspended=false
     const unchanged=point?.x===event.clientX && point?.y===event.clientY && eventTarget===event.target
@@ -146,9 +147,34 @@ export function createCursorAdapter({document, window, assets}) {
     if(pressed && !(event.buttons&1)){stop();draw(resting)}
     if(!unchanged || dirty)if(moveFrame===undefined)moveFrame=window.requestAnimationFrame(flush)
   }
+  // Native scrollbar drags stop delivering mouse coordinates to the page.
+  // Measure only on press; never add geometry reads to ordinary movement.
+  function onScrollbar(event){
+    const el=event.target
+    if(!(el instanceof window.HTMLElement))return false
+    if(el===root || el===document.body){
+      if(event.clientX>=root.clientWidth && window.innerWidth>root.clientWidth)return true
+      if(event.clientY>=root.clientHeight && window.innerHeight>root.clientHeight)return true
+    }
+    if(el.offsetWidth<=el.clientWidth && el.offsetHeight<=el.clientHeight)return false
+    const style=window.getComputedStyle(el),rect=el.getBoundingClientRect()
+    if(!el.offsetWidth || !el.offsetHeight)return false
+    const x=(event.clientX-rect.left)*el.offsetWidth/rect.width
+    const y=(event.clientY-rect.top)*el.offsetHeight/rect.height
+    const left=parseFloat(style.borderLeftWidth)||0,right=parseFloat(style.borderRightWidth)||0
+    const top=parseFloat(style.borderTopWidth)||0,bottom=parseFloat(style.borderBottomWidth)||0
+    const inside=x>=left && x<el.offsetWidth-right && y>=top && y<el.offsetHeight-bottom
+    if(!inside)return false
+    const vertical=el.scrollHeight>el.clientHeight && /^(auto|scroll)$/.test(style.overflowY)
+      && el.offsetWidth-el.clientWidth-left-right>0 && (x<el.clientLeft || x>=el.clientLeft+el.clientWidth)
+    const horizontal=el.scrollWidth>el.clientWidth && /^(auto|scroll)$/.test(style.overflowX)
+      && el.offsetHeight-el.clientHeight-top-bottom>0 && y>=el.clientTop+el.clientHeight
+    return vertical || horizontal
+  }
   function down(event) {
     if(event.pointerType!=='mouse'){reset();return}
     if(event.button!==0||event.isPrimary===false)return
+    if(onScrollbar(event)){reset();nativeScrollbar=true;return}
     const picker=event.target.closest?.('select,input[type="file"],input[type="color"]')
     if(picker){nativePicker=picker;reset();return}
     nativePicker=undefined
@@ -177,6 +203,7 @@ export function createCursorAdapter({document, window, assets}) {
   }
   function over(event) {
     if(event.pointerType!=='mouse')return
+    if(nativeScrollbar){if(event.buttons)return;nativeScrollbar=false}
     resumePicker(event)
     if(moveFrame!==undefined)window.cancelAnimationFrame(moveFrame)
     moveFrame=undefined
@@ -185,6 +212,7 @@ export function createCursorAdapter({document, window, assets}) {
     sync()
   }
   function up(event) {
+    if(nativeScrollbar && event.pointerType==='mouse' && event.button===0){nativeScrollbar=false;move(event);return}
     if(event.pointerType!=='mouse'||event.button!==0||!pressed)return
     pressed=false;dirty=true
     if(reduced()){stop();draw(resting);return}
@@ -192,7 +220,7 @@ export function createCursorAdapter({document, window, assets}) {
   }
   function reset() {
     if(moveFrame!==undefined)window.cancelAnimationFrame(moveFrame)
-    moveFrame=undefined;point=undefined;eventTarget=undefined;hitDirty=true;captureTarget=undefined;hide()
+    moveFrame=undefined;point=undefined;eventTarget=undefined;hitDirty=true;captureTarget=undefined;nativeScrollbar=false;hide()
   }
   function blur(event){if(event.target===window)reset()}
   function leave(event){if(!event.relatedTarget || event.relatedTarget.closest?.('iframe'))reset()}

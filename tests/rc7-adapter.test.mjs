@@ -60,6 +60,41 @@ test('resolves the 0.1.5 main and rightbar layout while keeping legacy aliases',
   assert.equal(regions.auxiliary.dataset.prtsRegion, 'host-owned')
 })
 
+for (const globalPanel of [false, true]) {
+  test(`resolves the 0.2.2 main panel wrapper to its full center column, globalPanel=${globalPanel}`, () => {
+    const dom = new JSDOM(currentFixture)
+    const document = dom.window.document
+    const centerSlot = document.querySelector('[data-slot="main"]')
+    const centerColumn = centerSlot.parentElement
+    const mainPanel = document.createElement('div')
+    mainPanel.toggleAttribute('data-global-panel', globalPanel)
+    centerColumn.insertBefore(mainPanel, centerSlot)
+    mainPanel.append(centerSlot)
+    const header = document.createElement('header')
+    centerColumn.prepend(header)
+    centerColumn.setAttribute('inert', '')
+
+    const regions = resolveRc7Regions(document)
+    assert.equal(regions.center, centerColumn)
+    assert.equal(regions.centerSlot, centerSlot)
+    assert.equal(regions.frame, centerColumn.parentElement)
+
+    const adapter = createRc7Adapter({ document })
+    adapter.mount()
+    assert.equal(centerColumn.dataset.prtsRegion, 'operation')
+    assert.equal(mainPanel.hasAttribute('data-prts-region'), false)
+    assert.equal(header.closest('[data-prts-region="operation"]'), centerColumn)
+    assert.equal(centerColumn.hasAttribute('inert'), true)
+    assert.equal(mainPanel.hasAttribute('data-global-panel'), globalPanel)
+
+    adapter.dispose()
+    assert.equal(centerColumn.hasAttribute('data-prts-region'), false)
+    assert.equal(centerColumn.hasAttribute('inert'), true)
+    assert.equal(mainPanel.hasAttribute('data-global-panel'), globalPanel)
+    dom.window.close()
+  })
+}
+
 test('resolves rc.7 regions when product wrappers sit between the frame and columns', () => {
   const dom = new JSDOM(fixture)
   const document = dom.window.document

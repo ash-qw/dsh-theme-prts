@@ -17,10 +17,11 @@ The Baker conversation theme is inspired by the messenger in Arknights: Endfield
 
 ## Compatibility
 
-- Supports DeepSeek Harness `0.2.1-rc.2`, `0.2.1-rc.3`, and `0.2.1-rc.5` on Web. Official desktop verification remains limited to `0.2.1-rc.2`; rc.3 and rc.5 desktop have not received separate checks. The earlier `0.2.0-rc.2`, `0.1.7`, `0.1.5`, and `0.1.2` release lines are outside the current compatibility declaration.
+- Supports DeepSeek Harness `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.5`, and `0.2.2-rc.1` on Web. Official desktop verification remains limited to `0.2.1-rc.2`; other desktop versions have not received separate checks. The earlier `0.2.0-rc.2`, `0.1.7`, `0.1.5`, and `0.1.2` release lines are outside the current compatibility declaration.
 - Web checks cover mounting, workspaces and session cards, long-title hover behavior, the native conversation width drag control, and narrow-window layout. The rc.3 More menus in the left sidebar, conversation view header and right sidebar were checked on the live local page, retaining themed menu surfaces and native item hover backgrounds.
 - On rc.5, reasoning text processing remains owned by the host; the theme does not override the `text/rawText` contract of `conversation.chat.reasoning.body`. Reasoning expansion, collapse and background surfaces were checked on the live local page.
-- `engines.dsh` in `package.json` lists only these three release candidates so the plugin market can evaluate compatibility. Other DSH versions require separate verification.
+- On `0.2.2-rc.1`, the layout adapter handles the new main-panel wrapper while keeping the entire center column themed. The host retains ownership of the mobile sidebar drawer, mask, and native interactions. Local live Web checks cover the plugin page and theme settings, asset configuration endpoints, the mobile drawer and mask dismissal, settings persistence across reload, and reasoning expansion and collapse in both color schemes. These changes have not received separate desktop verification.
+- `engines.dsh` in `package.json` lists only these four release candidates so the plugin market can evaluate compatibility. Other DSH versions require separate verification.
 - For DSH `0.2.0-rc.2`, pin the previous public theme release `@ash-qw/dsh-theme-prts@1.4.2`. For DSH `0.1.7-rc.2`, pin `1.0.2`. For DSH `0.1.2` or `0.1.5`, pin `0.1.102`.
 
 ## Install and update
@@ -144,6 +145,8 @@ Full imports delete replaced background WebP files and replace avatar originals;
 
 When the host exposes runtime context registration, each model request also receives the current switch state and these handling instructions proactively.
 
-### Experimental cursor
+### Experimental cursor and upgrade behavior
 
-Under interaction settings, the cursor mode dropdown offers System cursor, PRTS Native cursor and PRTS Follow cursor (experimental). The opt-in Mouse Follower mode animates PRTS images in an isolated DOM layer without a descendant-count cutoff for ordinary backgrounds or large cards. Text, disabled, grab, resize, crop and in-page dialog states share the same renderer. Browser-native menus, iframe boundaries and native drag-and-drop still return control to the browser. Position easing and trails are disabled, but main-thread congestion can still delay movement. Existing preferences remain unchanged; switch back to PRTS Native cursor at any time.
+**PRTS Follow cursor (experimental) is temporarily disabled because it performed poorly in real-device testing.** Interaction settings now offer only System cursor and PRTS Native cursor. The follow cursor implementation is retained. Saved or imported follow cursor preferences run as PRTS Native cursor without changing other colors or appearance settings. New installations default to PRTS Native cursor.
+
+Upgrading the theme from `2.6.1` to `2.7.0` automatically falls back from the experimental follow cursor to PRTS Native cursor without manual configuration changes. System cursor and PRTS Native cursor are unaffected. Loading an old preference alone does not write the fallback back to the server. If the follow cursor is required, keep theme `2.6.1` paired with one of its supported DSH versions: `0.2.1-rc.2`, `0.2.1-rc.3`, or `0.2.1-rc.5`. Theme `2.6.1` does not declare support for DSH `0.2.2-rc.1`.

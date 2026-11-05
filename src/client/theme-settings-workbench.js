@@ -21,7 +21,7 @@ const CURSOR_DESCRIPTIONS = {
 }
 
 const COMMON_CONTROLS = [
-  ['cursor', '光标模式', [['system', '系统光标'], ['prts', 'PRTS 原生光标'], ['prts-follower', 'PRTS 跟随光标（实验）']]],
+  ['cursor', '光标模式', [['system', '系统光标'], ['prts', 'PRTS 原生光标']]],
   ['railDefaultHidden', '默认隐藏导航栏', [['false', '关闭'], ['true', '开启']]],
   ['motion', '动态效果', []],
   ['sessionFlow', '当前会话流线', [['false', '关闭'], ['true', '开启']]],

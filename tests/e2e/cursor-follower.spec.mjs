@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test'
 import {readFile} from 'node:fs/promises'
 import {build} from 'esbuild'
+test.use({launchOptions:{ignoreDefaultArgs:['--hide-scrollbars']}})
 let adapter
 test.beforeAll(async()=>{
   const result=await build({entryPoints:['src/client/cursor-follower.js'],bundle:true,write:false,format:'iife',globalName:'FollowerTest'})
@@ -277,4 +278,49 @@ test('standard medium-container tap uses exactly two cursor writes and large con
  await page.mouse.down();await page.mouse.up()
  expect(await page.locator('#tier-area').evaluate(e=>e.style.cursor)).toBe('')
  expect(await page.evaluate(()=>cursorWrites)).toBe(0)
+})
+
+test('follower tracks native range drags outside the slider and releases normally',async({page})=>{
+ await setup(page)
+ await page.evaluate(()=>{
+  const range=document.createElement('input');range.type='range';range.id='drag-range';range.value='50'
+  range.style.cssText='position:fixed;left:100px;top:300px;width:300px;height:30px'
+  document.body.append(range)
+ })
+ const overlay=page.locator('.prts-cursor-follower')
+ const box=await page.locator('#drag-range').boundingBox()
+ const x=box.x+box.width/2,y=box.y+box.height/2
+ await page.mouse.move(x,y)
+ await expect(overlay).toBeVisible()
+ await page.mouse.down()
+ for(const [dx,dy] of [[80,0],[180,60],[-100,-40]]){
+  await page.mouse.move(x+dx,y+dy,{steps:5})
+  await expect.poll(()=>overlay.evaluate(e=>({x:Math.round(e.getBoundingClientRect().x),y:Math.round(e.getBoundingClientRect().y)}))).toEqual({x:Math.round(x+dx),y:Math.round(y+dy)})
+ }
+ await page.mouse.up()
+ expect(Number(await page.locator('#drag-range').inputValue())).toBeLessThan(50)
+ await page.mouse.move(50,50)
+ await expect.poll(()=>overlay.evaluate(e=>Math.round(e.getBoundingClientRect().x))).toBe(50)
+})
+
+test('native scrollbar drag hides the frozen overlay until pointer events resume',async({page})=>{
+ await setup(page)
+ await page.addStyleTag({content:'#scroll-test::-webkit-scrollbar{width:16px}#scroll-test::-webkit-scrollbar-thumb{background:#888}'})
+ await page.evaluate(()=>{
+  const el=document.createElement('div');el.id='scroll-test';el.style.cssText='position:fixed;left:100px;top:300px;width:300px;height:200px;overflow:scroll'
+  el.innerHTML='<div style="height:2000px">scroll content</div>';document.body.append(el)
+ })
+ const overlay=page.locator('.prts-cursor-follower')
+ await page.mouse.move(392,310)
+ await expect(overlay).toBeVisible()
+ await page.mouse.down()
+ await expect(overlay).toBeHidden()
+ await expect(page.locator('html')).not.toHaveAttribute('data-prts-follower-visible','')
+ await page.mouse.move(392,390,{steps:6})
+ await expect.poll(()=>page.locator('#scroll-test').evaluate(e=>e.scrollTop)).toBeGreaterThan(0)
+ await expect(overlay).toBeHidden()
+ await page.mouse.up()
+ await page.mouse.move(250,250)
+ await expect(overlay).toBeVisible()
+ await expect.poll(()=>overlay.evaluate(e=>Math.round(e.getBoundingClientRect().y))).toBe(250)
 })
