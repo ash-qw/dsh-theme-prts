@@ -312,6 +312,10 @@ test('supports fixed host-owned themes, tactical takeover, and accessibility fal
   assert.doesNotMatch(css, /data-prts-drawer-open="sessions"/)
 })
 
+test('floating popups remove the duplicate host material without flattening dialogs', () => {
+  assert.match(css, /html\[data-dsh-prts\] :is\(\[data-prts-floating-glass\]:not\(\[data-prts-floating-glass="dialog"\]\), \[data-prts-glass-menu\]\) > \[aria-hidden="true"\]\[class\*="_material_"\]\s*\{\s*background:\s*transparent !important;\s*backdrop-filter:\s*none !important;\s*-webkit-backdrop-filter:\s*none !important;/s)
+})
+
 test('retains scoped floating surfaces and a readable responsive settings workbench', () => {
   includesAll([
     '[data-prts-glass-control="model"]',

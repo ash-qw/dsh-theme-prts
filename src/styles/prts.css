@@ -1594,6 +1594,12 @@ html[data-dsh-prts] [data-prts-floating-glass="popover"] {
   -webkit-backdrop-filter: var(--prts-active-glass-filter);
 }
 
+html[data-dsh-prts] :is([data-prts-floating-glass]:not([data-prts-floating-glass="dialog"]), [data-prts-glass-menu]) > [aria-hidden="true"][class*="_material_"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 html[data-dsh-prts] [data-prts-floating-glass="dialog"] {
   border: 1px solid var(--prts-glass-border) !important;
   border-radius: var(--prts-radius-overlay) !important;
