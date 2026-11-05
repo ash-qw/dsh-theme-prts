@@ -440,11 +440,16 @@ export function apply(ctx) {
     defineStore,
     mountComposerGlassSurface(container, props) {
       const { createRoot } = require('react-dom/client')
+      const materialStyle = { backdropFilter: 'blur(5px) saturate(1)', WebkitBackdropFilter: 'blur(5px) saturate(1)' }
+      const placeholder = document.createElement('div')
+      placeholder.className = 'glass-surface glass-surface--fallback'
+      Object.assign(placeholder.style, { width: '100%', height: '100%', ...materialStyle })
+      container.append(placeholder)
       const root = createRoot(container)
       const update = props => root.render(React.createElement(PrtsGlassSurface.default, {
         width: '100%', height: '100%',
         refraction: false,
-        style: { backdropFilter: 'blur(5px) saturate(1)', WebkitBackdropFilter: 'blur(5px) saturate(1)' },
+        style: materialStyle,
         opacity: 1, backgroundOpacity: 0.5,
         ...props,
       }))

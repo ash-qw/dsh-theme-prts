@@ -13,6 +13,7 @@ export function createComposerGlassSurface({document, window, mount}) {
     surfaces.delete(card)
   }
   function sync() {
+    if (frame !== undefined) window.cancelAnimationFrame?.(frame)
     frame = undefined
     const cards = new Set(document.querySelectorAll('[data-composer-card], [data-prts-composer-fallback]'))
     for (const [card, entry] of surfaces) if (!cards.has(card)) remove(card, entry)
@@ -68,12 +69,21 @@ export function createComposerGlassSurface({document, window, mount}) {
       if (!mount) return
       document.documentElement.setAttribute('data-prts-composer-enhanced', '')
       if (!observer) {
-        resize = new window.ResizeObserver(queue)
+        resize = new window.ResizeObserver(entries => {
+          if (entries.some(({target}) => !surfaces.has(target)
+            && target.offsetWidth && target.offsetHeight)) sync()
+          else queue()
+        })
         observer = new window.MutationObserver(records => {
           const selector = '[data-composer-card], [data-prts-composer-fallback]'
-          if (records.some(record => record.type === 'attributes'
-            || [...record.addedNodes, ...record.removedNodes].some(node =>
-              node.nodeType === 1 && (node.matches(selector) || node.querySelector(selector))))) queue()
+          const containsComposer = node => node.nodeType === 1
+            && (node.matches(selector) || node.querySelector(selector))
+          const mounting = records.some(record =>
+            (record.type === 'attributes' && record.target.matches(selector) && !surfaces.has(record.target))
+            || [...record.addedNodes].some(containsComposer))
+          if (mounting) sync()
+          else if (records.some(record => record.type === 'attributes'
+            || [...record.removedNodes].some(containsComposer))) queue()
         })
         observer.observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['data-composer-card','data-prts-composer-fallback']})
       }

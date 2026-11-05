@@ -29,7 +29,7 @@ function fixture(t) {
     },
   })
   t.after(() => { surface.dispose(); dom.window.close() })
-  return { document, card, calls, surface, observed, resize(value) { width = value; if (observed.has(card)) resized() } }
+  return { document, card, calls, surface, observed, resize(value) { width = value; if (observed.has(card)) resized([{ target: card }]) } }
 }
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -93,6 +93,7 @@ test('a composer hidden when glass starts mounts when it gains layout dimensions
   f.surface.start()
   assert.equal(f.calls.mounts, 0)
   f.resize(600)
+  assert.equal(f.calls.mounts, 1)
   await wait(40)
   assert.equal(f.calls.mounts, 1)
   assert.equal(f.card.hasAttribute('data-prts-composer-glass-active'), true)
@@ -108,4 +109,46 @@ test('hidden composers removed before mounting are no longer observed', async t 
   await wait(40)
   assert.equal(f.observed.size, 0)
   assert.equal(f.calls.mounts, 0)
+})
+
+test('a replacement composer receives its material before the next animation frame', async t => {
+  const f = fixture(t)
+  f.surface.start()
+  const wrapper = f.document.createElement('section')
+  const replacement = f.document.createElement('div')
+  replacement.setAttribute('data-composer-card', '')
+  Object.defineProperty(replacement, 'offsetWidth', { value: 600 })
+  Object.defineProperty(replacement, 'offsetHeight', { value: 150 })
+  const input = f.document.createElement('textarea')
+  input.value = 'keep this draft'
+  replacement.append(input)
+  wrapper.append(replacement)
+  f.card.replaceWith(wrapper)
+  input.focus()
+  input.setSelectionRange(2, 7)
+  await Promise.resolve()
+  assert.equal(f.calls.mounts, 2)
+  assert.equal(f.calls.unmounts, 1)
+  assert.equal(replacement.hasAttribute('data-prts-composer-glass-active'), true)
+  assert.equal(f.document.activeElement, input)
+  assert.equal(input.value, 'keep this draft')
+  assert.equal(input.selectionStart, 2)
+  assert.equal(input.selectionEnd, 7)
+})
+
+test('a newly classified fallback composer mounts in the marker mutation microtask', async t => {
+  const f = fixture(t)
+  f.surface.start()
+  const form = f.document.createElement('form')
+  Object.defineProperty(form, 'offsetWidth', { value: 600 })
+  Object.defineProperty(form, 'offsetHeight', { value: 150 })
+  f.document.body.append(form)
+  await Promise.resolve()
+  assert.equal(f.calls.mounts, 1)
+  form.setAttribute('data-prts-composer-fallback', '')
+  await Promise.resolve()
+  assert.equal(f.calls.mounts, 2)
+  assert.equal(form.hasAttribute('data-prts-composer-glass-active'), true)
+  await wait(40)
+  assert.equal(f.calls.mounts, 2)
 })
