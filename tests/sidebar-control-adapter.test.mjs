@@ -553,6 +553,59 @@ test('a second preview navigation cancels the first pending destination', async 
   } finally {adapter.dispose();dom.window.close()}
 })
 
+test('adapts direct context menu triggers without confusing workspace creation or session quick actions', async () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div role="tree">
+      <div role="treeitem" aria-expanded="true" data-workspace>
+        <span>folder</span><span>chevron</span><span>Workspace</span>
+        <span data-actions>
+          <button type="button" data-context-menu-trigger="true" aria-haspopup="menu" aria-expanded="false" data-menu>…</button>
+          <button type="button" data-create>+</button>
+        </span>
+      </div>
+      <div role="treeitem" aria-selected="false" data-session>
+        <span>status</span><span class="title">Session</span><span class="rowResting">time</span>
+        <span data-actions>
+          <button type="button" data-context-menu-trigger="" data-menu>…</button>
+          <span data-quick><div data-slot="sidebar.workspaces.session.row.action"><button type="button">Archive</button><button type="button">Pin</button></div></span>
+        </span>
+      </div>
+    </div></div></aside></body></html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createSidebarControlAdapter({ document, window: dom.window })
+  try {
+    adapter.start()
+    for (const kind of ['workspace', 'session']) {
+      const row = document.querySelector(`[data-${kind}]`)
+      const menu = row.querySelector('[data-menu]')
+      assert.equal(row.querySelector(`[data-prts-${kind}-actions]`), row.querySelector('[data-actions]'))
+      assert.equal(row.querySelector(`[data-prts-${kind}-menu]`), menu)
+      assert.equal(row.querySelector(`[data-prts-${kind}-menu-anchor]`), menu)
+      assert.ok(menu.querySelector('[data-prts-facility-svg]'))
+    }
+    const workspace = document.querySelector('[data-workspace]')
+    assert.equal(workspace.querySelector('[data-prts-workspace-create]'), workspace.querySelector('[data-create]'))
+    assert.ok(workspace.querySelector('[data-create] [data-prts-facility-svg]'))
+    assert.equal(document.querySelector('[data-prts-session-quick-actions]'), document.querySelector('[data-quick]'))
+    const session = document.querySelector('[data-session]')
+    session.classList.add('native_menuOpen')
+    await flush(dom.window)
+    assert.ok(session.hasAttribute('data-prts-row-menu-open'))
+    session.classList.remove('native_menuOpen')
+    await flush(dom.window)
+    assert.equal(session.hasAttribute('data-prts-row-menu-open'), false)
+    workspace.querySelector('[data-menu]').setAttribute('aria-expanded', 'true')
+    await flush(dom.window)
+    assert.ok(workspace.hasAttribute('data-prts-row-menu-open'))
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-workspace-menu], [data-prts-session-menu], [data-prts-session-quick-actions]'), null)
+    assert.equal(document.querySelectorAll('[data-menu], [data-create], [data-quick]').length, 4)
+  } finally {
+    adapter.dispose()
+    dom.window.close()
+  }
+})
+
 test('adapts the ungrouped workspace create button without a management menu', () => {
   const dom = new JSDOM(`<!doctype html><html><body>
     <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces">
@@ -619,4 +672,43 @@ test('quiet scrollbar changes skip scans and short pickup hovers cancel activati
   row.dispatchEvent(new dom.window.MouseEvent('pointerout',{bubbles:true}))
   assert.equal(row.hasAttribute('data-prts-pickup-ready'),false)
   adapter.dispose();dom.window.close()
+})
+test('separates nested native pin indicators from timestamps across pin and selection updates', async () => {
+  const dom = new JSDOM(`<!doctype html><html><body>
+    <aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div role="tree">
+      <div role="treeitem" aria-selected="false">
+        <span>status</span><span class="title">Pinned session</span>
+        <span class="native_rowResting"><span class="native_time native_timestamp">1d</span><span data-slot="sidebar.session.row.trailing"></span><span class="native_pinIndicator" role="img" aria-label="已置顶"><svg></svg></span></span>
+        <span><button type="button" data-context-menu-trigger>…</button></span>
+      </div>
+    </div></div></aside></body></html>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createSidebarControlAdapter({ document, window: dom.window })
+  try {
+    adapter.start()
+    const row = document.querySelector('[role="treeitem"]')
+    const resting = row.querySelector('.native_rowResting')
+    const timestamp = row.querySelector('.native_timestamp')
+    const pin = row.querySelector('.native_pinIndicator')
+    assert.equal(row.querySelector('[data-prts-session-time]'), timestamp)
+    assert.equal(row.querySelector('[data-prts-session-resting]'), resting)
+    assert.equal(row.querySelector('[data-prts-session-pin]'), pin)
+    assert.equal(pin.parentElement, resting)
+    row.setAttribute('aria-selected', 'true')
+    await flush(dom.window)
+    assert.equal(row.querySelector('[data-prts-session-pin]'), pin)
+    pin.remove()
+    await flush(dom.window)
+    assert.equal(row.querySelector('[data-prts-session-pin]'), null)
+    assert.equal(pin.hasAttribute('data-prts-session-pin'), false)
+    resting.append(pin)
+    await flush(dom.window)
+    assert.equal(row.querySelector('[data-prts-session-pin]'), pin)
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-session-resting], [data-prts-session-pin], [data-prts-session-time]'), null)
+    assert.equal(pin.parentElement, resting)
+  } finally {
+    adapter.dispose()
+    dom.window.close()
+  }
 })

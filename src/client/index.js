@@ -443,9 +443,9 @@ export function apply(ctx) {
       const root = createRoot(container)
       const update = props => root.render(React.createElement(PrtsGlassSurface.default, {
         width: '100%', height: '100%',
-        // Gentle edge refraction; a fully calm center avoids shifting input content.
-        distortionScale: -18, redOffset: 0, greenOffset: 1, blueOffset: 2,
-        opacity: 1, backgroundOpacity: 0.5, displace: 5,
+        refraction: false,
+        style: { backdropFilter: 'blur(5px) saturate(1)', WebkitBackdropFilter: 'blur(5px) saturate(1)' },
+        opacity: 1, backgroundOpacity: 0.5,
         ...props,
       }))
       update(props)

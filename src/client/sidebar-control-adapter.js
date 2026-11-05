@@ -19,6 +19,8 @@ const OWNED_ATTRIBUTES = [
   'data-prts-session-menu-anchor',
   'data-prts-session-menu',
   'data-prts-session-time',
+  'data-prts-session-resting',
+  'data-prts-session-pin',
   'data-prts-session-index',
   'data-prts-session-state',
   'data-prts-selection-target',
@@ -106,20 +108,26 @@ function markSidebarNode(node, attribute, next) {
 }
 
 function resolveRowControls(row, kind) {
-  const menu = row.querySelector(':scope > span > span > button[type="button"]')
-  const anchor = menu?.parentElement
+  const menu = row.querySelector(':scope > span > button[type="button"]:is([data-context-menu-trigger], [aria-haspopup="menu"])')
+    ?? row.querySelector(':scope > span > span > button[type="button"]')
+  const anchor = menu?.parentElement?.parentElement === row ? menu : menu?.parentElement
   // Ungrouped workspaces have a create button but no management menu.
   const actions = anchor?.parentElement ?? (kind === 'workspace'
     ? Array.from(row.children).find(node => node.matches('span') && node.querySelector(':scope > button[type="button"]'))
     : undefined)
   if (actions?.parentElement !== row) return {}
   const create = kind === 'workspace'
-    ? actions.querySelector(':scope > button[type="button"]')
+    ? Array.from(actions.children).find(child => child !== anchor && child.matches('button[type="button"]'))
     : undefined
   const quickActions = kind === 'session'
     ? Array.from(actions.children).filter(child => child !== anchor && child.querySelector('button'))
     : []
   return { actions, anchor, create, menu, quickActions }
+}
+
+function isRowMenuOpen(row, menu) {
+  return menu?.getAttribute('aria-expanded') === 'true'
+    || Array.from(row.classList).some(token => token === 'menuOpen' || token.endsWith('_menuOpen'))
 }
 
 function resolveRowTitle(row, kind, actions) {
@@ -158,10 +166,11 @@ function resolveWorkspaceDisclosure(row, title, actions, icon) {
   ))
 }
 
-function resolveSessionTime(row, title, actions) {
+function resolveSessionTime(row, title, actions, pin) {
   const candidates = Array.from(row.querySelectorAll(':scope > span')).filter(node => (
     node !== title
     && node !== actions
+    && node !== pin
     && !node.hasAttribute('data-prts-facility-face')
     && !node.hasAttribute('data-prts-row-projection')
     && !node.querySelector('button')
@@ -169,6 +178,18 @@ function resolveSessionTime(row, title, actions) {
   ))
   return candidates.find(node => node.matches('[class*="time" i], time, [data-session-time]'))
     ?? candidates.filter(node => node.getAttribute('aria-hidden') !== 'true' && !node.querySelector('[data-state]')).at(-1)
+}
+
+function resolveSessionTrailing(row, title, actions) {
+  const pin = row.querySelector('[class*="_pinIndicator"], [aria-label="Pinned"]')
+  const resting = Array.from(row.children).find(node => node !== title && node !== actions && node !== pin && (
+    (pin && node.contains(pin))
+    || Array.from(node.classList).some(token => token === 'rowResting' || token.endsWith('_rowResting'))
+  ))
+  const time = resting
+    ? resting.querySelector('time, [data-session-time], [class*="_timestamp"], [class*="_time"]')
+    : resolveSessionTime(row, title, actions, pin)
+  return { pin, resting, time }
 }
 
 function ensureFacilityFace(document, row, kind, next) {
@@ -916,8 +937,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         const icon = resolveWorkspaceIcon(row, title, controls.actions)
         markSidebarNode(icon, 'data-prts-workspace-icon', next)
         markSidebarNode(resolveWorkspaceDisclosure(row, title, controls.actions, icon), 'data-prts-workspace-disclosure', next)
-        row.toggleAttribute('data-prts-row-menu-open', controls.menu?.getAttribute('aria-expanded') === 'true'
-          || row.classList.contains('menuOpen'))
+        row.toggleAttribute('data-prts-row-menu-open', isRowMenuOpen(row, controls.menu))
         markSidebarNode(controls.actions, 'data-prts-workspace-actions', next)
         markSidebarNode(controls.anchor, 'data-prts-workspace-menu-anchor', next)
         markSidebarNode(controls.menu, 'data-prts-workspace-menu', next)
@@ -963,10 +983,12 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         setSidebarAttribute(row, 'data-prts-session-index', sessionIndex)
         const title = resolveRowTitle(row, 'session', controls.actions)
         markSidebarNode(title, 'data-prts-row-title', next)
-        markSidebarNode(resolveSessionTime(row, title, controls.actions), 'data-prts-session-time', next)
+        const trailing = resolveSessionTrailing(row, title, controls.actions)
+        markSidebarNode(trailing.time, 'data-prts-session-time', next)
+        markSidebarNode(trailing.resting, 'data-prts-session-resting', next)
+        markSidebarNode(trailing.pin, 'data-prts-session-pin', next)
         if (title) setSidebarAttribute(title, 'data-prts-session-index', sessionIndex)
-        row.toggleAttribute('data-prts-row-menu-open', controls.menu?.getAttribute('aria-expanded') === 'true'
-          || row.classList.contains('menuOpen'))
+        row.toggleAttribute('data-prts-row-menu-open', isRowMenuOpen(row, controls.menu))
         markSidebarNode(controls.actions, 'data-prts-session-actions', next)
         for (const action of controls.quickActions ?? []) markSidebarNode(action, 'data-prts-session-quick-actions', next)
         markSidebarNode(controls.anchor, 'data-prts-session-menu-anchor', next)

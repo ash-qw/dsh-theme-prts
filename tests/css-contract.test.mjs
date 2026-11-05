@@ -39,7 +39,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 282_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 282 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 284_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 284 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators)')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {

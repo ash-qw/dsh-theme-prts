@@ -136,7 +136,12 @@ html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible
   background: var(--prts-yellow) !important;
 }
 
-html[data-dsh-prts] [data-prts-session-time] {
+html[data-dsh-prts] [data-prts-session-row] > [data-prts-row-title]:last-child {
+  margin-right: var(--prts-row-end-reserve);
+}
+
+html[data-dsh-prts] [data-prts-session-time],
+html[data-dsh-prts] [data-prts-session-resting] {
   position: relative;
   z-index: 3;
   flex: 0 0 auto;
@@ -146,13 +151,75 @@ html[data-dsh-prts] [data-prts-session-time] {
   transition: opacity 120ms ease, transform 220ms var(--prts-ease-spring);
 }
 
-/* DSH keeps its pin in the row's trailing slot; move that slot inside our face. */
-html[data-dsh-prts] [data-prts-session-row] > :is([aria-label="Pinned"], [class*="_pinIndicator"]) {
+html[data-dsh-prts] [data-prts-session-resting] {
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-dsh-prts] [data-prts-session-resting]:has([data-prts-session-pin]) {
+  display: inline-flex !important;
+  flex-shrink: 1;
+  min-width: 0;
+  margin-right: calc(var(--prts-row-end-reserve) + 6px);
+  padding-left: 0;
+}
+
+html[data-dsh-prts] [data-prts-session-row]:has([data-prts-session-pin]) [data-prts-row-title] {
+  padding-left: clamp(0px, calc(50% - 60px), 13px);
+  padding-right: clamp(0px, calc(50% - 60px), 10px);
+}
+
+html[data-dsh-prts] [data-prts-session-row]:has([data-prts-session-pin]) [data-prts-session-time] {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+html[data-dsh-prts] [data-prts-session-resting] [data-prts-session-time] {
+  margin: 0;
+  padding: 0;
+  transform: none;
+}
+
+html[data-dsh-prts] [data-prts-session-pin] {
+  display: inline-flex !important;
+  flex: 0 0 16px;
+  width: 16px;
+  margin-left: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-dsh-prts] [data-prts-session-row] > [data-prts-session-pin] {
   margin-right: calc(var(--prts-row-end-reserve) + 6px);
 }
 
-html[data-dsh-prts] [data-prts-session-row]:has(> :is([aria-label="Pinned"], [class*="_pinIndicator"])) [data-prts-session-time] {
+html[data-dsh-prts] [data-prts-session-row]:has(> [data-prts-session-pin]) [data-prts-session-time] {
   margin-right: 8px;
+}
+
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-session-resting] {
+  margin-right: 8px;
+}
+
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) > [data-prts-session-pin] {
+  margin-right: 6px;
+}
+
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open], [data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):has([data-prts-session-pin]) [data-prts-session-time],
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-session-resting]:not(:has([data-prts-session-pin])) {
+  display: none !important;
+}
+
+@media (hover: none) {
+  html[data-dsh-prts] [data-prts-session-resting],
+  html[data-dsh-prts] [data-prts-session-resting]:has([data-prts-session-pin]) {
+    margin-right: 8px;
+  }
+
+  html[data-dsh-prts] [data-prts-session-row] > [data-prts-session-pin] {
+    margin-right: 6px;
+  }
 }
 
 html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-session-time] {

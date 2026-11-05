@@ -996,6 +996,10 @@ html[data-dsh-prts] [data-prts-session-actions] {
   transform: translate3d(var(--prts-row-shift), 0, 0);
 }
 
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-within, [data-prts-row-menu-open]) :is([data-prts-workspace-actions], [data-prts-session-actions]) {
+  display: inline-flex;
+}
+
 html[data-dsh-prts] [data-prts-workspace-actions] {
   width: 57px;
 }
@@ -1023,6 +1027,7 @@ html[data-dsh-prts] [data-prts-session-actions] button {
   min-width: 28px !important;
   height: var(--prts-facility-height) !important;
   min-height: var(--prts-facility-height) !important;
+  margin: 0 !important;
   display: grid !important;
   place-items: center;
   padding: 0 !important;
@@ -1046,11 +1051,11 @@ html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible
     animation: prts-facility-button-dock 520ms both;
   }
 
-  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-actions] > :nth-child(1) button {
+  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-menu] {
     animation-delay: 55ms;
   }
 
-  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-actions] > :nth-child(2) {
+  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-create] {
     animation-delay: 125ms;
   }
 }

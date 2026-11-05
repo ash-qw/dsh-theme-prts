@@ -132,3 +132,196 @@ test('0.2.2 native reasoning expands and collapses in both color schemes @live-r
     if (await root.getAttribute('data-prts-scheme') !== originalScheme) await page.locator('[data-prts-scheme-toggle]').evaluate(node => node.click())
   }
 })
+
+for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
+  test(`0.2.2 sidebar hover buttons align and open native menus (${scheme}, ${width}) @live-rc022`, async ({ page }) => {
+    test.skip(process.env.PRTS_RC022_WRITE !== '1', 'Requires reversible color-scheme changes')
+    test.setTimeout(90_000)
+    const errors = await openHarness(page, width)
+    const html = page.locator('html')
+    const originalScheme = await html.getAttribute('data-prts-scheme')
+    try {
+      if (originalScheme !== scheme) await page.locator('[data-prts-scheme-toggle]').evaluate(node => node.click())
+      await expect(html).toHaveAttribute('data-prts-scheme', scheme)
+      const frame = page.locator('[data-prts-region="frame"]')
+      if (await frame.getAttribute('data-sidebar-collapsed') !== null) {
+        await page.getByRole('button', { name: '打开侧边栏', exact: true }).click()
+      }
+      for (const kind of ['workspace', 'session']) {
+        const row = page.locator(`[data-prts-${kind}-row]`).filter({ has: page.locator('button[data-context-menu-trigger]') }).first()
+        const actions = row.locator(`[data-prts-${kind}-actions]`)
+        const menu = row.locator(`[data-prts-${kind}-menu]`)
+        await row.hover()
+        await expect(menu).toBeVisible()
+        await expect(menu).toHaveAttribute('data-prts-facility-vector', '')
+        await expect.poll(() => actions.evaluate(node => Array.from(node.querySelectorAll('button')).every(button =>
+          button.getAnimations().every(animation => animation.playState === 'finished'),
+        ))).toBe(true)
+        await expect.poll(() => actions.evaluate(node => {
+          const bounds = node.getBoundingClientRect()
+          return Array.from(node.querySelectorAll('button')).filter(button => button.checkVisibility()).every(button => {
+            const rect = button.getBoundingClientRect()
+            return Math.abs(rect.top - bounds.top) < 0.5 && Math.abs(rect.bottom - bounds.bottom) < 0.5
+              && rect.left >= bounds.left - 0.5 && rect.right <= bounds.right + 0.5
+          })
+        })).toBe(true)
+        if (kind === 'workspace') {
+          const create = row.locator('[data-prts-workspace-create]')
+          await expect(create).toBeVisible()
+          expect(await create.getAttribute('data-context-menu-trigger')).toBeNull()
+          await create.click({ trial: true })
+        } else {
+          await expect(row.locator('[data-prts-session-quick-actions]')).toHaveCSS('display', 'none')
+        }
+        await menu.click()
+        await expect(page.getByRole('menu')).toBeVisible()
+        await expect(row).toHaveAttribute('data-prts-row-menu-open', '')
+        await page.mouse.move(1000, 800)
+        await expect(menu).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('menu')).toBeHidden()
+        await expect(row).not.toHaveAttribute('data-prts-row-menu-open')
+      }
+      expect(errors).toEqual([])
+    } finally {
+      await page.keyboard.press('Escape')
+      if (await html.getAttribute('data-prts-scheme') !== originalScheme) {
+        await page.locator('[data-prts-scheme-toggle]').evaluate(node => node.click())
+        await expect(html).toHaveAttribute('data-prts-scheme', originalScheme)
+      }
+    }
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`0.2.2 pinned session keeps its native indicator when hovered and selected (${width}) @live-rc022`, async ({ page }) => {
+    test.skip(process.env.PRTS_RC022_WRITE !== '1', 'Requires reversible session selection')
+    test.setTimeout(90_000)
+    const errors = await openHarness(page, width)
+    const originalUrl = page.url()
+    const frame = page.locator('[data-prts-region="frame"]')
+    const openSidebar = async () => {
+      if (await frame.getAttribute('data-sidebar-collapsed') !== null) {
+        await page.getByRole('button', { name: '打开侧边栏', exact: true }).click()
+      }
+    }
+    try {
+      await openSidebar()
+      const row = page.locator('[data-prts-session-row]').filter({ has: page.locator('[data-prts-session-pin]') }).first()
+      await expect(row).toBeVisible()
+      const pin = row.locator('[data-prts-session-pin]')
+      await expect(pin).toHaveCount(1)
+      const checkPin = async () => {
+        await expect(pin).toBeVisible()
+        await expect.poll(() => pin.evaluate(node => {
+          for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) {
+            if (Number(getComputedStyle(ancestor).opacity) === 0) return false
+          }
+          return true
+        })).toBe(true)
+        await expect.poll(() => row.evaluate(node => {
+          const pin = node.querySelector('[data-prts-session-pin]').getBoundingClientRect()
+          const face = node.querySelector('[data-prts-facility-face]').getBoundingClientRect()
+          return pin.left >= face.left && pin.right <= face.right - 3.5
+            && pin.top >= face.top && pin.bottom <= face.bottom
+        })).toBe(true)
+      }
+      await row.hover()
+      await checkPin()
+      await row.locator('[data-prts-row-title]').click()
+      await openSidebar()
+      await expect(row).toHaveAttribute('aria-selected', 'true')
+      await page.mouse.move(1000, 800)
+      await checkPin()
+      await row.hover()
+      await checkPin()
+      await expect(row.locator('[data-prts-session-menu]')).toBeVisible()
+      expect(errors).toEqual([])
+    } finally {
+      await page.goto(originalUrl)
+    }
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`0.2.2 saved current session truncates long titles inside its card (${width}) @live-rc022`, async ({ page }) => {
+    const errors = await openHarness(page, width)
+    const originalUrl = page.url()
+    const frame = page.locator('[data-prts-region="frame"]')
+    if (await frame.getAttribute('data-sidebar-collapsed') !== null) {
+      await page.getByRole('button', { name: '打开侧边栏', exact: true }).click()
+    }
+    await page.locator('[data-prts-session-row][aria-selected="false"]:not(:has([data-prts-session-pin]))').first().locator('[data-prts-row-title]').click()
+    if (await frame.getAttribute('data-sidebar-collapsed') !== null) {
+      await page.getByRole('button', { name: '打开侧边栏', exact: true }).click()
+    }
+    const row = page.locator('[data-prts-session-row][aria-selected="true"]')
+    await expect(row.locator('[data-prts-session-resting]')).toHaveCount(1)
+    await expect(row).toBeVisible()
+    const title = row.locator('[data-prts-row-title]')
+    const originalTitle = await title.textContent()
+    try {
+      for (const text of ['这是一个需要省略显示而不能超出会话卡片右侧边缘的很长的当前会话标题', 'AReallyLongUnbrokenCurrentSessionTitleThatMustRemainInsideTheCardBoundary']) {
+        await title.evaluate((node, text) => { node.textContent = text }, text)
+        for (const hovered of [false, true]) {
+          if (hovered) await row.hover()
+          else await page.mouse.move(width - 10, 850)
+          await expect(title).toHaveCSS('overflow', 'hidden')
+          await expect(title).toHaveCSS('white-space', 'nowrap')
+          if (!hovered) {
+            expect(await row.evaluate(node => node.matches(':hover, :focus-within'))).toBe(false)
+            await expect(title).toHaveCSS('text-overflow', 'ellipsis')
+            await expect.poll(() => title.evaluate(node => node.scrollLeft)).toBe(0)
+          }
+          await expect.poll(() => row.evaluate(node => {
+            const title = node.querySelector('[data-prts-row-title]')
+            const bounds = title.getBoundingClientRect()
+            const face = node.querySelector('[data-prts-facility-face]').getBoundingClientRect()
+            return bounds.left >= face.left - 0.5 && bounds.right <= face.right + 0.5
+          })).toBe(true)
+          expect(await title.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true)
+        }
+      }
+      expect(errors).toEqual([])
+    } finally {
+      await title.evaluate((node, text) => { node.textContent = text }, originalTitle)
+      await page.goto(originalUrl)
+    }
+  })
+}
+
+
+test('0.2.2 composer retains native frosted glass while the sidebar spine animates @live-rc022', async ({ page }) => {
+  const errors = await openHarness(page)
+  const frame = page.locator('[data-prts-region="frame"]')
+  if (await frame.getAttribute('data-sidebar-collapsed') !== null) {
+    await page.getByRole('button', { name: '打开侧边栏', exact: true }).click()
+  }
+  const glass = page.locator('[data-prts-composer-glass-surface] > .glass-surface').first()
+  const checkMaterial = async () => {
+    await expect(glass).toBeVisible()
+    await expect(glass).toHaveClass(/glass-surface--fallback/)
+    const filter = await glass.evaluate(node => getComputedStyle(node).backdropFilter)
+    expect(filter).toContain('blur(5px)')
+    expect(filter).not.toContain('url(')
+    await expect(glass.locator('canvas')).toHaveCount(0)
+  }
+  const row = page.locator('[data-prts-session-row]').filter({ has: page.locator('[data-prts-session-menu]') }).first()
+  const spine = row.locator('[data-prts-facility-spine]')
+  const face = row.locator('[data-prts-facility-face]')
+  const spineScale = () => spine.evaluate(node => new DOMMatrix(getComputedStyle(node).transform).a)
+  const faceOffset = () => face.evaluate(node => new DOMMatrix(getComputedStyle(node).transform).m41)
+  await page.mouse.move(1400, 100)
+  await expect.poll(spineScale).toBeCloseTo(0.25)
+  await checkMaterial()
+  await row.hover()
+  await expect.poll(spineScale).toBeCloseTo(1)
+  await expect.poll(faceOffset).toBeCloseTo(6)
+  await expect(row.locator('[data-prts-session-menu]')).toBeVisible()
+  await checkMaterial()
+  await page.mouse.move(1400, 100)
+  await expect.poll(spineScale).toBeCloseTo(0.25)
+  await expect.poll(faceOffset).toBeCloseTo(0)
+  await checkMaterial()
+  expect(errors).toEqual([])
+})

@@ -178,6 +178,7 @@ test('build bundles the real browser plugin and settings modules', async () => {
   assert.match(client, /function createHarnessStatusSource\(/)
   assert.match(client, /function mountFileDrop\(/)
   assert.match(client, /function createComposerGlassAdapter\(/)
+  assert.match(client, /PrtsGlassSurface\.default, \{\s*width: '100%', height: '100%',\s*refraction: false,/s)
   assert.match(client, /function createAssistantGlassAdapter\(/)
   assert.match(client, /function createConversationControlAdapter\(/)
   assert.doesNotMatch(client, /function createConversationScaleAdapter\(/)
