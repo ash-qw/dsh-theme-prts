@@ -73,10 +73,14 @@ test('models the facility card as one notched face and one notched side spine', 
 test('keeps the spine left edge fixed and moves the facility face to the right on expansion', () => {
   assert.match(css, /\[data-slot="sidebar\.workspaces"\] \[role="tree"\][^{]*\{[^}]*overflow-x:\s*hidden;/s)
   assert.match(css, /\[data-prts-(?:workspace|session)-row\]::before\s*\{[\s\S]*?inset:\s*0 auto 0 0;[\s\S]*?width:\s*var\(--prts-spine-width\);[\s\S]*?transform-origin:\s*left center;/)
-  assert.match(css, /:is\(:hover, :focus-within, \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
+  assert.match(css, /:is\(:hover, :focus-visible, :has\(:focus-visible\), \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
+  assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*:is\(:hover, :focus-within, /)
+  assert.match(css, /:focus-within:not\(:focus:not\(:focus-visible\), :has\(:focus:not\(:focus-visible\)\)\)/)
   assert.match(css, /\[data-prts-facility-face\][^{]*\{[^}]*transform:\s*translate3d\(var\(--prts-row-shift\), 0, 0\)/s)
   assert.doesNotMatch(css, /\[data-prts-facility-face\][^{]*\{[^}]*transition:[^;]*(?:left|width|height)/s)
   assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*\{[^}]*transition:[^;]*(?:left|width|height)/s)
+  assert.match(css, /@property --prts-row-shift\s*\{\s*syntax:\s*"<length>";\s*inherits:\s*false;\s*initial-value:\s*0px;/)
+  assert.doesNotMatch(css, /\[data-prts-facility-spine\][^{]*\{[^}]*transform:[^;]*!important/s)
   assert.match(css, /\[data-prts-workspace-row\] > \[data-prts-facility-spine\][^{]*\{[^}]*position:\s*absolute !important;[^}]*transform-origin:\s*left center;/s)
   assert.match(css, /\[data-prts-workspace-row\]\[data-prts-spine-vector\]::before[^{]*\{[^}]*content:\s*none !important;/s)
 })
@@ -412,6 +416,6 @@ test('preserves native composer metrics and uses continuous empty-session geomet
 test('keeps each expanded workspace spine open without promoting projection or actions', () => {
   assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/s)
   assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\]::before[^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
-  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\] > \[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\) !important;/s)
+  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\] > \[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
   assert.doesNotMatch(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*(?:\[data-prts-row-projection\]|\[data-prts-workspace-actions\])/s)
 })

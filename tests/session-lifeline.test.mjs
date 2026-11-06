@@ -89,6 +89,18 @@ test('deforms a fixed filament only while the selected session is active and vis
   await new Promise(resolve => dom.window.setTimeout(resolve, 0))
   assert.equal(frames.size, 1, 're-enabling the setting resumes the flow')
 
+  const menuPaths = filaments.map(filament => filament.getAttribute('d'))
+  row.setAttribute('data-prts-row-menu-open', '')
+  animator.setTarget(row, lifeline)
+  assert.equal(frames.size, 0, 'an open row menu suspends decorative SVG mutations')
+  assert.deepEqual(filaments.map(filament => filament.getAttribute('d')), menuPaths)
+  row.dispatchEvent(new dom.window.Event('pointerleave'))
+  assert.equal(frames.size, 0, 'leaving the card does not resume flow behind its menu')
+  row.removeAttribute('data-prts-row-menu-open')
+  animator.setTarget(row, lifeline)
+  assert.equal(frames.size, 1, 'closing the menu resumes the existing flow')
+  assert.deepEqual(filaments.map(filament => filament.getAttribute('d')), menuPaths, 'resuming does not reset the visible contour')
+
   row.dispatchEvent(new dom.window.Event('pointerenter'))
   runFrame(100)
   runFrame(200)

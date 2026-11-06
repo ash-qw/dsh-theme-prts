@@ -198,16 +198,16 @@ html[data-dsh-prts] [data-prts-session-row]:has(> [data-prts-session-pin]) [data
   margin-right: 8px;
 }
 
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-session-resting] {
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) [data-prts-session-resting] {
   margin-right: 8px;
 }
 
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) > [data-prts-session-pin] {
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) > [data-prts-session-pin] {
   margin-right: 6px;
 }
 
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open], [data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):has([data-prts-session-pin]) [data-prts-session-time],
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-session-resting]:not(:has([data-prts-session-pin])) {
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open], [data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):has([data-prts-session-pin]) [data-prts-session-time],
+html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) [data-prts-session-resting]:not(:has([data-prts-session-pin])) {
   display: none !important;
 }
 

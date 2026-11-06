@@ -1,4 +1,10 @@
 /* DSH P.R.T.S. // RHODES ISLAND DAILY OPERATIONS TERMINAL */
+@property --prts-row-shift {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 html[data-dsh-prts] {
   --prts-canvas: #080a0c;
   --prts-canvas-elevated: #0d1114;
@@ -878,6 +884,10 @@ html[data-dsh-prts] [data-prts-session-row] {
   margin-left: 8px;
 }
 
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]) > * {
+  --prts-row-shift: inherit;
+}
+
 @media (max-height: 820px) and (hover: hover) and (pointer: fine) {
   html[data-dsh-prts] {
     --prts-workspace-height: 34px;
@@ -891,8 +901,7 @@ html[data-dsh-prts] [data-prts-workspace-row]::before {
 }
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"],
-html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]),
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) {
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) {
   --prts-row-shift: var(--prts-spine-travel);
 }
 
@@ -910,8 +919,7 @@ html[data-dsh-prts] [data-prts-session-row]::before {
 }
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"]::before,
-html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open])::before,
-html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open])::before {
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open])::before {
   transform: scaleX(1);
 }
 
@@ -996,7 +1004,7 @@ html[data-dsh-prts] [data-prts-session-actions] {
   transform: translate3d(var(--prts-row-shift), 0, 0);
 }
 
-html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-within, [data-prts-row-menu-open]) :is([data-prts-workspace-actions], [data-prts-session-actions]) {
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-within:not(:focus:not(:focus-visible), :has(:focus:not(:focus-visible))), [data-prts-row-menu-open]) :is([data-prts-workspace-actions], [data-prts-session-actions]) {
   display: inline-flex;
 }
 
@@ -1046,16 +1054,15 @@ html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-actions] button,
-  html[data-dsh-prts] [data-prts-session-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-session-actions] button {
+  html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) :is([data-prts-workspace-actions], [data-prts-session-actions]) button {
     animation: prts-facility-button-dock 520ms both;
   }
 
-  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-menu] {
+  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) [data-prts-workspace-menu] {
     animation-delay: 55ms;
   }
 
-  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-within, [data-prts-row-menu-open]) [data-prts-workspace-create] {
+  html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) [data-prts-workspace-create] {
     animation-delay: 125ms;
   }
 }

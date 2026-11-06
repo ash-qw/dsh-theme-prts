@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test'
 
-for (const structure of ['wrapped', 'direct']) for (const scheme of ['dark', 'light']) for (const width of [287, 148]) {
-  test(`sidebar hover actions remain aligned and usable (${structure}, ${scheme}, ${width})`, async ({ page }) => {
+for (const structure of ['wrapped', 'direct']) for (const scheme of ['dark', 'light']) for (const width of [287, 148]) for (const reducedMotion of ['reduce', 'no-preference']) {
+  test(`sidebar hover actions remain aligned and usable (${structure}, ${scheme}, ${width}, ${reducedMotion})`, async ({ page }) => {
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.addInitScript(scheme => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({
-      version: 12, enabled: true, scheme, motion: 'reduced', bootAnimation: false,
-    })), scheme)
+    await page.emulateMedia({ reducedMotion })
+    await page.addInitScript(({ scheme, reducedMotion }) => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({
+      version: 12, enabled: true, scheme, motion: reducedMotion === 'reduce' ? 'reduced' : 'system', bootAnimation: false,
+    })), { scheme, reducedMotion })
     await page.route('**/tests/fixtures/rc7-harness.html', async route => {
       const response = await route.fetch()
       let body = await response.text()
@@ -44,6 +44,7 @@ for (const structure of ['wrapped', 'direct']) for (const scheme of ['dark', 'li
       await expect(menu).toHaveAttribute('data-prts-facility-vector', '')
       await expect(menu).toHaveCSS('margin-top', '0px')
       await menu.click({ trial: true })
+      await expect.poll(() => actions.evaluate(node => node.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0)
       const geometry = await actions.evaluate(node => {
         const rect = node.getBoundingClientRect()
         return {
@@ -71,7 +72,37 @@ for (const structure of ['wrapped', 'direct']) for (const scheme of ['dark', 'li
       }
       await page.mouse.move(1000, 800)
       await row.evaluate(node => { node.tabIndex = 0 })
-      await row.focus()
+      await row.click({ position: { x: 20, y: 12 } })
+      await page.mouse.move(1000, 800)
+      await expect(row).toBeFocused()
+      await expect(menu).toBeHidden()
+      await row.hover()
+      await menu.evaluate(button => {
+        const row = button.closest('[role="treeitem"]')
+        button.addEventListener('click', () => {
+          row.classList.add('fixture_menuOpen')
+        }, { once: true })
+      })
+      await menu.click()
+      await page.mouse.move(1000, 800)
+      await expect(row).toHaveAttribute('data-prts-row-menu-open', '')
+      await expect(menu).toBeVisible()
+      await menu.evaluate(button => {
+        button.closest('[role="treeitem"]').classList.remove('fixture_menuOpen')
+        button.focus()
+      })
+      await expect(row).not.toHaveAttribute('data-prts-row-menu-open')
+      await expect(menu).toBeHidden()
+      await row.evaluate(node => {
+        const entry = document.createElement('button')
+        entry.id = 'fixture-keyboard-entry'
+        entry.style.position = 'fixed'
+        node.before(entry)
+        entry.focus()
+      })
+      await page.keyboard.press('Tab')
+      await expect(row).toBeFocused()
+      await expect(menu).toBeVisible()
       await page.keyboard.press('Tab')
       await expect(menu).toBeFocused()
       await expect(menu).toBeVisible()
@@ -85,6 +116,7 @@ for (const structure of ['wrapped', 'direct']) for (const scheme of ['dark', 'li
       await expect(menu).toBeVisible()
       await row.evaluate(node => node.classList.remove('fixture_menuOpen'))
       await expect(row).not.toHaveAttribute('data-prts-row-menu-open')
+      await page.locator('#fixture-keyboard-entry').evaluate(node => node.remove())
     }
     expect(errors).toEqual([])
   })

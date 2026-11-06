@@ -138,6 +138,7 @@ export function createSessionLifelineAnimator({ document, window }) {
     return Boolean(
       row?.isConnected
       && lifeline?.isConnected
+      && !row.hasAttribute('data-prts-row-menu-open')
       && (row.hasAttribute('data-prts-selection-target') ? row.getAttribute('data-prts-selection-target') === 'true' : row.getAttribute('aria-selected') === 'true')
       && document?.visibilityState !== 'hidden'
       && document?.documentElement?.dataset?.prtsSessionFlow !== 'off'
