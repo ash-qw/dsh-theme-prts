@@ -21,6 +21,7 @@ function isPendingInteractionAction(button) {
 }
 
 function classify(button, operation) {
+  if (button.closest('[data-composer-quote], [data-quote-preview], [data-quote-popover]')) return null
   // The host's process disclosure owns its transparent, full-width hit area.
   if (button.hasAttribute('data-turn-process')) return null
   // Schedule cards use an absolute transparent button as the whole-card hit area.
@@ -150,7 +151,7 @@ export function createConversationControlAdapter({ document, window }) {
 function mountBodyTargetFrame(document, window, operation) {
   // Nonvisual hosts can still mount the theme without an animation clock.
   if (!window?.requestAnimationFrame || !window?.cancelAnimationFrame) return () => {}
-  const composerButton=':is([data-composer-card],[data-prts-composer-fallback]) button:not([data-slot="conversation.input.attachments"] *,[data-prts-glass-menu] *,[data-prts-floating-glass] *,[role="menu"] *,[role="listbox"] *)'
+  const composerButton=':is([data-composer-card],[data-prts-composer-fallback]) button:not([data-composer-quote] *,[data-quote-preview] *):not([data-slot="conversation.input.attachments"] *,[data-prts-glass-menu] *,[data-prts-floating-glass] *,[role="menu"] *,[role="listbox"] *)'
   const selector='[data-prts-to-bottom],[data-prts-conversation-control],[data-presented-file],[data-changed-files],[data-produced-files-row] > button,[data-prts-glass-control],[data-prts-footer-action],[data-prts-transfer] button,'+composerButton
   const frame=document.createElement('div')
   frame.setAttribute('data-prts-body-target-frame','');frame.setAttribute('aria-hidden','true')
@@ -224,7 +225,7 @@ function mountBodyTargetFrame(document, window, operation) {
   const cardSelector='[data-presented-file],[data-changed-files],[data-tool="schedule_create"]'
   const find=node=>{
     if(activeModal && !activeModal.contains(node))return null
-    if (!node?.closest || node.closest('[data-prts-workspace-actions],[data-prts-session-actions]')) return null
+    if (!node?.closest || node.closest('[data-prts-workspace-actions],[data-prts-session-actions],[data-composer-quote],[data-quote-preview],[data-quote-popover]')) return null
     const container=node.closest(cardSelector)
     const button=node.closest('button')
     let cardTarget=null

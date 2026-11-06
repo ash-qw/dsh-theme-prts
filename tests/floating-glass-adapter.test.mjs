@@ -100,3 +100,187 @@ test('releases removed portals and classifies the same portal again when reinser
   assert.equal(portal.firstElementChild.hasAttribute('data-prts-floating-item'), true)
   adapter.dispose()
 })
+
+test('restarts classification of surviving portals and releases preserved classifications', () => {
+  const dom = new JSDOM('<body><div role="menu"><button role="menuitem">操作</button></div><div role="dialog" aria-modal="true" data-prts-preserve-popup-style>自定义</div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  const menu = document.querySelector('[role="menu"]')
+  const dialog = document.querySelector('[role="dialog"]')
+  for (let cycle = 0; cycle < 3; cycle++) {
+    adapter.start()
+    adapter.start()
+    assert.equal(menu.dataset.prtsFloatingGlass, 'menu')
+    assert.ok(menu.firstElementChild.hasAttribute('data-prts-floating-item'))
+    if (cycle > 0) assert.equal(dialog.dataset.prtsFloatingGlass, 'dialog')
+    adapter.dispose()
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-floating-glass], [data-prts-floating-item]'), null)
+    dialog.removeAttribute('data-prts-preserve-popup-style')
+  }
+  dom.window.close()
+})
+
+test('classifies dynamic menu contents, submenus and changing danger states', async () => {
+  const dom = new JSDOM('<body><div role="menu" data-menu-material="translucent"><button role="menuitem">操作</button></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  const menu = document.querySelector('[role="menu"]')
+  adapter.start()
+  const group = document.createElement('div')
+  group.innerHTML = '<button role="menuitem" data-danger="true">删除</button><div role="menu" data-menu-material="translucent"><button role="menuitem">子菜单</button><input></div>'
+  menu.append(group)
+  await flush(dom.window)
+  const item = group.firstElementChild
+  const submenu = group.querySelector('[role="menu"]')
+  assert.ok(item.hasAttribute('data-prts-floating-item'))
+  assert.ok(item.hasAttribute('data-prts-floating-danger'))
+  assert.equal(submenu.dataset.prtsFloatingGlass, 'menu')
+  assert.ok(submenu.hasAttribute('data-prts-floating-nested'))
+  assert.ok(submenu.querySelector('button').hasAttribute('data-prts-floating-item'))
+  assert.ok(submenu.querySelector('input').hasAttribute('data-prts-floating-input'))
+  item.removeAttribute('data-danger')
+  await flush(dom.window)
+  assert.equal(item.hasAttribute('data-prts-floating-danger'), false)
+  item.className = 'host_danger_runtime'
+  await flush(dom.window)
+  assert.ok(item.hasAttribute('data-prts-floating-danger'))
+  item.setAttribute('role', 'presentation')
+  item.className = ''
+  await flush(dom.window)
+  assert.equal(item.hasAttribute('data-prts-floating-item'), false)
+  assert.equal(item.hasAttribute('data-prts-floating-danger'), false)
+  group.remove()
+  await flush(dom.window)
+  assert.equal(group.querySelector('[data-prts-floating-glass], [data-prts-floating-item], [data-prts-floating-input]'), null)
+  menu.append(group)
+  await flush(dom.window)
+  assert.equal(submenu.dataset.prtsFloatingGlass, 'menu')
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('observes initially empty portal containers but not embedded application subtrees', async () => {
+  const dom = new JSDOM('<body><main><div role="dialog" aria-modal="true"></div></main><div data-floating-ui-portal></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  document.querySelector('[data-floating-ui-portal]').innerHTML = '<section role="menu"><button role="menuitem">操作</button></section>'
+  document.querySelector('main').insertAdjacentHTML('beforeend', '<div role="menu"><button role="menuitem">内嵌</button></div>')
+  await flush(dom.window)
+  assert.equal(document.querySelector('[data-floating-ui-portal] [role="menu"]').dataset.prtsFloatingGlass, 'menu')
+  assert.equal(document.querySelector('main [data-prts-floating-glass], main [data-prts-floating-item]'), null)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('does not add a second popup surface to content lists inside native material shells', async () => {
+  const dom = new JSDOM('<body><div role="menu" data-menu-material="translucent"></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const list = document.createElement('div')
+  list.setAttribute('role', 'menu')
+  list.innerHTML = '<button role="menuitem">模型</button>'
+  document.body.firstElementChild.append(list)
+  await flush(dom.window)
+  assert.equal(list.hasAttribute('data-prts-floating-glass'), false)
+  assert.ok(list.firstElementChild.hasAttribute('data-prts-floating-item'))
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('leaves dynamically added third-party custom submenus and opt-out subtrees untouched', async () => {
+  const dom = new JSDOM('<body><div role="menu" data-menu-material="translucent"></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const menu = document.body.firstElementChild
+  menu.innerHTML = '<div role="menu" data-plugin="third-party" style="border-radius:18px;box-shadow:0 4px 8px #000"><button role="menuitem">自定义</button></div><div data-prts-preserve-popup-style><div role="menu"><button role="menuitem">保留</button></div></div>'
+  await flush(dom.window)
+  const custom = menu.querySelector('[data-plugin]')
+  assert.equal(custom.dataset.prtsFloatingPreserved, 'custom')
+  custom.insertAdjacentHTML('beforeend', '<button role="menuitem">稍后新增</button>')
+  await flush(dom.window)
+  assert.equal(custom.querySelector('[data-prts-floating-item]'), null)
+  assert.equal(menu.querySelector('[data-prts-preserve-popup-style] [data-prts-floating-glass], [data-prts-preserve-popup-style] [data-prts-floating-item]'), null)
+  adapter.dispose()
+  assert.equal(custom.hasAttribute('data-prts-floating-preserved'), false)
+  dom.window.close()
+})
+
+test('classifies initially hidden popups when shown and dynamic dialog inputs', async () => {
+  const dom = new JSDOM('<body><div role="menu" hidden><button role="menuitem">操作</button></div><div role="dialog" aria-modal="true" style="display:none"></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const menu = document.querySelector('[role="menu"]')
+  const dialog = document.querySelector('[role="dialog"]')
+  assert.equal(document.querySelector('[data-prts-floating-glass]'), null)
+  menu.hidden = false
+  dialog.style.display = ''
+  dialog.innerHTML = '<input><button class="host_deleteAction">删除</button>'
+  await flush(dom.window)
+  assert.equal(menu.dataset.prtsFloatingGlass, 'menu')
+  assert.equal(dialog.dataset.prtsFloatingGlass, 'dialog')
+  assert.ok(dialog.querySelector('input').hasAttribute('data-prts-floating-input'))
+  assert.ok(dialog.querySelector('button').hasAttribute('data-prts-floating-danger'))
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('disconnects content observers on dispose and can start again after later DOM changes', async () => {
+  const dom = new JSDOM('<body><div role="menu"></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  const menu = document.querySelector('[role="menu"]')
+  adapter.start()
+  adapter.dispose()
+  menu.innerHTML = '<button role="menuitem">稍后新增</button>'
+  await flush(dom.window)
+  assert.equal(menu.querySelector('[data-prts-floating-item]'), null)
+  adapter.start()
+  assert.ok(menu.firstElementChild.hasAttribute('data-prts-floating-item'))
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('does not rescan popup ancestors for positioning changes or unrelated application mutations', async () => {
+  const dom = new JSDOM('<body><main></main><div role="menu"><button role="menuitem">操作</button></div></body>')
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  const menu = document.querySelector('[role="menu"]')
+  adapter.start()
+  let scans = 0
+  const querySelectorAll = menu.querySelectorAll.bind(menu)
+  menu.querySelectorAll = selector => { scans++; return querySelectorAll(selector) }
+  menu.style.transform = 'translateX(10px)'
+  menu.firstElementChild.style.color = 'red'
+  document.querySelector('main').innerHTML = '<div role="menu"><button role="menuitem">内嵌</button></div>'
+  const item = document.createElement('button')
+  item.setAttribute('role', 'menuitem')
+  menu.append(item)
+  await flush(dom.window)
+  assert.ok(item.hasAttribute('data-prts-floating-item'))
+  assert.equal(scans, 0)
+  assert.equal(document.querySelector('main [data-prts-floating-glass]'), null)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('does not observe the animated theme corner popovers', () => {
+  const dom = new JSDOM('<body><div data-prts-body-target-frame popover="manual" aria-hidden="true"></div><div data-prts-body-target-ghost popover="manual" aria-hidden="true"></div></body>')
+  const observed = []
+  const Observer = dom.window.MutationObserver
+  dom.window.MutationObserver = class extends Observer {
+    observe(target, options) {
+      observed.push(target)
+      super.observe(target, options)
+    }
+  }
+  const adapter = createFloatingGlassAdapter({ document: dom.window.document, window: dom.window })
+  adapter.start()
+  assert.deepEqual(observed, [dom.window.document.body])
+  adapter.dispose()
+  dom.window.close()
+})

@@ -365,8 +365,8 @@ html[data-dsh-prts] [data-prts-conversation-control="header"] svg {
   flex: 0 0 16px;
 }
 
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button[aria-label*="send" i],
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button[type="submit"] {
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-composer-quote] *, [data-quote-preview] *)[aria-label*="send" i],
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-composer-quote] *, [data-quote-preview] *)[type="submit"] {
   min-width: 40px !important;
   padding: 0 !important;
   font-size: 11px;
@@ -381,8 +381,8 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control="action"] {
 
 /* Chamfered controls use their own polygonal outline and inset material layer. */
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 ) {
@@ -403,8 +403,8 @@ html[data-dsh-prts] :is(
 }
 
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 )::before {
@@ -422,8 +422,8 @@ html[data-dsh-prts] :is(
 }
 
 html[data-dsh-prts] :is(
-  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
-  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+  [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
+  [data-prts-composer-fallback] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
   [data-prts-glass-control],
   [data-prts-conversation-control]:not([data-prts-conversation-control="micro"], [data-prts-conversation-control="file"])
 ):is(:hover, :focus-visible) {
@@ -440,8 +440,8 @@ html[data-dsh-prts] :is(
   --prts-control-surface: var(--prts-active-glass) !important;
 }
 
-html[data-dsh-prts] [data-composer-card] button[aria-label*="send" i],
-html[data-dsh-prts] [data-composer-card] button[type="submit"],
+html[data-dsh-prts] [data-composer-card] button:not([data-composer-quote] *, [data-quote-preview] *)[aria-label*="send" i],
+html[data-dsh-prts] [data-composer-card] button:not([data-composer-quote] *, [data-quote-preview] *)[type="submit"],
 html[data-dsh-prts] [data-prts-conversation-control="cta"] {
   font-size: 11px;
   --prts-control-outline: var(--prts-yellow) !important;
@@ -497,7 +497,7 @@ html[data-dsh-prts] [data-prts-hero-active] [data-prts-composer-fallback] textar
   resize: vertical;
 }
 
-html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *),
+html[data-dsh-prts] [data-prts-hero-active] [data-composer-card] button:not([data-slot="conversation.input.attachments"] *):not([data-prts-glass-menu] *):not([data-prts-floating-glass] *):not([role="menu"] *):not([role="listbox"] *):not([data-composer-quote] *, [data-quote-preview] *),
 html[data-dsh-prts] [data-prts-hero-active] [data-prts-glass-control] {
   min-height: 36px;
 }

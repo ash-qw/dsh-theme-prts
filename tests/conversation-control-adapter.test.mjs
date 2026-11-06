@@ -139,3 +139,18 @@ test('copy controls keep their classification from submission echo to durable me
   assert.equal(copy.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
   adapter.dispose();dom.window.close()
 })
+
+test('leaves editable and sent quote controls outside generic conversation decoration', async () => {
+  const dom = new JSDOM('<body><main data-prts-region="operation"><article data-chat-flow-kind="user"><span data-quote-preview><button type="button">引用操作</button></span><button data-copy>复制</button></article><div data-composer-card><span data-composer-quote><button type="button">移除引用</button></span></div></main></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createConversationControlAdapter({ document, window: dom.window })
+  adapter.start()
+  assert.equal(document.querySelector('[data-copy]').getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  assert.equal(document.querySelector('[data-quote-preview] button').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
+  assert.equal(document.querySelector('[data-composer-quote] button').hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
+  document.querySelector('[data-quote-preview]').insertAdjacentHTML('beforeend', '<button type="button">新增</button>')
+  await flush(dom.window)
+  assert.equal(document.querySelector('[data-quote-preview] [data-prts-conversation-control]'), null)
+  adapter.dispose()
+  dom.window.close()
+})

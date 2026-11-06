@@ -39,7 +39,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 284_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 284 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 287_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 287 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials)')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -250,6 +250,7 @@ test("keeps display-contents attachment slots above composer glass without resty
   for (const selector of composerButtonSelectors) {
     assert.match(selector, /:not\(\[role="menu"\] \*\)/)
     assert.match(selector, /:not\(\[role="listbox"\] \*\)/)
+    assert.ok(selector.includes(':not([data-composer-quote] *, [data-quote-preview] *)'))
   }
   assert.equal(css.includes("[data-composer-card] button,"), false)
   assert.equal(css.includes("[data-composer-card] button:is(:hover, :focus-visible)"), false)
@@ -418,4 +419,11 @@ test('keeps each expanded workspace spine open without promoting projection or a
   assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\]::before[^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
   assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\] > \[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
   assert.doesNotMatch(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*(?:\[data-prts-row-projection\]|\[data-prts-workspace-actions\])/s)
+})
+
+
+test('isolates nested menu blur and preserves the temporary session quick-action hiding policy', () => {
+  assert.match(css, /\[data-prts-floating-glass\]\[data-prts-floating-nested\][^{]+\{[^}]*backdrop-filter: none;/)
+  assert.match(css, /\[data-prts-session-quick-actions\]\s*\{[^}]*display: none !important;/)
+  assert.equal(css.includes('--prts-session-action-count'), false)
 })
