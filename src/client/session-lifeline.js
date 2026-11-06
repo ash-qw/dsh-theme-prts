@@ -238,6 +238,7 @@ export function createSessionLifelineAnimator({ document, window }) {
       attachObservers()
       syncMotion()
     },
+    refreshMotion: syncMotion,
     setTarget(nextRow, nextLifeline) {
       if (row === nextRow && lifeline === nextLifeline) {
         syncMotion()

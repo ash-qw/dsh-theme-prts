@@ -103,6 +103,7 @@ export function applyPrtsPlugin(ctx, environment) {
   const sidebarControls = createSidebarControlAdapter({
     document,
     window,
+    getContextMenus: () => contextService(ctx, 'contextMenus'),
     getSessionStatus: () => contextService(ctx, 'uiSession')?.sessionStatus,
     getUiWorkspace: () => contextService(ctx, 'uiWorkspace'),
     getSessions: () => contextService(ctx, 'sessions'),

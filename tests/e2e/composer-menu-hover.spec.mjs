@@ -14,7 +14,7 @@ for (const enhanced of [false, true]) test(`composer menus retain native hover a
     document.head.append(style)
     const composer = document.createElement('div')
     composer.setAttribute('data-composer-card', '')
-    composer.innerHTML = '<span><button class="iWlSmW_trigger" aria-label="权限模式：仅可查看"><span class="iWlSmW_triggerLabel">仅可查看</span></button></span><button aria-haspopup="menu" aria-controls="model-menu">模型</button><button aria-haspopup="listbox" aria-controls="action-menu">添加</button>'
+    composer.innerHTML = '<span data-slot="conversation.input.permission"><button class="arbitrary_permission_hash" aria-label="权限模式：仅可查看"><span class="iWlSmW_triggerLabel">仅可查看</span></button></span><span data-slot="conversation.input.model"><button aria-haspopup="menu" aria-controls="model-menu">模型</button></span><button aria-haspopup="listbox" aria-controls="action-menu">添加</button>'
     document.body.append(composer)
     const menus = [
       '<div id="permission-menu" role="menu" data-menu-material><div aria-hidden="true" class="_material_fixture_21"></div><button role="menuitemradio" class="native-option">权限项</button></div>',
@@ -56,4 +56,33 @@ for (const enhanced of [false, true]) test(`composer menus retain native hover a
   await expect(generic).toHaveAttribute('data-prts-floating-item', '')
   await generic.hover()
   await expect(generic).not.toHaveCSS('background-color', 'rgb(61, 72, 83)')
+})
+
+test('unlinked native preset portals use generic menu material without guessing their owner', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({
+    version: 12, enabled: true, bootAnimation: false,
+  })))
+  await page.goto('/tests/fixtures/rc2-harness.html')
+  await expect(page.locator('html')).toHaveAttribute('data-dsh-prts', '')
+  await page.evaluate(() => {
+    const slot = document.createElement('div')
+    slot.dataset.slot = 'conversation.hero.agentPreset'
+    slot.innerHTML = '<span><button id="native-preset" aria-haspopup="menu" aria-expanded="true">Preset</button></span>'
+    document.querySelector('[data-prts-region="operation"]').append(slot)
+    const popup = document.createElement('div')
+    popup.id = 'native-preset-menu'
+    popup.setAttribute('role', 'menu')
+    popup.setAttribute('data-menu-material', 'translucent')
+    popup.style.cssText = 'position:fixed;left:700px;top:200px;z-index:100;width:200px'
+    popup.innerHTML = '<div aria-hidden="true" class="_material_fixture_21" style="backdrop-filter:blur(40px)"></div><button role="menuitem">Preset entry</button>'
+    document.body.append(popup)
+  })
+  await expect(page.locator('#native-preset')).toHaveAttribute('data-prts-glass-control', 'preset')
+  const popup = page.locator('#native-preset-menu')
+  await expect(popup).not.toHaveAttribute('data-prts-glass-menu')
+  await expect(popup).toHaveAttribute('data-prts-floating-glass', 'menu')
+  await expect(popup.locator('button')).toHaveAttribute('data-prts-floating-item', '')
+  await expect(popup.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', 'none')
+  await expect(popup).toHaveCSS('backdrop-filter', 'blur(22px) saturate(1.55)')
+  await popup.locator('button').click({ trial: true })
 })

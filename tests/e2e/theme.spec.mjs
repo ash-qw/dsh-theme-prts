@@ -518,8 +518,8 @@ test('glassifies only identified composer controls and their inline menus', asyn
     const controls = document.createElement('div')
     controls.dataset.fixtureComposerControls = ''
     controls.innerHTML = `
-      <span><button type="button" class="Sh0Q9G_trigger">工作区写入</button><div role="menu"><button role="menuitem" class="fixture_selected_item">工作区写入</button></div></span>
-      <div><button type="button" class="_7KE1Ra_trigger" aria-haspopup="menu" aria-expanded="true" aria-controls="fixture-model-menu">模型</button><div id="fixture-model-menu" role="menu" aria-busy="false"><button role="menuitemradio" aria-checked="true">MiniMax-M3</button></div></div>
+      <span data-slot="conversation.input.permission"><button type="button" class="arbitrary_permission_hash">工作区写入</button><div role="menu"><button role="menuitem" class="fixture_selected_item">工作区写入</button></div></span>
+      <div data-slot="conversation.input.model"><button type="button" class="arbitrary_model_hash" aria-haspopup="menu" aria-expanded="true" aria-controls="fixture-model-menu">模型</button><div id="fixture-model-menu" role="menu" aria-busy="false"><button role="menuitemradio" aria-checked="true">MiniMax-M3</button></div></div>
       <button type="button" class="uV2eYG_add" aria-label="Commands" aria-haspopup="listbox" aria-expanded="true">+</button>
     `
     node.append(controls)
@@ -536,7 +536,7 @@ test('glassifies only identified composer controls and their inline menus', asyn
     const overlay = document.createElement('div')
     overlay.dataset.slot = 'conversation.input.overlay'
     overlay.innerHTML = `
-      <div class="mufS8W_card">
+      <div data-fixture-parameters data-menu-material="translucent">
         <div role="listbox"><button role="option" aria-selected="true">命令参数</button></div>
       </div>
     `
@@ -549,7 +549,7 @@ test('glassifies only identified composer controls and their inline menus', asyn
   const modelMenu = composer.locator('[data-prts-glass-menu="model"]')
   await expect(permission).toHaveCSS('border-radius', '0px')
   const action = composer.locator('[data-prts-glass-control="action"]')
-  const slashCard = page.locator('.mufS8W_card[data-prts-glass-menu="action"]')
+  const slashCard = page.locator('[data-fixture-parameters][data-prts-glass-menu="action"]')
   const slashList = page.locator('[role="listbox"][data-prts-glass-menu="action"]')
   await expect(permission).not.toHaveCSS('min-height', '36px')
   await expect(model).toHaveCSS('border-radius', '0px')

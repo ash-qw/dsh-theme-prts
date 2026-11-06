@@ -1,134 +1,100 @@
 const CONTROL_ATTRIBUTE = 'data-prts-glass-control'
 const MENU_ATTRIBUTE = 'data-prts-glass-menu'
-const FALLBACK_COMPOSER_ATTRIBUTE = 'data-prts-composer-fallback'
 const COMPOSER_SIGNAL_ATTRIBUTE = 'data-prts-composer-signal'
-const FALLBACK_COMPOSER_ROOT_SELECTOR = [
-  '[data-slot="conversation.composer"]',
-  '[data-composer-seat]',
-].join(', ')
+const POPUP_SELECTOR = '[data-menu-material], [data-trigger-menu], [role="menu"], [role="listbox"]'
+const TRIGGER_SELECTOR = 'button[aria-haspopup="menu"], button[aria-haspopup="listbox"], [data-slot="conversation.input.permission"] button'
+const PRESET_TRIGGER_SELECTOR = '[data-slot="conversation.hero.agentPreset"] button[aria-haspopup="menu"]'
 const COMPOSER_RELEVANCE_SELECTOR = [
   '[data-composer-card]',
-  FALLBACK_COMPOSER_ROOT_SELECTOR,
-  'form textarea',
-  'button[aria-haspopup="menu"]',
-  'button[aria-haspopup="listbox"]',
-  '[role="menu"]',
-  '[role="listbox"]',
-  '[data-trigger-menu]',
   '[data-slot="conversation.input.overlay"]',
+  '[data-slot="conversation.input.model"]',
+  '[data-slot="conversation.input.permission"]',
+  '[data-slot="conversation.hero.agentPreset"]',
+  TRIGGER_SELECTOR,
+  POPUP_SELECTOR,
 ].join(', ')
-const PRESET_TRIGGER_SELECTOR = [
-  '[data-slot="conversation.hero.agentPreset"] button[aria-haspopup="menu"]',
-  'button[class*="cubgiG_seat"][aria-haspopup="menu"]',
-].join(', ')
-
-function mark(node, attribute, value) {
-  if (node?.nodeType === 1) node.setAttribute(attribute, value)
-}
 
 function controlledPopup(document, trigger) {
-  const id = trigger.getAttribute('aria-controls')
-  if (!id) return null
-  return document.getElementById(id)
+  const ids = trigger.getAttribute('aria-controls')?.split(/\s+/) ?? []
+  return ids.map(id => document.getElementById(id)).find(node => node?.matches(POPUP_SELECTOR))
 }
 
 function localPopup(trigger) {
-  const selector = '[role="menu"], [role="listbox"], [data-trigger-menu], [class*="mufS8W_card"]'
-  const sibling = trigger.nextElementSibling
-  if (sibling?.matches(selector)) return sibling
-  return trigger.parentElement?.querySelector(`:scope > ${selector}`) ?? null
-}
-
-function overlayPopup(document) {
-  const overlay = document.querySelector('[data-slot="conversation.input.overlay"]')
-  if (!overlay) return null
-  return overlay.querySelector('[data-trigger-menu], [role="listbox"], [role="menu"], [class*="mufS8W_card"]')
+  return Array.from(trigger.parentElement?.children ?? []).find(node => node !== trigger && node.matches(POPUP_SELECTOR))
 }
 
 function linkedMenu(document, trigger) {
-  return controlledPopup(document, trigger)
-    ?? localPopup(trigger)
-    ?? overlayPopup(document)
+  return controlledPopup(document, trigger) ?? localPopup(trigger)
 }
 
-function markPopup(popup, kind) {
+function markPopup(popup, kind, menus) {
   if (!popup) return
-  mark(popup, MENU_ATTRIBUTE, kind)
-  const card = popup.closest?.('[data-trigger-menu], [class*="mufS8W_card"]')
-  mark(card, MENU_ATTRIBUTE, kind)
-  for (const nested of popup.querySelectorAll?.('[role="menu"], [role="listbox"], [data-trigger-menu], [class*="mufS8W_card"]') ?? []) {
-    // The model picker replaces its contents with a scrolling role=menu.
-    // That list is content inside the material shell, not another popup.
-    if (kind === 'model' && popup.hasAttribute('data-menu-material')
-      && !nested.hasAttribute('data-menu-material')) {
-      nested.removeAttribute(MENU_ATTRIBUTE)
+  const shell = popup.closest('[data-menu-material], [data-trigger-menu]') ?? popup
+  menus.set(shell, kind)
+  for (const nested of shell.querySelectorAll(POPUP_SELECTOR)) {
+    if (kind === 'model' && shell.hasAttribute('data-menu-material') && !nested.hasAttribute('data-menu-material')) {
+      menus.delete(nested)
       continue
     }
-    mark(nested, MENU_ATTRIBUTE, kind)
+    menus.set(nested, kind)
   }
 }
 
-function hasVisibleText(element) {
-  if (typeof element?.innerText === 'string') return element.innerText.trim().length > 0
-  const clone = element?.cloneNode?.(true)
-  if (!clone) return false
-  for (const hidden of clone.querySelectorAll?.('[hidden], [aria-hidden="true"]') ?? []) hidden.remove()
-  return clone.textContent?.trim().length > 0
-}
-
-function fallbackComposerForms(document) {
-  const forms = new Set()
-  for (const root of document?.querySelectorAll?.(FALLBACK_COMPOSER_ROOT_SELECTOR) ?? []) {
-    if (root.querySelector('[data-composer-card]')) continue
-    for (const textarea of root.querySelectorAll('form textarea')) {
-      const form = textarea.closest('form')
-      if (form && root.contains(form)) forms.add(form)
-    }
+function syncMarkers(owned, next, attribute) {
+  for (const node of owned) if (!next.has(node)) node.removeAttribute(attribute)
+  owned.clear()
+  for (const [node, kind] of next) {
+    if (node.getAttribute(attribute) !== kind) node.setAttribute(attribute, kind)
+    owned.add(node)
   }
-  return forms
 }
 
 export function createComposerGlassAdapter({ document, window }) {
   let observer
   let scanFrame
-  const ownedFallbacks = new Set()
   const ownedSignals = new Set()
+  const ownedControls = new Set()
+  const ownedMenus = new Set()
 
   function ensureSignal(composer) {
-    let signal = composer.querySelector?.(`:scope > [${COMPOSER_SIGNAL_ATTRIBUTE}]`)
-    if (signal) return signal
-    signal = document.createElement('span')
+    if (composer.querySelector(`:scope > [${COMPOSER_SIGNAL_ATTRIBUTE}]`)) return
+    const signal = document.createElement('span')
     signal.setAttribute(COMPOSER_SIGNAL_ATTRIBUTE, '')
     signal.setAttribute('aria-hidden', 'true')
     composer.append(signal)
     ownedSignals.add(signal)
-    return signal
   }
 
   function mutationTouchesComposer(mutation) {
-    if (mutation.target?.closest?.('[data-composer-card], [data-prts-composer-fallback], [data-slot="conversation.input.overlay"]')) return true
-    for (const node of [...(mutation.addedNodes ?? []), ...(mutation.removedNodes ?? [])]) {
-      if (node?.nodeType !== 1) continue
-      if (node.matches?.(COMPOSER_RELEVANCE_SELECTOR) || node.querySelector?.(COMPOSER_RELEVANCE_SELECTOR)) return true
+    if (mutation.type === 'attributes') {
+      if (mutation.attributeName === 'data-composer-card') return true
+      if (mutation.attributeName === 'data-slot' && mutation.oldValue?.startsWith('conversation.')) return true
+      return mutation.target.matches(COMPOSER_RELEVANCE_SELECTOR)
+        || ownedControls.has(mutation.target) || ownedMenus.has(mutation.target)
     }
-    return mutation.type === 'attributes' && (
-      mutation.target?.matches?.(COMPOSER_RELEVANCE_SELECTOR)
-      || mutation.target?.closest?.(PRESET_TRIGGER_SELECTOR)
-    )
+    return [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1
+      && (node.matches(COMPOSER_RELEVANCE_SELECTOR) || node.querySelector(COMPOSER_RELEVANCE_SELECTOR)))
   }
 
   function onMutations(mutations) {
-    if (!mutations.some(mutationTouchesComposer)) return
-    const popupSelector = '[role="menu"], [role="listbox"], [data-trigger-menu]'
-    const openingPopup = mutations.some(mutation =>
+    const relevant = mutations.filter(mutationTouchesComposer)
+    if (!relevant.length) return
+    const openingPopup = relevant.some(mutation =>
       (mutation.type === 'attributes' && ['aria-expanded', 'aria-controls'].includes(mutation.attributeName))
       || [...(mutation.addedNodes ?? [])].some(node => node.nodeType === 1
-        && (node.matches?.(popupSelector) || node.querySelector?.(popupSelector))),
+        && (node.matches(POPUP_SELECTOR) || node.querySelector(POPUP_SELECTOR))),
     )
-    // Classify new popups in the mutation microtask, before the first paint.
-    // Waiting for another animation frame can expose their native material.
-    if (openingPopup) scan()
-    else queueScan()
+    if (openingPopup) {
+      cancelScan()
+      scan()
+    } else queueScan()
+  }
+
+  function cancelScan() {
+    if (scanFrame === undefined) return
+    if (window?.cancelAnimationFrame) window.cancelAnimationFrame(scanFrame)
+    else window?.clearTimeout?.(scanFrame)
+    scanFrame = undefined
   }
 
   function queueScan() {
@@ -141,88 +107,34 @@ export function createComposerGlassAdapter({ document, window }) {
   }
 
   function scan() {
-    for (const signal of [...ownedSignals]) {
-      if (signal.isConnected) continue
-      signal.remove?.()
+    for (const signal of ownedSignals) {
+      if (signal.isConnected && signal.parentElement?.matches('[data-composer-card]')) continue
+      signal.remove()
       ownedSignals.delete(signal)
     }
-    const fallbackForms = fallbackComposerForms(document)
-    for (const form of [...ownedFallbacks]) {
-      if (form.isConnected && fallbackForms.has(form) && !form.hasAttribute('data-composer-card')) continue
-      form.removeAttribute?.(FALLBACK_COMPOSER_ATTRIBUTE)
-      ownedFallbacks.delete(form)
-      if (form.hasAttribute('data-composer-card')) continue
-      const signal = form.querySelector?.(`:scope > [${COMPOSER_SIGNAL_ATTRIBUTE}]`)
-      if (!ownedSignals.has(signal)) continue
-      signal.remove?.()
-      ownedSignals.delete(signal)
+    const controls = new Map()
+    const menus = new Map()
+    for (const overlay of document.querySelectorAll('[data-slot="conversation.input.overlay"]')) {
+      for (const popup of overlay.querySelectorAll(POPUP_SELECTOR)) markPopup(popup, 'action', menus)
     }
-    for (const form of fallbackForms) {
-      form.setAttribute(FALLBACK_COMPOSER_ATTRIBUTE, '')
-      ownedFallbacks.add(form)
-    }
-    const composers = [
-      ...(document?.querySelectorAll?.('[data-composer-card]') ?? []),
-      ...fallbackForms,
-    ]
-    for (const composer of composers) {
+    for (const composer of document.querySelectorAll('[data-composer-card]')) {
       ensureSignal(composer)
-      for (const menu of composer.querySelectorAll('[role="menu"], [role="listbox"]')) markPopup(menu, 'action')
-
-      for (const trigger of composer.querySelectorAll('button[aria-haspopup="menu"], button[aria-haspopup="listbox"]')) {
+      for (const menu of composer.querySelectorAll(POPUP_SELECTOR)) markPopup(menu, 'action', menus)
+      for (const trigger of composer.querySelectorAll(TRIGGER_SELECTOR)) {
+        if (trigger.closest(POPUP_SELECTOR)) continue
         const menu = linkedMenu(document, trigger)
-          ?? trigger.parentElement?.querySelector('[role="menu"][aria-busy], [role="listbox"][aria-busy]')
-        const isCommands = trigger.getAttribute('aria-haspopup') === 'listbox'
-          || trigger.getAttribute('aria-label') === 'Commands'
-          || trigger.matches('[class*="uV2eYG_add"]')
-        const isModel = !isCommands && (
-          menu?.hasAttribute('aria-busy')
-          || (trigger.getAttribute('aria-haspopup') === 'menu' && hasVisibleText(trigger))
-        )
-        const kind = isModel ? 'model' : 'action'
-        mark(trigger, CONTROL_ATTRIBUTE, kind)
-        markPopup(menu, kind)
-      }
-
-      const permissionCandidates = [
-        ...composer.querySelectorAll('button.Sh0Q9G_trigger'),
-        ...composer.querySelectorAll('button[class*="Sh0Q9G_"]'),
-      ]
-      for (const trigger of new Set(permissionCandidates)) {
-        mark(trigger, CONTROL_ATTRIBUTE, 'permission')
-        markPopup(linkedMenu(document, trigger), 'permission')
+        const kind = trigger.closest('[data-slot="conversation.input.permission"]') ? 'permission'
+          : trigger.closest('[data-slot="conversation.input.model"]') || menu?.hasAttribute('aria-busy') ? 'model' : 'action'
+        controls.set(trigger, kind)
+        markPopup(menu, kind, menus)
       }
     }
-
-    for (const popup of document?.querySelectorAll?.(`[${MENU_ATTRIBUTE}="preset"]`) ?? []) {
-      popup.removeAttribute(MENU_ATTRIBUTE)
+    for (const trigger of document.querySelectorAll(PRESET_TRIGGER_SELECTOR)) {
+      controls.set(trigger, 'preset')
+      if (trigger.getAttribute('aria-expanded') === 'true') markPopup(linkedMenu(document, trigger), 'preset', menus)
     }
-    for (const trigger of document?.querySelectorAll?.(PRESET_TRIGGER_SELECTOR) ?? []) {
-      mark(trigger, CONTROL_ATTRIBUTE, 'preset')
-      if (trigger.getAttribute('aria-expanded') !== 'true') continue
-      const popup = controlledPopup(document, trigger)
-        ?? localPopup(trigger)
-        ?? document.querySelector('[role="menu"]:has([class*="cubgiG_item"])')
-      markPopup(popup, 'preset')
-    }
-
-    const overlay = document?.querySelector?.('[data-slot="conversation.input.overlay"]')
-    if (overlay) {
-      for (const popup of overlay.querySelectorAll('[data-trigger-menu], [role="menu"], [role="listbox"], [class*="mufS8W_card"]')) {
-        markPopup(popup, popup.hasAttribute('aria-busy') ? 'model' : 'action')
-      }
-    }
-  }
-
-  function removeMarkers() {
-    for (const node of document?.querySelectorAll?.(`[${CONTROL_ATTRIBUTE}], [${MENU_ATTRIBUTE}]`) ?? []) {
-      node.removeAttribute(CONTROL_ATTRIBUTE)
-      node.removeAttribute(MENU_ATTRIBUTE)
-    }
-    for (const form of ownedFallbacks) form.removeAttribute?.(FALLBACK_COMPOSER_ATTRIBUTE)
-    ownedFallbacks.clear()
-    for (const signal of ownedSignals) signal.remove?.()
-    ownedSignals.clear()
+    syncMarkers(ownedControls, controls, CONTROL_ATTRIBUTE)
+    syncMarkers(ownedMenus, menus, MENU_ATTRIBUTE)
   }
 
   return {
@@ -232,7 +144,7 @@ export function createComposerGlassAdapter({ document, window }) {
       const Observer = window?.MutationObserver
       if (!Observer) return
       const observationRoot = document.querySelector('[data-prts-region="operation"]')
-        ?? document.querySelector('[data-slot="main.conversation"], [data-slot="conversation"]')
+        ?? document.querySelector('[data-slot="main.conversation"]')
       if (!observationRoot) return
       observer = new Observer(onMutations)
       if (observationRoot !== document.body) observer.observe(document.body, { childList: true })
@@ -240,18 +152,18 @@ export function createComposerGlassAdapter({ document, window }) {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ['aria-controls', 'aria-expanded', 'aria-busy', 'class', 'role'],
+        attributeOldValue: true,
+        attributeFilter: ['aria-controls', 'aria-expanded', 'aria-busy', 'aria-haspopup', 'role', 'data-composer-card', 'data-slot', 'data-menu-material'],
       })
     },
     dispose() {
       observer?.disconnect()
       observer = undefined
-      if (scanFrame !== undefined) {
-        if (window?.cancelAnimationFrame) window.cancelAnimationFrame(scanFrame)
-        else window?.clearTimeout?.(scanFrame)
-      }
-      scanFrame = undefined
-      removeMarkers()
+      cancelScan()
+      syncMarkers(ownedControls, new Map(), CONTROL_ATTRIBUTE)
+      syncMarkers(ownedMenus, new Map(), MENU_ATTRIBUTE)
+      for (const signal of ownedSignals) signal.remove()
+      ownedSignals.clear()
     },
   }
 }

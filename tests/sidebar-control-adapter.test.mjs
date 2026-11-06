@@ -712,3 +712,139 @@ test('separates nested native pin indicators from timestamps across pin and sele
     dom.window.close()
   }
 })
+
+function nativeMenuFixture(testContext, getContextMenus) {
+  const dom = new JSDOM(`<body><aside data-prts-region="sessions"><div data-slot="sidebar.workspaces"><div role="tree">
+    <div role="treeitem" aria-expanded="true" data-row-key="workspace:workspace-a"><span>folder</span><span>chevron</span><span>Workspace</span><span><button type="button" data-context-menu-trigger>…</button><button type="button">+</button></span></div>
+    <div role="treeitem" aria-selected="true" data-row-key="session:session-a"><span>status</span><span class="title">Session A</span><span>time</span><span><button type="button" data-context-menu-trigger>…</button></span></div>
+    <div role="treeitem" aria-selected="false" data-row-key="session:session-a"><span>status</span><span class="title">Pinned A</span><span>time</span><span><button type="button" data-context-menu-trigger>…</button></span></div>
+    <div role="treeitem" aria-selected="false" data-row-key="session:session-b"><span>status</span><span class="title">Session B</span><span>time</span><span><button type="button" data-context-menu-trigger>…</button></span></div>
+    <div role="treeitem" aria-selected="false" data-blank-session data-row-key="session:blank"><span>status</span><span>Blank</span></div>
+  </div></div></aside></body>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createSidebarControlAdapter({ document, window: dom.window, getContextMenus })
+  testContext.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start({ sessionPreview: false })
+  const root = document.querySelector('[data-slot="sidebar.workspaces"]')
+  const query = root.querySelectorAll.bind(root)
+  let scans = 0
+  root.querySelectorAll = selector => {
+    if (selector === 'div[role="treeitem"][aria-selected]') scans++
+    return query(selector)
+  }
+  return { dom, document, adapter, scans: () => scans,
+    openKeys: () => Array.from(root.querySelectorAll('[data-prts-row-menu-open]'), row => row.getAttribute('data-row-key')) }
+}
+
+function menuTarget(kind, id) {
+  return { kind, value: kind === 'workspace' ? { workspaceId: id } : { sessionId: id } }
+}
+
+test('native context menu snapshots update only matching rows without rescanning cards', async testContext => {
+  const active = createStore(null)
+  const fixture = nativeMenuFixture(testContext, () => ({ active }))
+  active.update(menuTarget('session', 'session-a'))
+  assert.deepEqual(fixture.openKeys(), ['session:session-a', 'session:session-a'])
+  fixture.document.querySelector('[data-row-key="session:session-a"]').classList.add('_menuOpen_randomhash_12')
+  await flush(fixture.dom.window)
+  active.update(menuTarget('workspace', 'workspace-a'))
+  assert.deepEqual(fixture.openKeys(), ['workspace:workspace-a'])
+  active.update(menuTarget('session', 'session-b'))
+  assert.deepEqual(fixture.openKeys(), ['session:session-b'])
+  active.update(menuTarget('session', 'blank'))
+  assert.deepEqual(fixture.openKeys(), [])
+  active.update({ kind: 'file', value: { path: '/example' } })
+  active.update(null)
+  await flush(fixture.dom.window)
+  assert.deepEqual(fixture.openKeys(), [])
+  assert.equal(fixture.scans(), 0)
+})
+
+test('menu-only DOM fallback updates do not rebuild cards while real row changes still do', async testContext => {
+  const fixture = nativeMenuFixture(testContext)
+  const row = fixture.document.querySelector('[data-row-key="session:session-a"]')
+  const trigger = row.querySelector('[data-context-menu-trigger]')
+  row.classList.add('_menuOpen_arbitrary_12')
+  await flush(fixture.dom.window)
+  assert.deepEqual(fixture.openKeys(), ['session:session-a'])
+  row.classList.remove('_menuOpen_arbitrary_12')
+  await flush(fixture.dom.window)
+  trigger.setAttribute('aria-expanded', 'true')
+  await flush(fixture.dom.window)
+  assert.deepEqual(fixture.openKeys(), ['session:session-a'])
+  trigger.setAttribute('aria-expanded', 'false')
+  await flush(fixture.dom.window)
+  assert.deepEqual(fixture.openKeys(), [])
+  assert.equal(fixture.scans(), 0)
+  row.className = '_menuOpen_arbitrary_12 archived'
+  await flush(fixture.dom.window)
+  assert.equal(fixture.scans(), 1)
+  fixture.document.querySelector('[data-prts-workspace-row]').setAttribute('aria-expanded', 'false')
+  await flush(fixture.dom.window)
+  assert.equal(fixture.scans(), 2)
+})
+
+test('native menu source replacement disposal and restart release stale subscriptions', async testContext => {
+  const first = createStore(menuTarget('session', 'session-a'))
+  const second = createStore(menuTarget('workspace', 'workspace-a'))
+  let active = first
+  const fixture = nativeMenuFixture(testContext, () => ({ active }))
+  assert.deepEqual(fixture.openKeys(), ['session:session-a', 'session:session-a'])
+  active = second
+  fixture.adapter.start({ sessionPreview: false })
+  assert.deepEqual(fixture.openKeys(), ['workspace:workspace-a'])
+  first.update(menuTarget('session', 'session-b'))
+  assert.deepEqual(fixture.openKeys(), ['workspace:workspace-a'])
+  fixture.adapter.dispose()
+  second.update(menuTarget('session', 'session-b'))
+  assert.deepEqual(fixture.openKeys(), [])
+  fixture.adapter.start({ sessionPreview: false })
+  assert.deepEqual(fixture.openKeys(), ['session:session-b'])
+  second.update(null)
+  assert.deepEqual(fixture.openKeys(), [])
+})
+
+test('late native menu services and newly mounted duplicate rows adopt current state', async testContext => {
+  const active = createStore(menuTarget('session', 'session-a'))
+  let service
+  const fixture = nativeMenuFixture(testContext, () => service)
+  service = { active }
+  const row = fixture.document.querySelector('[data-row-key="session:session-a"]')
+  const copy = fixture.document.createElement('div')
+  copy.innerHTML = '<div role="treeitem" aria-selected="false" data-row-key="session:session-a"><span>status</span><span class="title">New A</span><span>time</span><span><button type="button" data-context-menu-trigger>…</button></span></div>'
+  row.parentElement.append(copy.firstElementChild)
+  await flush(fixture.dom.window)
+  assert.deepEqual(fixture.openKeys(), ['session:session-a', 'session:session-a', 'session:session-a'])
+  active.update(null)
+  assert.deepEqual(fixture.openKeys(), [])
+  assert.equal(fixture.scans(), 1)
+})
+
+test('auxiliary hover announcements do not rescan cards while real status and row mounts still do', async testContext => {
+  const fixture = nativeMenuFixture(testContext)
+  const row = fixture.document.querySelector('[data-row-key="session:session-a"]')
+  const announcement = fixture.document.createElement('span')
+  announcement.setAttribute('role', 'status')
+  for (let iteration = 0; iteration < 3; iteration++) {
+    row.parentElement.append(announcement)
+    await flush(fixture.dom.window)
+    announcement.remove()
+    await flush(fixture.dom.window)
+  }
+  assert.equal(fixture.scans(), 0)
+  const status = fixture.document.createElement('span')
+  status.setAttribute('role', 'status')
+  status.dataset.state = 'warning'
+  row.append(status)
+  await flush(fixture.dom.window)
+  assert.equal(fixture.scans(), 1)
+  assert.equal(row.dataset.prtsSessionState, 'warning')
+  const scansBeforeMount = fixture.scans()
+  const container = fixture.document.createElement('span')
+  container.setAttribute('role', 'status')
+  container.innerHTML = '<div role="treeitem" aria-selected="false"><span>status</span><span class="title">New row</span></div>'
+  row.parentElement.append(container)
+  await flush(fixture.dom.window)
+  assert.ok(fixture.scans() > scansBeforeMount, 'mounting a real row still triggers a full scan')
+  assert.ok(container.querySelector('[data-prts-session-row]'))
+})

@@ -125,9 +125,13 @@ function resolveRowControls(row, kind) {
   return { actions, anchor, create, menu, quickActions }
 }
 
+function isMenuOpenClass(token) {
+  return /(?:^|_)menuOpen(?:_|$)/.test(token)
+}
+
 function isRowMenuOpen(row, menu) {
   return menu?.getAttribute('aria-expanded') === 'true'
-    || Array.from(row.classList).some(token => token === 'menuOpen' || token.endsWith('_menuOpen'))
+    || Array.from(row.classList).some(token => isMenuOpenClass(token))
 }
 
 function resolveRowTitle(row, kind, actions) {
@@ -234,9 +238,53 @@ function createRunningMarker(document) {
   return marker
 }
 
-export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions, getWorkspaces }) {
+export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions, getWorkspaces, getContextMenus }) {
   let previewPreferences = {}
   let adapterActive = false, sourceRetryTimer
+  let contextMenuSource, activeMenuKey
+  let stopContextMenu = () => {}
+  const menuRows = new Map()
+  const menuRowsByKey = new Map()
+  function contextMenuKey() {
+    const target = contextMenuSource?.getSnapshot()
+    const id = target?.kind === 'session' ? target.value?.sessionId
+      : target?.kind === 'workspace' ? target.value?.workspaceId : undefined
+    return id === undefined || id === null ? undefined : target.kind + ':' + id
+  }
+  function syncRowMenu(row, menu) {
+    const key = row.getAttribute('data-row-key')
+    const open = contextMenuSource && key ? Boolean(menu) && key === activeMenuKey : isRowMenuOpen(row, menu)
+    if (row.hasAttribute('data-prts-row-menu-open') === open) return
+    row.toggleAttribute('data-prts-row-menu-open', open)
+    lifelineAnimator.refreshMotion()
+  }
+  function onContextMenuChange() {
+    const previous = activeMenuKey
+    activeMenuKey = contextMenuKey()
+    if (previous === activeMenuKey) return
+    for (const key of new Set([previous, activeMenuKey])) {
+      for (const row of menuRowsByKey.get(key) ?? []) syncRowMenu(row, menuRows.get(row))
+    }
+  }
+  function syncContextMenuSource() {
+    const source = getContextMenus?.()?.active
+    const next = typeof source?.getSnapshot === 'function' && typeof source?.subscribe === 'function' ? source : undefined
+    if (next === contextMenuSource) return
+    stopContextMenu()
+    contextMenuSource = next
+    activeMenuKey = contextMenuKey()
+    stopContextMenu = next?.subscribe(onContextMenuChange) ?? (() => {})
+    for (const [row, menu] of menuRows) syncRowMenu(row, menu)
+  }
+  function trackRowMenu(row, menu) {
+    menuRows.set(row, menu)
+    const key = row.getAttribute('data-row-key')
+    if (key) {
+      if (!menuRowsByKey.has(key)) menuRowsByKey.set(key, new Set())
+      menuRowsByKey.get(key).add(row)
+    }
+    syncRowMenu(row, menu)
+  }
   let observer
   let resizeObserver
   let resizeFrame
@@ -916,6 +964,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
   function scan() {
     if (!adapterActive) return
+    syncContextMenuSource()
+    menuRows.clear()
+    menuRowsByKey.clear()
     syncSummarySources()
     sourceSummarySignature = JSON.stringify(visibleSessionSummaries(sessions, workspaces, sessionStatus))
     const root = document?.querySelector?.('[data-prts-region="sessions"] [data-slot="sidebar.workspaces"]')
@@ -937,7 +988,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         const icon = resolveWorkspaceIcon(row, title, controls.actions)
         markSidebarNode(icon, 'data-prts-workspace-icon', next)
         markSidebarNode(resolveWorkspaceDisclosure(row, title, controls.actions, icon), 'data-prts-workspace-disclosure', next)
-        row.toggleAttribute('data-prts-row-menu-open', isRowMenuOpen(row, controls.menu))
+        trackRowMenu(row, controls.menu)
         markSidebarNode(controls.actions, 'data-prts-workspace-actions', next)
         markSidebarNode(controls.anchor, 'data-prts-workspace-menu-anchor', next)
         markSidebarNode(controls.menu, 'data-prts-workspace-menu', next)
@@ -988,7 +1039,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         markSidebarNode(trailing.resting, 'data-prts-session-resting', next)
         markSidebarNode(trailing.pin, 'data-prts-session-pin', next)
         if (title) setSidebarAttribute(title, 'data-prts-session-index', sessionIndex)
-        row.toggleAttribute('data-prts-row-menu-open', isRowMenuOpen(row, controls.menu))
+        trackRowMenu(row, controls.menu)
         markSidebarNode(controls.actions, 'data-prts-session-actions', next)
         for (const action of controls.quickActions ?? []) markSidebarNode(action, 'data-prts-session-quick-actions', next)
         markSidebarNode(controls.anchor, 'data-prts-session-menu-anchor', next)
@@ -1069,11 +1120,30 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       pickupRoot.addEventListener('pointerover', pickupOver)
       pickupRoot.addEventListener('pointerout', pickupOut)
       observer = new window.MutationObserver(mutations => {
+        syncContextMenuSource()
         const relevant = mutations.filter(mutation => {
           if (mutation.target.closest?.('[data-prts-owned-session-summary]')) return false
-          if (mutation.type === 'attributes' && mutation.attributeName === 'class' && !mutation.target.closest('[role="treeitem"]')) {
-            const stableClasses = value => (value ?? '').split(/\s+/).filter(token => token && !token.endsWith('_quietBars')).sort().join(' ')
-            if (stableClasses(mutation.oldValue) === stableClasses(mutation.target.getAttribute('class'))) return false
+          if (mutation.type === 'childList' && !mutation.target.closest('[role="treeitem"]')) {
+            const changed = [...mutation.addedNodes, ...mutation.removedNodes]
+            if (changed.length && changed.every(node => node.nodeType === 1
+              && node.matches('[role="status"]:not([data-state])')
+              && !node.querySelector('[role="treeitem"], button, [data-state]'))) return false
+          }
+          if (mutation.type === 'attributes') {
+            const row = mutation.target.closest('[data-prts-session-row], [data-prts-workspace-row]')
+            if (mutation.attributeName === 'aria-expanded' && row && mutation.target === menuRows.get(row)) {
+              syncRowMenu(row, menuRows.get(row))
+              return false
+            }
+            if (mutation.attributeName === 'class') {
+              const stableClasses = value => (value ?? '').split(/\s+/).filter(token => token
+                && !(row && isMenuOpenClass(token))
+                && !(!mutation.target.closest('[role="treeitem"]') && token.endsWith('_quietBars'))).sort().join(' ')
+              if (stableClasses(mutation.oldValue) === stableClasses(mutation.target.getAttribute('class'))) {
+                if (row) syncRowMenu(row, menuRows.get(row))
+                return false
+              }
+            }
           }
           return true
         })
@@ -1093,7 +1163,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ['aria-expanded', 'aria-selected', 'class', 'data-state'],
+        attributeFilter: ['aria-expanded', 'aria-selected', 'class', 'data-state', 'data-row-key'],
         attributeOldValue: true,
       })
     },
@@ -1103,6 +1173,11 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       pickupRoot?.removeEventListener('pointerout', pickupOut)
       pickupRoot = undefined
       adapterActive = false
+      stopContextMenu()
+      stopContextMenu = () => {}
+      contextMenuSource = activeMenuKey = undefined
+      menuRows.clear()
+      menuRowsByKey.clear()
       disconnectSummarySources()
       cancelReveal()
       document.removeEventListener('pointermove', resumeSummaryHover)

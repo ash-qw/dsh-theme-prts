@@ -136,7 +136,7 @@ test('a replacement composer receives its material before the next animation fra
   assert.equal(input.selectionEnd, 7)
 })
 
-test('a newly classified fallback composer mounts in the marker mutation microtask', async t => {
+test('a newly mounted native composer is recognized in the marker mutation microtask', async t => {
   const f = fixture(t)
   f.surface.start()
   const form = f.document.createElement('form')
@@ -145,7 +145,7 @@ test('a newly classified fallback composer mounts in the marker mutation microta
   f.document.body.append(form)
   await Promise.resolve()
   assert.equal(f.calls.mounts, 1)
-  form.setAttribute('data-prts-composer-fallback', '')
+  form.setAttribute('data-composer-card', '')
   await Promise.resolve()
   assert.equal(f.calls.mounts, 2)
   assert.equal(form.hasAttribute('data-prts-composer-glass-active'), true)
