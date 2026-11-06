@@ -544,7 +544,7 @@ html[data-dsh-prts] [data-prts-conversation-control="file"]:is([class*="_fileLin
 }
 
 /* Baker user bubbles are light even when the surrounding shell is dark. */
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([class$="_bubble"],[data-message-role="user"]) [data-ref-chip="file"]{
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-message-bubble],[class$="_bubble"],[data-message-role="user"]) [data-ref-chip="file"]{
   background:color-mix(in srgb,var(--prts-cyan) 8%,var(--prts-canvas))!important;
   border-color:color-mix(in srgb,var(--prts-cyan) 28%,transparent)!important;
   color:var(--prts-cyan)!important;backdrop-filter:none!important;

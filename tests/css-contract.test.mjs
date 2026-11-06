@@ -191,7 +191,7 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     '[data-slot="conversation"]) > [data-phase]',
     '[data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before',
     ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering]))::after',
-    ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) [class$="_bubble"]',
+    ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])',
     '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body))',
     '[data-prts-ai-surface]',
     'border-radius: 18px 0 18px 18px',
@@ -426,4 +426,11 @@ test('isolates nested menu blur and preserves the temporary session quick-action
   assert.match(css, /\[data-prts-floating-glass\]\[data-prts-floating-nested\][^{]+\{[^}]*backdrop-filter: none;/)
   assert.match(css, /\[data-prts-session-quick-actions\]\s*\{[^}]*display: none !important;/)
   assert.equal(css.includes('--prts-session-action-count'), false)
+})
+
+
+test('matches semantic user-message surfaces alongside legacy bubble classes in all material rules', () => {
+  for (const selectorLine of (css + addedCss).split('\n').filter(line => line.includes('[class$="_bubble"]'))) {
+    assert.ok(selectorLine.includes('[data-message-bubble]'), selectorLine)
+  }
 })

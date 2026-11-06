@@ -13,7 +13,7 @@ export function createCursorAdapter({ document, window, assets }) {
   let textRange
   let lastPoint
   const heroTextSelector = '[data-phase="hero"] [class$="_titleGroup"]'
-  const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) [class$="_bubble"]'
+  const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) :is([data-message-bubble], [class$="_bubble"])'
   const controlSelector = 'a[href], button, summary, input, textarea, select, [contenteditable], [role="button"], [role="toolbar"], [role="tab"]'
   function clearTextHit() {
     textTarget?.removeAttribute('data-prts-text-hit')
