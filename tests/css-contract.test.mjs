@@ -434,3 +434,28 @@ test('matches semantic user-message surfaces alongside legacy bubble classes in 
     assert.ok(selectorLine.includes('[data-message-bubble]'), selectorLine)
   }
 })
+
+test('scopes transparent global page backgrounds to active wallpaper without rewriting card or body tokens', async () => {
+  const background = await readFile(new URL('../src/styles/custom-background.css', import.meta.url), 'utf8')
+  const material = background.slice(background.indexOf('html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full], [data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"]:is('))
+  assert.ok(material.includes(':is(:has([data-global-panel]), :has([data-slot="main"]):not(:has([data-slot="main.conversation"], [data-slot="conversation"])))'))
+  assert.ok(material.includes('[data-prts-background-mode="split"][data-prts-background-conversation]'))
+  assert.match(material, /--dsw-alias-bg-base: transparent;/)
+  assert.doesNotMatch(material, /--dsw-alias-(?:bg-layer|settings-card|button-ghost|border-|bg-module)/)
+  assert.doesNotMatch(background, /task-manager-page|data-dsh-market-root|data-plugin-panel/)
+  assert.doesNotMatch(material, /\bbody\s*\{|var\(--prts-canvas\)|color-mix/)
+})
+
+test('page blur uses one transparent noninteractive background plate without an opaque fallback', async () => {
+  const background = await readFile(new URL('../src/styles/custom-background.css', import.meta.url), 'utf8')
+  const material = background.slice(background.indexOf('  --dsw-alias-bg-base: transparent;'))
+  const plate = material.slice(material.indexOf('&::before {'), material.indexOf('html[data-dsh-prts][data-prts-glass="off"]'))
+  assert.match(plate, /z-index: -1;/)
+  assert.match(plate, /pointer-events: none;/)
+  assert.match(plate, /background: transparent;/)
+  assert.match(plate, /backdrop-filter: var\(--prts-page-filter, blur\(8px\)\);/)
+  assert.doesNotMatch(material.slice(0, material.indexOf('&::before {')), /(?:^|\n)\s*(?:filter|backdrop-filter|transform):/)
+  assert.match(material, /\[data-prts-glass="off"\][^{]*\{ --prts-page-filter: none; \}/)
+  assert.match(material, /@media \(prefers-reduced-transparency: reduce\)[\s\S]+--prts-page-filter: none;/)
+  assert.doesNotMatch(material, /--prts-page-(?:opacity|transparency|canvas|plate)/)
+})

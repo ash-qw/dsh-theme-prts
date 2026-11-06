@@ -487,12 +487,22 @@ background:color-mix(in srgb,var(--prts-panel) 28%,transparent);
 backdrop-filter:blur(12px);
 }
 
-/* The task manager mounts directly in main, outside the conversation root. */
-html[data-dsh-prts] [data-prts-region="operation"] [data-testid="task-manager-page"],
-html[data-dsh-prts] [data-testid="task-manager-page"] :is([class$="_detail"],[class$="_detailNotice"]) {
-background: var(--prts-canvas);
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full], [data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"]:is(:has([data-global-panel]), :has([data-slot="main"]):not(:has([data-slot="main.conversation"], [data-slot="conversation"]))) {
+  --dsw-alias-bg-base: transparent;
+  background: transparent;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: transparent;
+    -webkit-backdrop-filter: var(--prts-page-filter, blur(8px));
+    backdrop-filter: var(--prts-page-filter, blur(8px));
+  }
 }
-html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"] [data-testid="task-manager-page"],
-html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-testid="task-manager-page"] :is([class$="_detail"],[class$="_detailNotice"]) {
-background: transparent;
+html[data-dsh-prts][data-prts-glass="off"] { --prts-page-filter: none; }
+@media (prefers-reduced-transparency: reduce) {
+  html[data-dsh-prts][data-dsh-prts] { --prts-page-filter: none; }
 }
