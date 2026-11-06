@@ -63,7 +63,7 @@ function settingButtons(key, label, options) {
       : key === 'conversationEmblem'
         ? '<small data-prts-setting-note>控制经典主题正文中的粒子徽记，不影响新会话徽记</small>'
       : key === 'bakerGroupAvatars'
-        ? '<small data-prts-setting-note>过程正文仅首条显示头像，最终回答独立保留；关闭后每条回复均显示</small>'
+        ? '<small data-prts-setting-note>每轮仅首条可见正文显示头像，折叠后跟随可见正文；关闭后每条回复均显示</small>'
       : key === 'sessionGlow'
         ? '<small data-prts-setting-note>为流线添加柔和的同色辉光</small>'
       : key === 'sessionFlowPalette'

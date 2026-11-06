@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares the verified dsh 0.2.1 and 0.2.2 client contracts', async () => {
+test('declares only the current dsh 0.2.2-rc.1 client contract', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -41,7 +41,7 @@ test('declares the verified dsh 0.2.1 and 0.2.2 client contracts', async () => {
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
     node: '>=20.9.0',
-    dsh: '0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.5 || 0.2.2-rc.1',
+    dsh: '0.2.2-rc.1',
   })
   assert.deepEqual(lock.packages[''].engines, pkg.engines)
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
@@ -160,7 +160,7 @@ test('build embeds local CSS, emblems, and particle-field assets', async () => {
   assert.match(client, /function findOrthogonalLayout\(/)
   assert.doesNotMatch(client, /createBlueNoiseTargets|createLatticeTargets/)
   assert.equal((client.match(/data:image\/png;base64,/g) || []).length, 56, 'only existing PRTS assets and renderer copies for hand, text, grab, disabled and resize states should be embedded')
-  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 56320 + 4096 + 3072 + 118 * 1024 + 20 * 1024 + 1024 + 512 + 5120, 'browser bundle should stay within the material budget plus 55 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews and independent day/night palettes and themed color editor and persistent linked palettes and source migration, plus 20 KiB for page-rendered form controls, compact palette, cursor descriptions and avatar confirmation, plus 118 KiB for the opt-in Mouse Follower renderer, GSAP core, functional cursor images and semantic state adapter, plus 4 KiB for adaptive card transitions and bounded crossfades and 3 KiB for the AI tool guides and read-only status instructions, plus 1 KiB for pre-paint composer material handoff, plus 0.5 KiB for isolated sidebar motion and menu-aware flow suspension, plus 5 KiB for scoped popup updates, restart cleanup and inline quote isolation')
+  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 56320 + 4096 + 3072 + 118 * 1024 + 20 * 1024 + 1024 + 512 + 5120 + 2048, 'browser bundle should stay within the material budget plus 55 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews and independent day/night palettes and themed color editor and persistent linked palettes and source migration, plus 20 KiB for page-rendered form controls, compact palette, cursor descriptions and avatar confirmation, plus 118 KiB for the opt-in Mouse Follower renderer, GSAP core, functional cursor images and semantic state adapter, plus 4 KiB for adaptive card transitions and bounded crossfades and 3 KiB for the AI tool guides and read-only status instructions, plus 1 KiB for pre-paint composer material handoff, plus 0.5 KiB for isolated sidebar motion and menu-aware flow suspension, plus 5 KiB for scoped popup updates, restart cleanup and inline quote isolation, plus 2 KiB for reply-aware avatar invalidation')
   assert.doesNotMatch(client, /createRhodesFallbackTargets/)
   assert.doesNotMatch(client, /topographic-map\.svg|topographic-tech\.svg|data-prts-terrain-layer/)
   assert.doesNotMatch(client, /Amiya|阿米娅|dossier|data-prts-details-toggle/i)

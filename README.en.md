@@ -17,12 +17,11 @@ The Baker conversation theme is inspired by the messenger in Arknights: Endfield
 
 ## Compatibility
 
-- Supports DeepSeek Harness `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.5`, and `0.2.2-rc.1` on Web. Official desktop verification remains limited to `0.2.1-rc.2`; other desktop versions have not received separate checks. The earlier `0.2.0-rc.2`, `0.1.7`, `0.1.5`, and `0.1.2` release lines are outside the current compatibility declaration.
-- Web checks cover mounting, workspaces and session cards, long-title hover behavior, the native conversation width drag control, and narrow-window layout. The rc.3 More menus in the left sidebar, conversation view header and right sidebar were checked on the live local page, retaining themed menu surfaces and native item hover backgrounds.
-- On rc.5, reasoning text processing remains owned by the host; the theme does not override the `text/rawText` contract of `conversation.chat.reasoning.body`. Reasoning expansion, collapse and background surfaces were checked on the live local page.
-- On `0.2.2-rc.1`, the layout adapter handles the new main-panel wrapper while keeping the entire center column themed. The host retains ownership of the mobile sidebar drawer, mask, and native interactions. Local live Web checks cover the plugin page and theme settings, asset configuration endpoints, the mobile drawer and mask dismissal, settings persistence across reload, and reasoning expansion and collapse in both color schemes. These changes have not received separate desktop verification.
-- `engines.dsh` in `package.json` lists only these four release candidates so the plugin market can evaluate compatibility. Other DSH versions require separate verification.
-- For DSH `0.2.0-rc.2`, pin the previous public theme release `@ash-qw/dsh-theme-prts@1.4.2`. For DSH `0.1.7-rc.2`, pin `1.0.2`. For DSH `0.1.2` or `0.1.5`, pin `0.1.102`.
+- **The current maintenance line declares support only for DeepSeek Harness `0.2.2-rc.1`.** `engines.dsh` in `package.json` is restricted to that exact version. Other versions, including later release candidates, are not covered.
+- Verification targets the local `0.2.2-rc.1` Web deployment, with recorded checks for the new main panel, workspace and session cards, message styling, Baker avatars, composer, overlays, transparent backgrounds, and mobile drawers. This is not exhaustive acceptance testing. The official desktop client uses the same theme package, but that version has not received real-device desktop verification; older desktop results are not a guarantee for the new version.
+- The host defaults to “Replies After Collapse → All replies”: intermediate reply bodies remain visible while tool, reasoning, and other process content can fold. “Final answer only” still folds intermediate replies. The theme handles both modes without changing the host preference.
+- **For older DSH versions, keep your existing theme version or upgrade DSH before updating the theme.** For `0.2.1-rc.2`, `0.2.1-rc.3`, and `0.2.1-rc.5`, the last public theme release declaring support is `@ash-qw/dsh-theme-prts@2.7.2`. Those versions are no longer verification targets. Retained DOM fallbacks and regression fixtures do not constitute a compatibility guarantee.
+- For DSH `0.2.0-rc.2`, pin theme `@ash-qw/dsh-theme-prts@1.4.2`. For DSH `0.1.7-rc.2`, pin `1.0.2`. For DSH `0.1.2` or `0.1.5`, pin `0.1.102`.
 
 ## Install and update
 
@@ -87,6 +86,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release history and [RELEASING.md](RELEASIN
 ### Set Baker avatars from a DSH conversation
 
 Upload an image and ask the AI to set it as your Baker avatar, or have it generate/edit an image first. `prts_avatar_inspect` reads current configuration and conversation images; `prts_avatar_apply` replaces user/AI avatars, re-crops the current original, or restores defaults. Changes are shared within the DSH instance. Replacing an avatar discards its previous original. Avatars appear in Baker mode; tools do not change the device-local conversation theme.
+
+Baker’s “Group process reply avatars” option is enabled by default. Only the first visible body in each reply turn shows an avatar; final answers no longer keep a separate avatar. With the default “All replies” preference, folding tools or reasoning does not rescan avatar groups. When reply visibility changes, as in “Final answer only”, the avatar follows the first remaining visible body. User input or steering starts a new group; disabling the option restores individual avatars. Host “All replies / Final answer only” preferences and bubble alignment remain unchanged.
 
 Theme preferences now use DSH native profile configuration. Connected pages share updates; browser storage is only a startup cache. Existing local preferences are migrated only when the Host has no saved theme configuration. Failed or conflicting writes require an explicit retry and never automatically overwrite Host values. Older DSH hosts may expose memory-only settings for remote access; these cannot be reported as durable saves. Reload the server-side plugin after upgrading to register its configuration schema. Avatar and emblem assets keep their existing server storage.
 

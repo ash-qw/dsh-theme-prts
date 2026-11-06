@@ -318,7 +318,7 @@ test('Baker avatars follow the first unfolded response per turn and restore afte
   const dom=domWith(`<div data-conversation-scroll><div data-chat-flow-kind="user"></div>
     ${reply('reasoning',1,'data-chat-group-part="reasoning"')}
     <section id="process">${reply('first',1,'data-turn-process-member="true"')}${reply('second',1,'data-turn-process-member="true"')}</section>
-    ${reply('answer',1,'data-turn-process-answer="true"')}${reply('next',2)}
+    ${reply('answer',1,'data-turn-process-answer="true"')}<div data-chat-flow-kind="user"></div>${reply('next',2)}
     </div>`)
   const {document}=dom.window
   const adapter=createAssistantGlassAdapter({document,window:dom.window})
@@ -327,7 +327,7 @@ test('Baker avatars follow the first unfolded response per turn and restore afte
   assert.equal(shown('reasoning'),false)
   assert.equal(shown('first'),true)
   assert.equal(shown('second'),false)
-  assert.equal(shown('answer'),true)
+  assert.equal(shown('answer'),false)
   assert.equal(shown('next'),true)
   const process=document.getElementById('process')
   process.setAttribute('hidden','until-found');await flush(dom.window)
@@ -335,14 +335,14 @@ test('Baker avatars follow the first unfolded response per turn and restore afte
   assert.equal(shown('answer'),true)
   process.removeAttribute('hidden');await flush(dom.window)
   assert.equal(shown('first'),true)
-  assert.equal(shown('answer'),true)
+  assert.equal(shown('answer'),false)
   document.getElementById('first').setAttribute('data-turn-process-hidden','true');await flush(dom.window)
   assert.equal(shown('second'),true)
   const second=document.getElementById('second');second.remove();await flush(dom.window)
   assert.equal(shown('answer'),true)
   process.append(second);await flush(dom.window)
   assert.equal(shown('second'),true)
-  assert.equal(shown('answer'),true)
+  assert.equal(shown('answer'),false)
   document.getElementById('answer').insertAdjacentHTML('beforebegin','<div data-chat-flow-kind="steering">补充要求</div>')
   await flush(dom.window)
   assert.equal(shown('answer'),true)
@@ -390,4 +390,293 @@ test('reveals only a previously streaming response and cancels animations on dis
   adapter.start({loading:false})
   assert.ok(calls.every(call=>call.cancelled))
   adapter.dispose();dom.window.close()
+})
+
+function avatarReply(id, attributes = '') {
+  return `<div id="${id}" data-chat-flow-kind="assistant-step" ${attributes}><div class="host_body"><p>${id}</p></div></div>`
+}
+
+function visibleAvatarIds(document) {
+  return [...document.querySelectorAll(':is([data-chat-flow-kind="assistant-step"], [data-message-role="assistant"]):not([data-prts-avatar-hidden])')].map(node => node.id)
+}
+
+test('default all-replies groups every visible response including the final answer without turn metadata', () => {
+  const dom = domWith(`<div data-conversation-scroll><div data-chat-flow-kind="user"></div>${Array.from({length:5}, (_, index) => avatarReply(`reply-${index}`)).join('')}<div data-chat-flow-kind="user"></div>${avatarReply('next-first', 'data-chat-turn="1"')}${avatarReply('next-final', 'data-chat-turn="99"')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['reply-0', 'next-first'])
+  adapter.start({groupAvatars:false})
+  assert.equal(document.querySelectorAll('[data-prts-avatar-hidden]').length, 0)
+  adapter.start({groupAvatars:true})
+  assert.deepEqual(visibleAvatarIds(document), ['reply-0', 'next-first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('hidden input boundaries do not split a turn but visible steering starts a new avatar group', () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}<div hidden><div data-chat-flow-kind="user"></div></div>${avatarReply('after-hidden')}<div data-turn-process-hidden="true"><div data-chat-flow-kind="steering"></div></div>${avatarReply('after-process-hidden')}<div data-chat-flow-kind="steering"></div>${avatarReply('steered-first')}${avatarReply('steered-final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['first', 'steered-first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('avatar groups remain independent across simultaneous conversation scroll scopes', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('left-first')}${avatarReply('left-final')}<div data-chat-flow-kind="user"></div>${avatarReply('left-next')}</div><div data-conversation-scroll>${avatarReply('right-first')}${avatarReply('right-final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['left-first', 'left-next', 'right-first'])
+  document.getElementById('right-first').setAttribute('hidden', '')
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['left-first', 'left-next', 'right-final'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('history prepending and virtualized removal move a partial turn avatar without duplicates', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('loaded-first')}${avatarReply('loaded-final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  const scope = document.querySelector('[data-conversation-scroll]')
+  scope.insertAdjacentHTML('afterbegin', avatarReply('older-first'))
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['older-first'])
+  const older = document.getElementById('older-first')
+  older.remove()
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['loaded-first'])
+  assert.equal(older.hasAttribute('data-prts-avatar-hidden'), false)
+  scope.prepend(older)
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['older-first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('legacy message-role rows and nested aliases share the same avatar grouping', async () => {
+  const dom = domWith(`<div data-conversation-scroll><div data-message-role="user"></div><div id="legacy-first" data-message-role="assistant"><div class="host_body">旧正文</div></div>${avatarReply('native-final')}<div data-message-role="user"></div><div id="dual-first" data-message-role="assistant">${avatarReply('nested-alias')}</div>${avatarReply('dual-final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['legacy-first', 'dual-first'])
+  document.getElementById('native-final').removeAttribute('data-chat-flow-kind')
+  document.getElementById('native-final').setAttribute('data-message-role', 'assistant')
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['legacy-first', 'dual-first'])
+  document.getElementById('native-final').setAttribute('data-message-role', 'user')
+  await flush(dom.window)
+  assert.equal(document.getElementById('native-final').hasAttribute('data-prts-avatar-hidden'), false)
+  adapter.start({groupAvatars:false})
+  assert.equal(document.querySelectorAll('[data-prts-avatar-hidden]').length, 0)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('empty legacy streaming rows acquire the avatar when their text arrives', async () => {
+  const dom = domWith(`<div data-conversation-scroll><div id="legacy-empty" data-message-role="assistant"></div>${avatarReply('answer')}</div>`)
+  const {document} = dom.window
+  const text = document.createTextNode('')
+  document.getElementById('legacy-empty').append(text)
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['answer'])
+  text.data = '开始回复'
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['legacy-empty'])
+  text.data = ''
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['answer'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('clearing a visible native body transfers the avatar and subsequent streaming restores it', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}${avatarReply('final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  const body = document.querySelector('#first .host_body')
+  body.replaceChildren()
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['final'])
+  body.append(document.createTextNode('重新收到内容'))
+  await flush(dom.window)
+  assert.deepEqual(visibleAvatarIds(document), ['first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('reasoning and toolbar-only rows do not consume the avatar while image-only replies do', () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('reasoning', 'data-chat-group-part="reasoning"')}<div id="toolbar" data-chat-flow-kind="assistant-step"><div role="toolbar">复制</div></div><div id="image" data-chat-flow-kind="assistant-step"><div class="host_body"><img alt="" src="about:blank"></div></div>${avatarReply('final')}</div>`)
+  const {document} = dom.window
+  const adapter = createAssistantGlassAdapter({document, window:dom.window})
+  adapter.start()
+  assert.deepEqual(visibleAvatarIds(document), ['image'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+function trackAvatarScans(document) {
+  const operation = document.querySelector('[data-prts-region="operation"]')
+  const original = operation.querySelectorAll
+  let scans = 0
+  operation.querySelectorAll = function (selector) {
+    if (selector.includes('[data-chat-flow-kind="user"]')) scans += 1
+    return original.call(this, selector)
+  }
+  return () => scans
+}
+
+test('all-replies tool and reasoning folds never rescan avatar groups', async () => {
+  const dom = domWith(`<div data-conversation-scroll><div data-chat-flow-kind="user"></div>${avatarReply('first')}<section id="process"><div data-chat-flow-kind="tool-call"><button aria-expanded="true">工具</button><div id="tool-body">结果</div></div>${avatarReply('reasoning', 'data-chat-group-part="reasoning"')}</section>${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  const process = document.getElementById('process')
+  const reasoning = document.getElementById('reasoning')
+  for (const folded of [true, false, true, false]) {
+    process.toggleAttribute('hidden', folded)
+    process.setAttribute('data-turn-process-hidden', String(folded))
+    process.classList.toggle('collapsing', folded)
+    reasoning.toggleAttribute('hidden', folded)
+    reasoning.setAttribute('data-turn-process-hidden', String(folded))
+    document.getElementById('tool-body').textContent = folded ? '折叠结果' : '展开结果'
+    reasoning.querySelector('p').textContent = folded ? '推理折叠' : '推理展开'
+    await flush(dom.window)
+  }
+  assert.equal(scans(), 0)
+  assert.equal(document.getElementById('first').hasAttribute('data-prts-avatar-hidden'), false)
+  assert.equal(document.getElementById('final').hasAttribute('data-prts-avatar-hidden'), true)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('tool-only rows and popup classes do not invalidate avatar grouping', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}<div id="tools" data-chat-flow-kind="tool-call"></div>${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  const tools = document.getElementById('tools')
+  tools.innerHTML = '<button class="tool-button">工具详情</button><div data-chat-flow-kind="tool-call">子步骤</div>'
+  await flush(dom.window)
+  tools.querySelector('button').classList.add('open')
+  tools.setAttribute('data-streaming', '')
+  document.querySelector('[data-prts-region="operation"]').classList.add('menu-open')
+  await flush(dom.window)
+  tools.replaceChildren()
+  await flush(dom.window)
+  assert.equal(scans(), 0)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('final-only reply visibility changes still regroup avatars once per frame', async () => {
+  const dom = domWith(`<div data-conversation-scroll><section id="process">${avatarReply('first', 'data-turn-process-member="true"')}${avatarReply('second', 'data-turn-process-member="true"')}</section>${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  const process = document.getElementById('process')
+  process.setAttribute('hidden', '')
+  process.setAttribute('data-turn-process-hidden', 'true')
+  await flush(dom.window)
+  assert.equal(scans(), 1)
+  assert.equal(document.getElementById('final').hasAttribute('data-prts-avatar-hidden'), false)
+  process.removeAttribute('hidden')
+  process.removeAttribute('data-turn-process-hidden')
+  await flush(dom.window)
+  assert.equal(scans(), 2)
+  assert.deepEqual(visibleAvatarIds(document), ['first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('nonempty streaming whitespace does not rescan but clearing the body does', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const first = document.getElementById('first')
+  const body = first.querySelector('.host_body')
+  const whitespace = document.createTextNode(' ')
+  body.append(whitespace)
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  whitespace.data = '\n'
+  await flush(dom.window)
+  assert.equal(scans(), 0)
+  body.replaceChildren()
+  await flush(dom.window)
+  assert.equal(scans(), 1)
+  assert.equal(document.getElementById('final').hasAttribute('data-prts-avatar-hidden'), false)
+  body.innerHTML = '<p>重新收到正文</p>'
+  await flush(dom.window)
+  assert.equal(scans(), 2)
+  assert.deepEqual(visibleAvatarIds(document), ['first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('input visibility and role changes still invalidate avatar boundaries', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}<div id="boundary" data-chat-flow-kind="user"></div>${avatarReply('next')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  const boundary = document.getElementById('boundary')
+  boundary.setAttribute('hidden', '')
+  await flush(dom.window)
+  assert.equal(scans(), 1)
+  assert.deepEqual(visibleAvatarIds(document), ['first'])
+  boundary.removeAttribute('hidden')
+  await flush(dom.window)
+  assert.equal(scans(), 2)
+  assert.deepEqual(visibleAvatarIds(document), ['first', 'next'])
+  boundary.setAttribute('data-chat-flow-kind', 'tool-call')
+  await flush(dom.window)
+  assert.equal(scans(), 3)
+  assert.deepEqual(visibleAvatarIds(document), ['first'])
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('disabled avatar merging does not scan on folds and catches up when reenabled', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start({ groupAvatars: false })
+  const scans = trackAvatarScans(document)
+  document.getElementById('first').setAttribute('hidden', '')
+  await flush(dom.window)
+  assert.equal(scans(), 0)
+  adapter.start({ groupAvatars: true })
+  assert.equal(scans(), 1)
+  assert.equal(document.getElementById('final').hasAttribute('data-prts-avatar-hidden'), false)
+  adapter.dispose()
+  dom.window.close()
+})
+
+
+test('removing reasoning-only rows releases hidden markers without rescanning replies', async () => {
+  const dom = domWith(`<div data-conversation-scroll>${avatarReply('first')}${avatarReply('reasoning', 'data-chat-group-part="reasoning"')}${avatarReply('final')}</div>`)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scans = trackAvatarScans(document)
+  const reasoning = document.getElementById('reasoning')
+  assert.equal(reasoning.hasAttribute('data-prts-avatar-hidden'), true)
+  reasoning.remove()
+  await flush(dom.window)
+  assert.equal(scans(), 0)
+  assert.equal(reasoning.hasAttribute('data-prts-avatar-hidden'), false)
+  assert.equal(document.getElementById('first').hasAttribute('data-prts-avatar-hidden'), false)
+  assert.equal(document.getElementById('final').hasAttribute('data-prts-avatar-hidden'), true)
+  adapter.dispose()
+  dom.window.close()
 })

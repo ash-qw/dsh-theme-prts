@@ -3,6 +3,8 @@ export const ASSISTANT_STATE_ATTRIBUTE = 'data-prts-ai-surface-state'
 export const ASSISTANT_AVATAR_PROPERTY = '--prts-assistant-avatar-image'
 
 const STEP_SELECTOR = '[data-chat-flow-kind="assistant-step"]'
+const AVATAR_SELECTOR = ':is([data-chat-flow-kind="assistant-step"], [data-message-role="assistant"])'
+const AVATAR_ROW_SELECTOR = '[data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-message-role="user"], ' + AVATAR_SELECTOR
 const CONTENT_HINT_SELECTOR = [
   '[data-markdown]',
   '[data-slot*="markdown" i]',
@@ -101,6 +103,28 @@ function cssUrl(value) {
   return `url("${escaped}")`
 }
 
+function avatarOwner(node) {
+  let owner = node?.closest?.(AVATAR_SELECTOR)
+  const scope = owner?.closest('[data-conversation-scroll]')
+  while (owner) {
+    const ancestor = owner.parentElement?.closest(AVATAR_SELECTOR)
+    if (!ancestor || ancestor.closest('[data-conversation-scroll]') !== scope) break
+    owner = ancestor
+  }
+  return owner
+}
+
+function hasAvatarContent(surface) {
+  return Boolean(surface?.textContent?.trim() || surface?.querySelector('img,video,audio,canvas,svg'))
+}
+
+function containsAvatarRows(node) {
+  if (!isElement(node)) return false
+  const relevant = candidate => candidate.getAttribute('data-chat-group-part') !== 'reasoning'
+  return (node.matches(AVATAR_ROW_SELECTOR) && relevant(node))
+    || [...node.querySelectorAll(AVATAR_ROW_SELECTOR)].some(relevant)
+}
+
 export function createAssistantGlassAdapter({ document, window, avatarImage = '' }) {
   let observer
   let observationRoot
@@ -142,7 +166,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
     if (!avatarsDirty || !observationRoot) return
     avatarsDirty = false
     for (const step of avatarSteps) {
-      if (!observationRoot.contains(step)) {
+      if (!observationRoot.contains(step) || !step.matches(AVATAR_SELECTOR)) {
         step.removeAttribute('data-prts-avatar-hidden')
         avatarSteps.delete(step)
       }
@@ -153,27 +177,21 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
       avatarSteps.clear()
       return
     }
-    const groups = new Map()
-    for (const node of observationRoot.querySelectorAll('[data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], ' + STEP_SELECTOR)) {
+    const groups = new Set()
+    for (const node of observationRoot.querySelectorAll(AVATAR_ROW_SELECTOR)) {
       const scope = node.closest('[data-conversation-scroll]') ?? observationRoot
-      let group = groups.get(scope)
-      if (!group) groups.set(scope, group = new Set())
-      if (node.getAttribute('data-chat-flow-kind') !== 'assistant-step') {
-        if (node.closest('[hidden], [data-turn-process-hidden="true"]')) continue
-        group.clear()
+      if (!node.matches(AVATAR_SELECTOR)) {
+        if (!node.closest('[hidden], [data-turn-process-hidden="true"]')) groups.delete(scope)
         continue
       }
-      const surface = stepSurfaces.get(node) ?? resolveAssistantSurface(node)
-      const hasContent = Boolean(surface?.textContent?.trim() || surface?.querySelector('img,video,audio,canvas,svg'))
-      if (!hasContent) emptySteps.add(node)
+      const duplicate = avatarOwner(node) !== node
+      const surface = avatarSurface(node)
+      const hasContent = !duplicate && hasAvatarContent(surface)
+      if (!duplicate && !hasContent) emptySteps.add(node)
       const eligible = hasContent && node.getAttribute('data-chat-group-part') !== 'reasoning'
         && !node.closest('[hidden], [data-turn-process-hidden="true"]')
-      const turn = node.getAttribute('data-chat-turn') ?? 'unassigned'
-      // The compact-answer flag disappears when expanded; process membership
-      // remains stable, so final responses keep their independent avatars.
-      const process = node.hasAttribute('data-turn-process-member')
-      const show = eligible && (!process || !group.has(turn))
-      if (show && process) group.add(turn)
+      const show = eligible && !groups.has(scope)
+      if (show) groups.add(scope)
       if (show) node.removeAttribute('data-prts-avatar-hidden')
       else if (!node.hasAttribute('data-prts-avatar-hidden')) node.setAttribute('data-prts-avatar-hidden', '')
       avatarSteps.add(node)
@@ -240,6 +258,11 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
   }
 
   function releaseStep(step) {
+    if (!observationRoot?.contains(step)) {
+      step.removeAttribute?.('data-prts-avatar-hidden')
+      avatarSteps.delete(step)
+      emptySteps.delete(step)
+    }
     streamingSteps.delete(step)
     cancelReveal(step)
     const previousSurface = stepSurfaces.get(step)
@@ -308,18 +331,53 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
     })
   }
 
+  function avatarSurface(step) {
+    const surface = stepSurfaces.get(step)
+    return surface?.isConnected && step.contains(surface)
+      ? surface
+      : resolveAssistantSurface(step) ?? (step.matches(STEP_SELECTOR) ? null : step)
+  }
+
+  function avatarContentChanged(step) {
+    const hasContent = hasAvatarContent(avatarSurface(step))
+    return emptySteps.has(step) ? hasContent : !hasContent
+  }
+
+  function affectsAvatars(mutation, stableContentMutation) {
+    if (avatarsDirty || !groupAvatars) return false
+    const target = mutation.target
+    if (mutation.type === 'attributes') {
+      const attribute = mutation.attributeName
+      if (attribute === 'hidden' || attribute === 'data-turn-process-hidden') return containsAvatarRows(target)
+      if (['data-chat-flow-kind', 'data-message-role', 'data-chat-group-part'].includes(attribute)) return true
+      const step = avatarOwner(target)
+      return step && step.getAttribute('data-chat-group-part') !== 'reasoning'
+        && !stableContentMutation && !isExcluded(target, step)
+        && ['class', 'data-markdown', 'data-slot'].includes(attribute)
+    }
+    const element = isElement(target) ? target : target.parentElement
+    const step = avatarOwner(element)
+    if (mutation.type === 'childList'
+      && [...mutation.addedNodes, ...mutation.removedNodes].some(containsAvatarRows)) return true
+    if (!step || step.getAttribute('data-chat-group-part') === 'reasoning' || isExcluded(element, step)) return false
+    if (mutation.type === 'characterData') {
+      return (emptySteps.has(step) || !target.data?.trim()) && avatarContentChanged(step)
+    }
+    return !stableContentMutation
+      || ((emptySteps.has(step) || mutation.removedNodes.length) && avatarContentChanged(step))
+  }
+
   function onMutations(mutations) {
     for (const mutation of mutations) {
       if (mutation.type === 'characterData') {
-        const step = mutation.target.parentElement?.closest(STEP_SELECTOR)
-        if (emptySteps.has(step)) avatarsDirty = true
+        if (affectsAvatars(mutation, true)) avatarsDirty = true
         continue
       }
       const parentStep = mutation.target?.closest?.(STEP_SELECTOR)
       const stableContentMutation = parentStep
         && stableBodyContains(parentStep, mutation.target)
         && !(mutation.type === 'attributes' && stepSurfaces.get(parentStep) === mutation.target)
-      if (!stableContentMutation || emptySteps.has(parentStep)) avatarsDirty = true
+      if (affectsAvatars(mutation, stableContentMutation)) avatarsDirty = true
       if (parentStep && !stableContentMutation) {
         pendingSteps.add(parentStep)
       }
@@ -365,7 +423,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['data-streaming', 'class', 'data-chat-flow-kind', 'data-chat-group-part', 'data-markdown', 'data-slot', 'data-chat-turn', 'hidden', 'data-turn-process-hidden', 'data-turn-process-member', 'data-turn-process-answer'],
+        attributeFilter: ['data-streaming', 'class', 'data-chat-flow-kind', 'data-message-role', 'data-chat-group-part', 'data-markdown', 'data-slot', 'data-chat-turn', 'hidden', 'data-turn-process-hidden', 'data-turn-process-member', 'data-turn-process-answer'],
       })
     },
     dispose() {
