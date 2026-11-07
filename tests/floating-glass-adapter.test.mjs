@@ -268,8 +268,8 @@ test('does not rescan popup ancestors for positioning changes or unrelated appli
   dom.window.close()
 })
 
-test('does not observe the animated theme corner popovers', () => {
-  const dom = new JSDOM('<body><div data-prts-body-target-frame popover="manual" aria-hidden="true"></div><div data-prts-body-target-ghost popover="manual" aria-hidden="true"></div></body>')
+test('does not observe animated theme corner or click ripple popovers', async () => {
+  const dom = new JSDOM('<body><div data-prts-body-target-frame popover="manual" aria-hidden="true"></div><div data-prts-body-target-ghost popover="manual" aria-hidden="true"></div><span data-prts-click-ripple popover="manual" aria-hidden="true"><span></span></span><canvas data-prts-ripple-interference popover="manual" aria-hidden="true"></canvas></body>')
   const observed = []
   const Observer = dom.window.MutationObserver
   dom.window.MutationObserver = class extends Observer {
@@ -280,6 +280,11 @@ test('does not observe the animated theme corner popovers', () => {
   }
   const adapter = createFloatingGlassAdapter({ document: dom.window.document, window: dom.window })
   adapter.start()
+  const ripple = dom.window.document.createElement('span')
+  ripple.setAttribute('data-prts-click-ripple', '')
+  ripple.setAttribute('popover', 'manual')
+  dom.window.document.body.append(ripple)
+  await flush(dom.window)
   assert.deepEqual(observed, [dom.window.document.body])
   adapter.dispose()
   dom.window.close()

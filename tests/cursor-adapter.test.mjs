@@ -102,7 +102,7 @@ test('quick taps complete press and briefly hold before release, without queuein
   s.adapter.dispose(); s.dom.window.close()
 })
 
-test('hand animation stays local, restores inline cursors and leaves large backgrounds static', () => {
+test('hand animation stays local, restores inline cursors and leaves passive backgrounds static', () => {
   const s = setup()
   const button = s.document.querySelector('button')
   const original = button.style.cursor
@@ -114,17 +114,18 @@ test('hand animation stays local, restores inline cursors and leaves large backg
   assert.equal(button.style.cursor, original)
   assert.equal(observer.takeRecords().length, 0)
   const background = s.document.createElement('div')
-  background.style.cursor = original
+  background.style.cursor = original.replace(/pointer$/, 'default')
+  const backgroundCursor = background.style.cursor
   background.innerHTML = '<span>Content</span>'.repeat(257)
   s.document.body.append(background)
   s.fire('pointerdown', {}, background)
   assert.equal(s.timers.size, 0)
-  assert.equal(background.style.cursor, original)
+  assert.equal(background.style.cursor, backgroundCursor)
   assert.equal(s.frame(), '')
   s.fire('pointerdown')
   s.fire('pointermove', {}, background)
   assert.equal(button.style.cursor, original)
-  assert.equal(background.style.cursor, original)
+  assert.equal(background.style.cursor, backgroundCursor)
   s.fire('pointermove', {}, button)
   assert.match(button.style.cursor, /press/)
   s.adapter.dispose()
@@ -206,32 +207,23 @@ test('identical adjacent frames do not rewrite the native cursor',()=>{
 })
 
 
-for(const count of [128,129,256,257])test('standard cursor feedback boundary '+count,()=>{
- const s=setup(),area=s.document.createElement('div')
- area.style.cursor='url(data:image/png;base64,AA),pointer'
- area.innerHTML='<span>x</span>'.repeat(count);s.document.body.append(area)
- const original=area.style.cursor
- s.fire('pointerdown',{},area)
- if(count<=128){assert.match(area.style.cursor,/press/);s.tick()}
- else if(count<=256){assert.match(area.style.cursor,/hold/);assert.equal(s.timers.size,0)}
- else{assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)}
- s.fire('pointerup',{},area)
- if(count>128&&count<=256){assert.match(area.style.cursor,/hold/);assert.equal(s.timers.size,1)}
- for(let i=0;i<5&&s.timers.size;i++)s.tick()
- assert.equal(area.style.cursor,original)
- assert.equal(s.timers.size,0)
- s.adapter.dispose();s.dom.window.close()
-})
-test('compact feedback holds without looping and cancels when leaving or losing focus',()=>{
- const s=setup(),area=s.document.createElement('div')
- area.style.cursor='url(data:image/png;base64,AA),pointer'
- area.innerHTML='<span>x</span>'.repeat(200);s.document.body.append(area)
- const original=area.style.cursor
- s.fire('pointerdown',{},area);s.advance(500);s.fire('pointerup',{},area)
- assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
- s.fire('pointerdown',{},area);s.fire('pointermove',{},area.firstChild)
- assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
- s.fire('pointerdown',{},area);s.fire('pointerup',{},area);s.fire('blur',{},s.window)
- assert.equal(area.style.cursor,original);assert.equal(s.timers.size,0)
- s.adapter.dispose();s.dom.window.close()
+for (const count of [128, 129, 256, 257, 10000]) test('interactive cursor retains full feedback without counting descendants: ' + count, () => {
+  const fixture = setup()
+  const area = fixture.document.createElement('button')
+  area.style.cursor = 'url(data:image/png;base64,AA),pointer'
+  area.innerHTML = '<span>x</span>'.repeat(count)
+  fixture.document.body.append(area)
+  const original = area.style.cursor
+  area.getElementsByTagName = () => { throw Error('A click must not enumerate descendants') }
+  fixture.fire('pointerdown', {}, area)
+  assert.match(area.style.cursor, /press/)
+  fixture.tick()
+  assert.match(area.style.cursor, /hold/)
+  fixture.fire('pointerup', {}, area)
+  assert.match(area.style.cursor, /release/)
+  fixture.tick()
+  assert.equal(area.style.cursor, original)
+  assert.equal(fixture.timers.size, 0)
+  fixture.adapter.dispose()
+  fixture.dom.window.close()
 })

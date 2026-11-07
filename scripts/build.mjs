@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { createRippleRefractionMap } from './ripple-refraction.mjs'
 import { indexCssSelectors } from './css-selector-index.mjs'
 import { createExactEmblemMask, createRhodesHeroMask } from './png-alpha.mjs'
 import { PARTICLE_DENSITY_PROFILES, findOrthogonalLayout } from '../src/client/particle-field-adapter.js'
@@ -75,6 +76,8 @@ function compactCss(source) {
 const cursorAnimation = JSON.parse(await readFile(resolve(root, 'src/assets/cursors/animation.json'), 'utf8'))
 const cursorImage = async file => `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/cursors', file))).toString('base64')}`
 const cursorAssets = {
+  refractionMap: `data:image/png;base64,${(await createRippleRefractionMap()).toString('base64')}`,
+  feedbackCss: compactCss(await readFile(resolve(root, 'src/styles/cursor-feedback.css'), 'utf8')),
   hotspot: cursorAnimation.hotspot,
   rest: await cursorImage('prts-hand.png'),
   textHotspot: cursorAnimation.textHotspot,

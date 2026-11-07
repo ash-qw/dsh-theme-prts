@@ -1,4 +1,3 @@
-/* Native cursor; gesture frames override the resting image without a DOM overlay. */
 @media (any-pointer: fine) {
   html[data-dsh-prts][data-prts-cursor="prts"] {
     --prts-rest-hand-cursor: url("__PRTS_HAND__") 7 6;

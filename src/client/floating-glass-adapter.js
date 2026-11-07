@@ -156,7 +156,7 @@ export function createFloatingGlassAdapter({ document, window }) {
 
   function scanBodyChild(node) {
     if (node?.nodeType !== 1 || node.parentElement !== document.body
-      || node.matches('[data-prts-body-target-frame], [data-prts-body-target-ghost]')
+      || node.matches('[data-prts-body-target-frame], [data-prts-body-target-ghost], [data-prts-click-ripple], [data-prts-ripple-interference]')
       || !node.matches(`${FLOATING_GLASS_POPUP_SELECTOR}, ${FLOATING_GLASS_PORTAL_ROOT_SELECTOR}`)) return
     classifyTree(node)
     const Observer = window?.MutationObserver

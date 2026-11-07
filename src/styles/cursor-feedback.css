@@ -1,0 +1,53 @@
+:is([data-prts-click-ripple], [data-prts-ripple-interference]) {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 160px;
+  height: 160px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--prts-ink, #edf1f2);
+  z-index: 2147483647;
+  pointer-events: none !important;
+  user-select: none;
+  contain: strict;
+  overflow: hidden;
+}
+:is([data-prts-click-ripple], [data-prts-ripple-interference])::backdrop {
+  background: transparent;
+  pointer-events: none;
+}
+[data-prts-click-ripple] > span {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  box-sizing: border-box;
+  width: 96px;
+  height: 96px;
+  border: 0;
+  background: currentColor;
+  mask-image: var(--prts-ripple-artwork);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  border-radius: 50% !important;
+  corner-shape: round !important;
+  opacity: 0;
+  transform: scale(.14);
+  pointer-events: none;
+}
+
+[data-prts-ripple-mixed] > span { visibility: hidden; }
+
+[data-prts-ripple-refraction] {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  width: 96px;
+  height: 96px;
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: url(#prts-ripple-refraction);
+  opacity: 0;
+  transform: scale(.14);
+}
