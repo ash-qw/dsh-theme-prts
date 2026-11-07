@@ -17,10 +17,11 @@ The Baker conversation theme is inspired by the messenger in Arknights: Endfield
 
 ## Compatibility
 
-- **The current maintenance line declares support only for DeepSeek Harness `0.2.2-rc.1`.** `engines.dsh` in `package.json` is restricted to that exact version. Other versions, including later release candidates, are not covered.
+- **Starting with theme `3.0.0`, the current maintenance line declares support only for DeepSeek Harness `0.2.2-rc.1`.** `engines.dsh` in `package.json` is restricted to that exact version. Other versions, including later release candidates, are not covered.
 - Verification targets the local `0.2.2-rc.1` Web deployment, with recorded checks for the new main panel, workspace and session cards, message styling, Baker avatars, composer, overlays, transparent backgrounds, and mobile drawers. This is not exhaustive acceptance testing. The official desktop client uses the same theme package, but that version has not received real-device desktop verification; older desktop results are not a guarantee for the new version.
 - The host defaults to “Replies After Collapse → All replies”: intermediate reply bodies remain visible while tool, reasoning, and other process content can fold. “Final answer only” still folds intermediate replies. The theme handles both modes without changing the host preference.
-- **For older DSH versions, keep your existing theme version or upgrade DSH before updating the theme.** For `0.2.1-rc.2`, `0.2.1-rc.3`, and `0.2.1-rc.5`, the last public theme release declaring support is `@ash-qw/dsh-theme-prts@2.7.2`. Those versions are no longer verification targets. Retained DOM fallbacks and regression fixtures do not constitute a compatibility guarantee.
+- **For older DSH versions, keep your existing theme version or upgrade DSH before updating the theme.** For DSH `0.2.1-rc.2`, pin `@ash-qw/dsh-theme-prts@2.6.1`, the last public theme release before adaptation for DSH `0.2.2-rc.1` began, rather than recommending `2.7.2` for that host.
+- For DSH `0.2.1-rc.3` and `0.2.1-rc.5`, the last public theme release declaring support remains `@ash-qw/dsh-theme-prts@2.7.2`. Those versions are no longer verification targets. Retained DOM fallbacks and regression fixtures do not constitute a compatibility guarantee.
 - For DSH `0.2.0-rc.2`, pin theme `@ash-qw/dsh-theme-prts@1.4.2`. For DSH `0.1.7-rc.2`, pin `1.0.2`. For DSH `0.1.2` or `0.1.5`, pin `0.1.102`.
 
 ## Install and update
