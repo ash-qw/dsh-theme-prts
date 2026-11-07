@@ -80,7 +80,9 @@ export function createConversationControlAdapter({ document, window }) {
       owned.delete(button)
       return
     }
-    button.setAttribute(CONVERSATION_CONTROL_ATTRIBUTE, kind)
+    if (button.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE) !== kind) {
+      button.setAttribute(CONVERSATION_CONTROL_ATTRIBUTE, kind)
+    }
     owned.add(button)
   }
 

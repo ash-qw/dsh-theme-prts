@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { indexCssSelectors } from './css-selector-index.mjs'
 import { createExactEmblemMask, createRhodesHeroMask } from './png-alpha.mjs'
 import { PARTICLE_DENSITY_PROFILES, findOrthogonalLayout } from '../src/client/particle-field-adapter.js'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -102,7 +103,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
-const cssText = compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${backgroundCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`)
+const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${backgroundCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,

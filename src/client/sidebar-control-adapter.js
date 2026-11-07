@@ -23,6 +23,7 @@ const OWNED_ATTRIBUTES = [
   'data-prts-session-pin',
   'data-prts-session-index',
   'data-prts-session-state',
+  'data-prts-running-surface',
   'data-prts-selection-target',
   'data-prts-session-summary-header',
   'data-prts-session-summary-label',
@@ -1011,6 +1012,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
             spinner.append(marker)
           }
           next.add(marker)
+          markSidebarNode(spinner, 'data-prts-running-surface', next)
         }
 
         const face = ensureFacilityFace(document, row, 'session', next)

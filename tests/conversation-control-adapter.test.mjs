@@ -154,3 +154,36 @@ test('leaves editable and sent quote controls outside generic conversation decor
   adapter.dispose()
   dom.window.close()
 })
+
+
+test('does not rewrite stable control markers while still reclassifying changed owners', async () => {
+  const dom = new JSDOM('<body><main data-prts-region="operation"><article data-chat-flow-kind="assistant-step"><button><span>Copy</span></button></article></main></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createConversationControlAdapter({ document, window: dom.window })
+  adapter.start()
+  const button = document.querySelector('article button')
+  const markerWrites = []
+  const observer = new dom.window.MutationObserver(records => markerWrites.push(...records))
+  observer.observe(button, { attributes: true, attributeFilter: [CONVERSATION_CONTROL_ATTRIBUTE] })
+  document.querySelector('article span').className = 'host_updatedIcon'
+  button.className = 'host_action'
+  await flush(dom.window)
+  adapter.start()
+  await flush(dom.window)
+  assert.equal(button.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  assert.equal(markerWrites.length, 0)
+  document.querySelector('article').setAttribute('data-approval-key', 'approval-test')
+  await flush(dom.window)
+  assert.equal(button.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'cta')
+  assert.equal(markerWrites.length, 1)
+  document.querySelector('article').removeAttribute('data-approval-key')
+  await flush(dom.window)
+  assert.equal(button.getAttribute(CONVERSATION_CONTROL_ATTRIBUTE), 'micro')
+  assert.equal(markerWrites.length, 2)
+  adapter.dispose()
+  await flush(dom.window)
+  assert.equal(button.hasAttribute(CONVERSATION_CONTROL_ATTRIBUTE), false)
+  assert.equal(markerWrites.length, 3)
+  observer.disconnect()
+  dom.window.close()
+})

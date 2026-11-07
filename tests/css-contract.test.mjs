@@ -459,3 +459,15 @@ test('page blur uses one transparent noninteractive background plate without an 
   assert.match(material, /@media \(prefers-reduced-transparency: reduce\)[\s\S]+--prts-page-filter: none;/)
   assert.doesNotMatch(material, /--prts-page-(?:opacity|transparency|canvas|plate)/)
 })
+
+
+test('uses explicit running and code-block owners instead of broad descendant inference', () => {
+  includesAll(['svg[data-state="ongoing"][data-prts-running-surface]', '& .md-code-block{'])
+  assert.doesNotMatch(css, /svg\[data-state="ongoing"\]:has/)
+  assert.doesNotMatch(css, /& :has\(>\[data-code-block-content\]\)/)
+})
+
+test('inherits text selection from the theme root without styling every descendant highlight', () => {
+  assert.match(css, /html\[data-dsh-prts\]::selection\s*\{[^}]*background:\s*var\(--prts-yellow\);[^}]*color:\s*var\(--prts-yellow-ink\)/s)
+  assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+::selection/)
+})

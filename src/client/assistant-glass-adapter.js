@@ -283,7 +283,9 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
     }
     const previousSurface = stepSurfaces.get(step)
     const { surface, kind } = resolution(step)
-    step.setAttribute(ASSISTANT_STATE_ATTRIBUTE, kind)
+    if (step.getAttribute(ASSISTANT_STATE_ATTRIBUTE) !== kind) {
+      step.setAttribute(ASSISTANT_STATE_ATTRIBUTE, kind)
+    }
     ownedSteps.add(step)
     if (previousSurface && previousSurface !== surface) {
       previousSurface.removeAttribute?.(ASSISTANT_SURFACE_ATTRIBUTE)
@@ -293,7 +295,9 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
       stepSurfaces.delete(step)
       return
     }
-    surface.setAttribute(ASSISTANT_SURFACE_ATTRIBUTE, kind)
+    if (surface.getAttribute(ASSISTANT_SURFACE_ATTRIBUTE) !== kind) {
+      surface.setAttribute(ASSISTANT_SURFACE_ATTRIBUTE, kind)
+    }
     ownedSurfaces.add(surface)
     stepSurfaces.set(step, surface)
     const streaming = surface.parentElement?.hasAttribute('data-streaming') === true
@@ -389,7 +393,7 @@ export function createAssistantGlassAdapter({ document, window, avatarImage = ''
         if (surface && (surface === node || node.contains?.(surface))) pendingSteps.add(parentStep)
       }
     }
-    if (pendingSteps.size || avatarsDirty) queueScan()
+    if (pendingSteps.size || avatarsDirty) scan()
   }
 
   function removeMarkers() {

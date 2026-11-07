@@ -402,3 +402,30 @@ test('@facility-vector keeps notch dimensions fixed during continuous sidebar re
   }
   expect(errors).toEqual([])
 })
+
+
+test('@facility-vector running SVG markers restore native children when the status changes', async ({ page }) => {
+  await enable(page)
+  await page.evaluate(() => {
+    const row = document.querySelector('[data-prts-session-row]')
+    const spinner = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    spinner.setAttribute('data-state', 'ongoing')
+    spinner.innerHTML = '<circle data-fixture-native-running cx="12" cy="12" r="8"></circle>'
+    row.querySelector('[data-state]').replaceWith(spinner)
+  })
+  const spinner = page.locator('[data-prts-session-row] svg[data-state]')
+  const native = spinner.locator('[data-fixture-native-running]')
+  await expect(spinner).toHaveAttribute('data-prts-running-surface', '')
+  await expect(spinner.locator('[data-prts-running-marker]')).toHaveCount(1)
+  await expect(native).toHaveCSS('display', 'none')
+  await expect(spinner).toHaveCSS('animation-name', 'none')
+  await expect(spinner.locator('[data-prts-running-marker] circle')).toHaveCSS('animation-name', 'prts-running-room-orbit')
+  await spinner.evaluate(node => node.setAttribute('data-state', 'done'))
+  await expect(spinner).not.toHaveAttribute('data-prts-running-surface')
+  await expect(spinner.locator('[data-prts-running-marker]')).toHaveCount(0)
+  await expect(native).not.toHaveCSS('display', 'none')
+  await spinner.evaluate(node => node.setAttribute('data-state', 'ongoing'))
+  await expect(spinner).toHaveAttribute('data-prts-running-surface', '')
+  await expect(spinner.locator('[data-prts-running-marker]')).toHaveCount(1)
+  await expect(native).toHaveCSS('display', 'none')
+})

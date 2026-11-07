@@ -1,0 +1,18 @@
+diff --git a/packages/client/ui-sidebar-files/README.md b/packages/client/ui-sidebar-files/README.md
+index 7443828930..675aca8597 100644
+--- a/packages/client/ui-sidebar-files/README.md
++++ b/packages/client/ui-sidebar-files/README.md
+@@ -44,0 +45,3 @@ Render `sidebar.files.navigator` with `FileNavigatorInput`: `{ useTabInfo, page,
++Covered preview content retains its layout but is hidden from sight and keyboard focus. The covering selectors are scoped to the files page's `.content` row and the document preview's `[data-textpreview-content]` row, so unrelated conversation DOM changes do not invalidate the whole document through an unqualified `:has()` anchor. A new navigator parent must join this explicit row scope.
++
++
+diff --git a/packages/client/ui-sidebar-files/src/client/FilesBody.module.css b/packages/client/ui-sidebar-files/src/client/FilesBody.module.css
+index c250c5d4ae..44f0b795a8 100644
+--- a/packages/client/ui-sidebar-files/src/client/FilesBody.module.css
++++ b/packages/client/ui-sidebar-files/src/client/FilesBody.module.css
+@@ -76 +76 @@
+-:has(> .navigator.fill) > :not(.navigator) {
++:is(.content, :global([data-textpreview-content])):has(> .navigator.fill) > :not(.navigator) {
+@@ -82 +82 @@
+-  :has(> .navigator:not(.wholePage)) > :not(.navigator) {
++  :is(.content, :global([data-textpreview-content])):has(> .navigator:not(.wholePage)) > :not(.navigator) {

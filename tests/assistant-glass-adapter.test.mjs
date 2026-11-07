@@ -680,3 +680,91 @@ test('removing reasoning-only rows releases hidden markers without rescanning re
   adapter.dispose()
   dom.window.close()
 })
+
+test('marks newly mounted bodies and groups avatars before the next animation frame', async () => {
+  const dom = domWith('<div data-conversation-scroll></div>')
+  const { document } = dom.window
+  const queuedFrames = []
+  dom.window.requestAnimationFrame = callback => {
+    queuedFrames.push(callback)
+    return queuedFrames.length
+  }
+  dom.window.cancelAnimationFrame = () => {}
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const scroll = document.querySelector('[data-conversation-scroll]')
+  scroll.innerHTML = [1, 2].map(index => `
+    <div data-chat-flow-kind="assistant-step" data-chat-group-part="response">
+      <div data-slot="conversation.chat.node">
+        <div class="fixture_root"><div class="fixture_body"><div data-markdown>回复 ${index}</div></div></div>
+      </div>
+    </div>
+  `).join('')
+  await Promise.resolve()
+
+  const steps = [...scroll.querySelectorAll('[data-chat-flow-kind="assistant-step"]')]
+  for (const step of steps) {
+    assert.equal(step.getAttribute(ASSISTANT_STATE_ATTRIBUTE), 'body')
+    assert.equal(step.querySelector('.fixture_body').getAttribute(ASSISTANT_SURFACE_ATTRIBUTE), 'body')
+  }
+  assert.equal(steps[0].hasAttribute('data-prts-avatar-hidden'), false)
+  assert.equal(steps[1].hasAttribute('data-prts-avatar-hidden'), true)
+  assert.equal(queuedFrames.length, 0)
+  adapter.dispose()
+})
+
+test('keeps mutation scans bounded and schedules the remaining backlog', async () => {
+  const dom = domWith('<div data-conversation-scroll></div>')
+  const { document } = dom.window
+  let clock = 0
+  Object.defineProperty(dom.window.performance, 'now', {
+    configurable: true,
+    value: () => (clock += 5),
+  })
+  const queuedFrames = []
+  dom.window.requestAnimationFrame = callback => {
+    queuedFrames.push(callback)
+    return queuedFrames.length
+  }
+  dom.window.cancelAnimationFrame = () => {}
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start({ groupAvatars: false })
+  document.querySelector('[data-conversation-scroll]').innerHTML = Array.from({ length: 96 }, () =>
+    '<div data-chat-flow-kind="assistant-step"><div class="fixture_body"><div data-markdown>回答</div></div></div>',
+  ).join('')
+  await Promise.resolve()
+
+  assert.equal(document.querySelectorAll('[' + ASSISTANT_SURFACE_ATTRIBUTE + ']').length, 1)
+  assert.equal(queuedFrames.length, 1)
+  queuedFrames.shift()()
+  assert.equal(document.querySelectorAll('[' + ASSISTANT_SURFACE_ATTRIBUTE + ']').length, 2)
+  assert.equal(queuedFrames.length, 1)
+  adapter.dispose()
+})
+
+test('does not rewrite unchanged surface markers when streaming state changes', async () => {
+  const dom = domWith(`
+    <div data-chat-flow-kind="assistant-step">
+      <div class="fixture_root"><div class="fixture_body"><div data-markdown>回答</div></div></div>
+    </div>
+  `)
+  const { document } = dom.window
+  const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const writes = []
+  const observer = new dom.window.MutationObserver(records => writes.push(...records))
+  observer.observe(document.querySelector('[data-prts-region="operation"]'), {
+    subtree: true,
+    attributes: true,
+    attributeFilter: [ASSISTANT_STATE_ATTRIBUTE, ASSISTANT_SURFACE_ATTRIBUTE],
+  })
+  const root = document.querySelector('.fixture_root')
+  root.setAttribute('data-streaming', '')
+  await Promise.resolve()
+  root.removeAttribute('data-streaming')
+  await flush(dom.window)
+
+  assert.equal(writes.length, 0)
+  observer.disconnect()
+  adapter.dispose()
+})

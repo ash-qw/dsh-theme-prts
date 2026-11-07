@@ -164,7 +164,7 @@ html[data-dsh-prts] body {
   font-family: var(--prts-body);
 }
 
-html[data-dsh-prts] ::selection {
+html[data-dsh-prts]::selection {
   background: var(--prts-yellow);
   color: var(--prts-yellow-ink);
 }
@@ -1358,7 +1358,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
 :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
 ) {
 /* Clip preserves header stickiness. */
-& :has(>[data-code-block-content]){
+& .md-code-block{
 box-sizing:border-box;max-width:100%;border:1px solid var(--prts-line);border-left:3px solid var(--prts-cyan);border-radius:12px;overflow:clip;
 & [data-code-block-banner]{border-radius:11px 11px 0 0;background:color-mix(in srgb,var(--prts-ink) 7%,var(--prts-canvas));border-bottom:1px solid var(--prts-line)}
 &>[data-code-block-content] pre{box-sizing:border-box;width:100%;border:0!important;border-radius:0 0 11px 11px;margin:0!important}

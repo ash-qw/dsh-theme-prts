@@ -829,7 +829,7 @@ html[data-dsh-prts] [data-prts-session-row] :is([data-state="ongoing"], [data-st
 }
 
 /* Running-room marker inside the host SVG; native children remain restorable. */
-html[data-dsh-prts] [data-prts-session-row] svg[data-state="ongoing"]:has(> [data-prts-running-marker]) {
+html[data-dsh-prts] [data-prts-session-row] svg[data-state="ongoing"][data-prts-running-surface] {
   position: relative;
   z-index: 1;
   flex: 0 0 20px;
@@ -838,7 +838,7 @@ html[data-dsh-prts] [data-prts-session-row] svg[data-state="ongoing"]:has(> [dat
   color: var(--prts-session-status-color, var(--dsw-static-deepseek-450, var(--prts-cyan)));
   animation: none;
 }
-html[data-dsh-prts] svg[data-state="ongoing"]:has(> [data-prts-running-marker]) > :not([data-prts-running-marker]) { display: none; }
+html[data-dsh-prts] svg[data-state="ongoing"][data-prts-running-surface] > :not([data-prts-running-marker]) { display: none; }
 html[data-dsh-prts] [data-prts-running-marker] text {
   fill: currentColor;
   stroke: none;
