@@ -1376,6 +1376,11 @@ background:color-mix(in srgb,var(--prts-canvas) 88%,transparent);
 
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-avatar-hidden]::before{content:none!important}
 
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"][data-prts-baker-individual-avatars] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]):not([hidden], [data-turn-process-hidden="true"]):has(+ :is([data-step-process][hidden], [data-turn-process-member="true"][data-turn-process-hidden="true"])) {
+  min-block-size: 72px;
+  padding-block-end: 12px;
+}
+
 /* Baker quote surfaces; classic prose retains the host styling. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-chat-flow-kind],[data-message-role],[data-prts-ai-surface],[data-submission-echo]) blockquote {
 border-radius:10px;corner-shape:round;padding:8px 14px;
