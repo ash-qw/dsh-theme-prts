@@ -50,6 +50,63 @@ test('classifies body portals while leaving embedded application dialogs alone',
   assert.equal(document.querySelector('[data-prts-floating-scrim]'), null)
 })
 
+for (const slot of ['settings.section', 'settings.plugins.tab']) {
+  test(`preserves embedded ${slot} controls while adapting independent nested popups`, async () => {
+    const dom = new JSDOM('<body><div role="presentation"><div role="dialog" aria-modal="true"><div data-slot="' + slot + '"></div></div></div></body>', { pretendToBeVisual: true })
+    const { document } = dom.window
+    const dialog = document.querySelector('[role="dialog"]')
+    const section = document.querySelector('[data-slot]')
+    section.innerHTML = '<span><input placeholder="搜索插件"></span><textarea></textarea><select><option>选项</option></select><button class="host_deleteAction">删除页面记录</button>'
+    const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+    adapter.start()
+    assert.equal(dialog.dataset.prtsFloatingGlass, 'dialog')
+    assert.ok(dialog.parentElement.hasAttribute('data-prts-floating-scrim'))
+    assert.equal(section.querySelector('[data-prts-floating-input], [data-prts-floating-danger], [data-prts-floating-item]'), null)
+
+    const popup = document.createElement('div')
+    popup.setAttribute('role', 'dialog')
+    popup.setAttribute('aria-modal', 'true')
+    popup.innerHTML = '<input aria-label="重命名"><button class="host_deleteAction">删除</button><div role="menu"><button role="menuitem">操作</button></div>'
+    section.append(popup)
+    await flush(dom.window)
+    assert.equal(popup.dataset.prtsFloatingGlass, 'dialog')
+    assert.ok(popup.querySelector('input').hasAttribute('data-prts-floating-input'))
+    assert.ok(popup.querySelector('.host_deleteAction').hasAttribute('data-prts-floating-danger'))
+    assert.ok(popup.querySelector('[role="menuitem"]').hasAttribute('data-prts-floating-item'))
+
+    section.insertAdjacentHTML('afterbegin', '<input aria-label="动态搜索"><textarea aria-label="动态正文"></textarea>')
+    await flush(dom.window)
+    assert.equal(section.querySelector('[aria-label="动态搜索"]').hasAttribute('data-prts-floating-input'), false)
+    assert.equal(section.querySelector('[aria-label="动态正文"]').hasAttribute('data-prts-floating-input'), false)
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-floating-glass], [data-prts-floating-input], [data-prts-floating-item]'), null)
+    dom.window.close()
+  })
+}
+
+test('reclassifies controls moved between dialog forms and embedded settings pages', async () => {
+  const dom = new JSDOM('<body><div role="dialog" aria-modal="true"><input><button class="host_deleteAction">删除</button><div data-slot="settings.section"></div></div></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const dialog = document.querySelector('[role="dialog"]')
+  const input = dialog.querySelector('input')
+  const button = dialog.querySelector('button')
+  const section = dialog.querySelector('[data-slot]')
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  assert.ok(input.hasAttribute('data-prts-floating-input'))
+  assert.ok(button.hasAttribute('data-prts-floating-danger'))
+  section.append(input, button)
+  await flush(dom.window)
+  assert.equal(input.hasAttribute('data-prts-floating-input'), false)
+  assert.equal(button.hasAttribute('data-prts-floating-danger'), false)
+  dialog.append(input, button)
+  await flush(dom.window)
+  assert.ok(input.hasAttribute('data-prts-floating-input'))
+  assert.ok(button.hasAttribute('data-prts-floating-danger'))
+  adapter.dispose()
+  dom.window.close()
+})
+
 test('preserves explicit opt-outs and complete third-party materials', () => {
   const dom = new JSDOM([
     '<!doctype html><html><body>',
