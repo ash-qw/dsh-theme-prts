@@ -543,6 +543,11 @@ html[data-dsh-prts] [data-prts-conversation-control="file"]:is([class*="_fileLin
   white-space:normal;overflow-wrap:anywhere;
 }
 
+html[data-dsh-prts] code:has(> button[data-prts-conversation-control="file"][class*="_fileMention"]){
+  background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;
+  min-width:0;max-width:100%;
+}
+
 /* Baker user bubbles are light even when the surrounding shell is dark. */
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is([data-message-bubble],[class$="_bubble"],[data-message-role="user"]) [data-ref-chip="file"]{
   background:color-mix(in srgb,var(--prts-cyan) 8%,var(--prts-canvas))!important;
