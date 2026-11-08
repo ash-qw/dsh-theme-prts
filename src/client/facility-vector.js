@@ -98,6 +98,7 @@ function appendSilhouetteScene(document, graphic) {
     'data-prts-facility-silhouette': '',
     'clip-path': `url(#${clipId})`,
   })
+  const content = svgNode(document, 'g', { 'data-prts-silhouette-content': '' })
   for (const layer of ['far', 'near']) {
     const track = svgNode(document, 'g', { 'data-prts-silhouette-layer': layer })
     for (const offset of [0, SILHOUETTE_TRACK_WIDTH]) {
@@ -106,8 +107,9 @@ function appendSilhouetteScene(document, graphic) {
         transform: `translate(${offset} 0)`,
       }))
     }
-    scene.append(track)
+    content.append(track)
   }
+  scene.append(content)
 
   graphic.insertBefore(defs, graphic.firstChild)
   graphic.insertBefore(scene, graphic.querySelector('[data-prts-facility-layer="outline"]'))
@@ -272,7 +274,7 @@ export function renderFacilityGraphic(owner, { width, height } = {}) {
       layers: graphic.querySelectorAll('[data-prts-facility-layer], [data-prts-facility-clip]'),
       statusUnderlay: graphic.querySelector('[data-prts-session-status-underlay]'),
       idleIndicator: graphic.querySelector('[data-prts-session-idle-indicator]'),
-      silhouette: graphic.querySelector('[data-prts-facility-silhouette]'),
+      silhouette: graphic.querySelector('[data-prts-silhouette-content]'),
       pickup: graphic.querySelector('[data-prts-session-pickup]'),
       lifeline: graphic.querySelector('[data-prts-session-lifeline]'),
     }

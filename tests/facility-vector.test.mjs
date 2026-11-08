@@ -43,11 +43,13 @@ test('facility graphic accepts a non-destructive default texture', () => {
   assert.ok((farPath.match(/M/g) || []).length >= 3, 'far skyline includes distinct landmark structures')
   assert.equal(graphic.querySelector('[data-prts-facility-clip]').getAttribute('d'), graphic.querySelector('[data-prts-facility-layer="surface"]').getAttribute('d'))
   assert.match(graphic.querySelector('[data-prts-facility-silhouette]').getAttribute('clip-path'), /^url\(#prts-facility-silhouette-clip-\d+\)$/)
-  assert.equal(graphic.querySelector('[data-prts-facility-silhouette]').getAttribute('transform'), 'translate(0 1) scale(1 0.94737)')
+  assert.equal(graphic.querySelector('[data-prts-facility-silhouette]').hasAttribute('transform'), false)
+  const content = graphic.querySelector('[data-prts-silhouette-content]')
+  assert.equal(content.parentElement, graphic.querySelector('[data-prts-facility-silhouette]'))
+  assert.equal(content.getAttribute('transform'), 'translate(0 1) scale(1 0.94737)')
   assert.equal(renderFacilityGraphic(owner, { width: 240, height: 34 }), true)
   assert.equal(graphic.getAttribute('viewBox'), '0 0 240 34')
-  assert.equal(graphic.querySelector('[data-prts-facility-silhouette]').getAttribute('transform'), 'translate(0 1) scale(1 0.84211)')
-
+  assert.equal(content.getAttribute('transform'), 'translate(0 1) scale(1 0.84211)')
 
   owner.setAttribute('data-prts-facility-texture', 'grid')
   ensureFacilityGraphic(document, owner, { kind: 'face', texture: 'silhouette' })
@@ -182,7 +184,7 @@ test('width resizing preserves height-only decorations and initializes newly add
 
   ensureFacilityGraphic(document, owner, { kind: 'face', texture: 'silhouette', topNotch: true })
   renderFacilityGraphic(owner, { width: 300, height: 48 })
-  assert.ok(graphic.querySelector('[data-prts-facility-silhouette]').hasAttribute('transform'))
+  assert.ok(graphic.querySelector('[data-prts-silhouette-content]').hasAttribute('transform'))
   renderFacilityGraphic(owner, { width: 0, height: 0 })
   assert.equal(owner.hasAttribute('data-prts-facility-vector'), false)
   renderFacilityGraphic(owner, { width: 300, height: 48 })

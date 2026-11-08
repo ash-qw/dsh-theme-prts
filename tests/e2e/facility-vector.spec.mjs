@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import sharp from 'sharp'
 
 const fixtureUrl = '/tests/fixtures/rc7-harness.html'
 
@@ -27,6 +28,45 @@ async function enable(page, scheme = 'dark') {
   }
   await expect(page.locator('[data-prts-facility-face][data-prts-facility-vector]')).toHaveCount(2)
   await expect(page.locator('[data-prts-facility-spine][data-prts-facility-vector]')).toHaveCount(2)
+}
+
+for (const scheme of ['dark', 'light']) {
+  test(`@facility-vector keeps workspace silhouettes bottom-aligned across compact height changes in ${scheme} mode`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await enable(page, scheme)
+    await page.mouse.move(900, 100)
+    await page.addStyleTag({ content: `
+      html[data-dsh-prts] [data-prts-workspace-row] [data-prts-facility-layer="surface"] { fill: #000; }
+      html[data-dsh-prts] [data-prts-workspace-row] [data-prts-facility-layer="outline"] { stroke: none; }
+      html[data-dsh-prts] [data-prts-facility-silhouette] { fill: #fff; opacity: 1; }
+      html[data-dsh-prts] [data-prts-silhouette-layer="near"] { opacity: 1; }
+      html[data-dsh-prts] [data-prts-silhouette-layer="far"] { opacity: 0; }
+    ` })
+    const row = page.locator('[data-prts-workspace-row]')
+    const face = row.locator('[data-prts-facility-face]')
+    for (const viewportHeight of [820, 600, 821, 900, 820, 900]) {
+      const height = viewportHeight <= 820 ? 34 : 38
+      await page.setViewportSize({ width: 1440, height: viewportHeight })
+      await expect(row).toHaveCSS('height', `${height}px`)
+      await expect.poll(() => face.evaluate(node => node.querySelector('svg').viewBox.baseVal.height)).toBe(height)
+      const image = await sharp(await face.screenshot()).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+      const offset = ((height - 3) * image.info.width + 20) * image.info.channels
+      expect([...image.data.subarray(offset, offset + 3)]).toEqual([255, 255, 255])
+      const geometry = await face.evaluate(node => {
+        const svg = node.querySelector('svg')
+        const scene = svg.querySelector('[data-prts-facility-silhouette]')
+        const outline = svg.querySelector('[data-prts-facility-layer="outline"]')
+        const clip = svg.querySelector('[data-prts-facility-clip]')
+        const relative = svg.getCTM().inverse().multiply(scene.getCTM())
+        return {
+          clip: clip.getAttribute('d'), outline: outline.getAttribute('d'),
+          transform: [relative.a, relative.b, relative.c, relative.d, relative.e, relative.f],
+        }
+      })
+      expect(geometry.clip).toBe(geometry.outline)
+      expect(geometry.transform).toEqual([1, 0, 0, 1, 0, 0])
+    }
+  })
 }
 
 test('@facility-vector keeps one closed path through native sidebar width changes', async ({ page }) => {
