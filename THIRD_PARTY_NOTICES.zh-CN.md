@@ -70,9 +70,3 @@ P.R.T.S. 头像、阵营标识及衍生徽记仅收录于个人、非商业同�
 - 参考：[Comet Dial](https://www.reactbits.dev/micro/comet-dial)，[DavidHDev/react-bits](https://github.com/DavidHDev/react-bits) 中的 `src/content/Micro/CometDial/CometDial.jsx` 与 `CometDial.css`，获取日期为 2026-10-19。
 - `src/client/opacity-dial.js` 将圆环几何与交互设计适配到主题的 DOM 设置界面，采用短方向拖尾、百分比输入与松手保存，不引入 React、Motion 或惯性数值变化。
 - 适配组件遵循上游 MIT + Commons Clause 条款，全文见 `src/vendor/react-bits/LICENSE.md`，不改授本项目的普通 MIT 许可。
-
-## Mouse Follower 与 GSAP（实验光标）
-
-- Mouse Follower 1.2.1：https://github.com/Cuberto/mouse-follower，MIT，Copyright (c) Cuberto, Ltd.。许可证见 src/vendor/mouse-follower/LICENSE，构建文件保留版权文本。
-- GSAP 3.14.2：https://gsap.com，按其 Standard “no charge” License 使用：https://gsap.com/standard-license。构建保留上游许可证声明。
-- 实验模式使用 Mouse Follower 的 DOM 渲染器与 GSAP 位移设置器；以主题自身的 Pointer Events 生命周期替代默认鼠标监听和持续 ticker，不启用位置缓动、倾斜或拖尾。

@@ -79,15 +79,8 @@ const cursorAssets = {
   refractionMap: `data:image/png;base64,${(await createRippleRefractionMap()).toString('base64')}`,
   feedbackCss: compactCss(await readFile(resolve(root, 'src/styles/cursor-feedback.css'), 'utf8')),
   hotspot: cursorAnimation.hotspot,
-  rest: await cursorImage('prts-hand.png'),
-  textHotspot: cursorAnimation.textHotspot,
-  text: await cursorImage('prts-text.png'),
-  grab: await cursorImage('prts-grab.png'),
-  grabbing: await cursorImage('prts-grabbing.png'),
-  unavailable: await cursorImage('prts-not-allowed.png'),
   link: {
     hotspot: cursorAnimation.link.hotspot,
-    rest: await cursorImage('prts-link.png'),
     hold: await cursorImage('prts-link-hold.png'),
     press: await Promise.all(cursorAnimation.link.press.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
     release: await Promise.all(cursorAnimation.link.release.map(async frame => ({ url: await cursorImage(frame.file), duration: frame.duration }))),
@@ -210,14 +203,12 @@ const MarkdownIt = (() => {
   return module.exports;
 })();`
 
-const followerVendor = await buildVendor({
-  entryPoints: [resolve(root, 'src/client/cursor-follower.js')],
-  bundle: true, write: false, format: 'iife', globalName: 'PrtsFollower', minify: true,
+const cursorVendor = await buildVendor({
+  entryPoints: [resolve(root, 'src/client/cursor-adapter.js')],
+  bundle: true, write: false, format: 'iife', globalName: 'PrtsNativeCursor', minify: true,
   legalComments: 'inline',
 })
-const followerLicense = await readFile(resolve(root, 'node_modules/mouse-follower/LICENSE'), 'utf8')
-const followerBundle = '/* Mouse Follower\n' + followerLicense + '\n*/\n' +
-  followerVendor.outputFiles[0].text + '\nconst createFollowerCursorAdapter = PrtsFollower.createCursorAdapter;'
+const cursorBundle = cursorVendor.outputFiles[0].text + '\nconst createCursorAdapter = PrtsNativeCursor.createCursorAdapter;'
 
 const glassVendor = await buildVendor({
   entryPoints: [resolve(root, 'src/vendor/react-bits/GlassSurface.jsx')],
@@ -246,7 +237,7 @@ const client = `window.__ModuleLoader__.load({
       emblemMasks: ${JSON.stringify(factionEmblemMasks)},
       heroEmblemMask: ${JSON.stringify(heroEmblemMask)}
     });
-    ${followerBundle}
+    ${cursorBundle}
     ${glassBundle}
     ${markdownBundle}
     ${bundledSource}

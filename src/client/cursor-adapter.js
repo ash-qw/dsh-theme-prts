@@ -136,18 +136,18 @@ export function createCursorAdapter({ document, window, assets }) {
     textTarget = nextTarget
     textTarget?.setAttribute('data-prts-text-hit', '')
   }
-  function prepareTextHit(target, semanticOnly = true) {
+  function prepareTextHit(target) {
     const content = target?.closest?.(`${contentSelector}, ${heroTextSelector}`)
     if (!content || (!content.matches(heroTextSelector) && !content.closest('[data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]')) || target.closest(controlSelector)) return {target}
     const style = window.getComputedStyle(target)
-    if (style.userSelect === 'none' || (!semanticOnly && !style.cursor.includes('data:image/png'))) return {target}
+    if (style.userSelect === 'none' || !style.cursor.includes('data:image/png')) return {target}
     return {target,content}
   }
-  function findTextHit(event, semanticOnly = false, prepared) {
+  function findTextHit(event) {
     if (event.pointerType !== 'mouse') return
     lastPoint = { clientX: event.clientX, clientY: event.clientY, pointerType: 'mouse' }
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
-    const {content} = prepared?.target===target ? prepared : prepareTextHit(target,semanticOnly)
+    const {content} = prepareTextHit(target)
     if (!content) return
     // Caret APIs return the nearest insertion point even over empty space.
     // Check its adjacent character rectangles before treating it as a text hit.
@@ -390,8 +390,6 @@ export function createCursorAdapter({ document, window, assets }) {
     listening = false
   }
   return {
-    prepareTextHit,
-    textHit: (event, prepared) => findTextHit(event, true, prepared),
     update(preferences) {
       if (preferences.cursorAnimation === false || preferences.motion === 'reduced') clearRipples()
       if (animate && preferences.cursorAnimation === false) reset()

@@ -71,9 +71,3 @@ Raw HTML and remote image loading are disabled in previews.
 - Reference: [Comet Dial](https://www.reactbits.dev/micro/comet-dial), upstream `src/content/Micro/CometDial/CometDial.jsx` and `CometDial.css` in [DavidHDev/react-bits](https://github.com/DavidHDev/react-bits), retrieved 2026-10-19.
 - `src/client/opacity-dial.js` adapts the ring geometry and interaction design to the theme's DOM settings. It uses a short directional trail, direct percentage entry and commit-on-release persistence, without React, Motion or inertial value changes.
 - The adapted component is subject to the upstream MIT + Commons Clause terms, reproduced in `src/vendor/react-bits/LICENSE.md`; it is not relicensed under this project's plain MIT license.
-
-## Mouse Follower and GSAP (experimental cursor)
-
-- Mouse Follower 1.2.1: https://github.com/Cuberto/mouse-follower, MIT, Copyright (c) Cuberto, Ltd. See src/vendor/mouse-follower/LICENSE; the bundle retains its license.
-- GSAP 3.14.2: https://gsap.com, Standard “no charge” License: https://gsap.com/standard-license. Upstream license notices remain in the bundle.
-- Uses Mouse Follower's DOM renderer and GSAP setters with a theme-owned Pointer Events lifecycle, replacing the default mouse listeners and continuous ticker. Movement easing, skew and trails are disabled.

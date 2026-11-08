@@ -130,6 +130,20 @@ test('ships the five unmodified faction emblems published by the official Arknig
   }
 })
 
+test('removed cursor experiment has no implementation or dependency left in the package', async () => {
+  const metadata = JSON.parse(await readText('../package.json'))
+  const lock = JSON.parse(await readText('../package-lock.json'))
+  for (const dependency of ['mouse-follower', 'gsap']) {
+    assert.equal(metadata.devDependencies[dependency], undefined)
+    assert.equal(metadata.dependencies[dependency], undefined)
+    assert.equal(lock.packages[''].devDependencies[dependency], undefined)
+    assert.equal(lock.packages['node_modules/' + dependency], undefined)
+  }
+  for (const path of ['../src/client/cursor-follower.js', '../src/client/cursor-semantics.js', '../src/vendor/mouse-follower/LICENSE']) {
+    assert.equal(await readText(path), null)
+  }
+})
+
 test('build embeds local CSS, emblems, and particle-field assets', async () => {
   await execFileAsync(process.execPath, ['scripts/build.mjs'], {
     cwd: new URL('..', import.meta.url),
@@ -159,8 +173,10 @@ test('build embeds local CSS, emblems, and particle-field assets', async () => {
   assert.match(client, /latticeHints/)
   assert.match(client, /function findOrthogonalLayout\(/)
   assert.doesNotMatch(client, /createBlueNoiseTargets|createLatticeTargets/)
-  assert.equal((client.match(/data:image\/png;base64,/g) || []).length, 57, 'only existing PRTS cursor assets and one cached radial refraction map should be embedded')
-  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 56320 + 4096 + 3072 + 118 * 1024 + 20 * 1024 + 1024 + 512 + 5120 + 2048 + 8 * 1024 + 9.5 * 1024 + 8 * 1024, 'browser bundle should stay within the material budget plus 55 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews and independent day/night palettes and themed color editor and persistent linked palettes and source migration, plus 20 KiB for page-rendered form controls, compact palette, cursor descriptions and avatar confirmation, plus 118 KiB for the opt-in Mouse Follower renderer, GSAP core, functional cursor images and semantic state adapter, plus 4 KiB for adaptive card transitions and bounded crossfades and 3 KiB for the AI tool guides and read-only status instructions, plus 1 KiB for pre-paint composer material handoff, plus 0.5 KiB for isolated sidebar motion and menu-aware flow suspension, plus 5 KiB for scoped popup updates, restart cleanup and inline quote isolation, plus 2 KiB for reply-aware avatar invalidation and 8 KiB for build-time selector indexing, plus 9.5 KiB for bounded fixed-origin click ripples, cached tapered wave textures, idle warmup, shadow-isolated feedback and local wave interference, plus 8 KiB for one build-time radial displacement map and bounded backdrop refraction')
+  assert.equal((client.match(/data:image\/png;base64,/g) || []).length, 51, 'only native PRTS cursor assets and one cached radial refraction map should be embedded')
+  assert.ok(Buffer.byteLength(client) < 1.16 * 1024 * 1024 + 56320 + 4096 + 3072 + 20 * 1024 + 3 * 1024 + 1024 + 512 + 5120 + 2048 + 8 * 1024 + 9.5 * 1024 + 8 * 1024, 'browser bundle should stay within the material budget plus 55 KiB for file drops, replacement previews, transfer card states, sticky process headers, reorder motion, corner feedback, avatar synchronization background adaptation, configurable corner colors, interaction scheduling optimizations and bounded reply previews and independent day/night palettes and themed color editor and persistent linked palettes and source migration, plus 20 KiB for page-rendered form controls, compact palette, cursor descriptions and avatar confirmation, plus 3 KiB for the native cursor entry and retained shared cursor assets, plus 4 KiB for adaptive card transitions and bounded crossfades and 3 KiB for the AI tool guides and read-only status instructions, plus 1 KiB for pre-paint composer material handoff, plus 0.5 KiB for isolated sidebar motion and menu-aware flow suspension, plus 5 KiB for scoped popup updates, restart cleanup and inline quote isolation, plus 2 KiB for reply-aware avatar invalidation and 8 KiB for build-time selector indexing, plus 9.5 KiB for bounded fixed-origin click ripples, cached tapered wave textures, idle warmup, shadow-isolated feedback and local wave interference, plus 8 KiB for one build-time radial displacement map and bounded backdrop refraction')
+  assert.doesNotMatch(client, /PrtsFollower|MouseFollower|createFollowerCursorAdapter|createCursorSemantics|data-prts-follower-visible|prts-cursor-follower|--prts-source-cursor/)
+  assert.match(client, /const createCursorAdapter = PrtsNativeCursor\.createCursorAdapter/)
   assert.doesNotMatch(client, /function indexCssSelectors\(/)
   assert.doesNotMatch(client, /createRhodesFallbackTargets/)
   assert.doesNotMatch(client, /topographic-map\.svg|topographic-tech\.svg|data-prts-terrain-layer/)

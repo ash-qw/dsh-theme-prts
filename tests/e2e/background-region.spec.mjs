@@ -4,7 +4,7 @@ import sharp from 'sharp'
 
 for(const slot of ['full','sidebar','conversation'])test(`modal background protection edits and persists ${slot}`,async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
-  await page.addInitScript(cursor=>{if(!localStorage.getItem('prtsFixtureNativeConfig'))localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced',cursor}}))},slot==='conversation'?'prts-follower':'prts')
+  await page.addInitScript(cursor=>{if(!localStorage.getItem('prtsFixtureNativeConfig'))localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{enabled:true,bootAnimation:false,motion:'reduced',cursor}}))},'prts')
   await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
   const openSettings=async()=>{
     if(await page.locator('[data-prts-rail-launcher]').isVisible())await page.locator('[data-prts-rail-launcher]').click()
@@ -84,14 +84,10 @@ for(const slot of ['full','sidebar','conversation'])test(`modal background prote
   expect(await geometry()).toEqual(original)
   await expect(editor.locator('[data-prts-region-handle]')).toHaveCount(8)
   await page.evaluate(()=>document.documentElement.dataset.prtsCursor='prts')
-  await box.hover();await expect(box).toHaveCSS('cursor',slot==='conversation'?'none':'move')
+  await box.hover();await expect(box).toHaveCSS('cursor','move')
   for(const [edge,cursor] of Object.entries({n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize',nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize'})){
     const handle=editor.locator(`[data-prts-region-handle="${edge}"]`)
-    await handle.hover();await expect(handle).toHaveCSS('cursor',slot==='conversation'?'none':cursor)
-    if(slot==='conversation'){
-      await expect(page.locator('.prts-cursor-follower')).toBeVisible()
-      expect(await handle.evaluate(el=>getComputedStyle(el).getPropertyValue('--prts-source-cursor').trim())).toBe(cursor)
-    }
+    await handle.hover();await expect(handle).toHaveCSS('cursor',cursor)
   }
   for(const edge of ['n','e','s','w']){
     const start=await geometry(),handle=await editor.locator(`[data-prts-region-handle="${edge}"]`).boundingBox()

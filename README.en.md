@@ -151,6 +151,6 @@ When the host exposes runtime context registration, each model request also rece
 
 ### Experimental cursor and upgrade behavior
 
-**PRTS Follow cursor (experimental) is temporarily disabled because it performed poorly in real-device testing.** Interaction settings now offer only System cursor and PRTS Native cursor. The follow cursor implementation is retained. Saved or imported follow cursor preferences run as PRTS Native cursor without changing other colors or appearance settings. New installations default to PRTS Native cursor.
+**PRTS Follow cursor (experimental) has been removed because it performed poorly in real-device testing.** Interaction settings now offer only System cursor and PRTS Native cursor. The DOM-following implementation and its Mouse Follower / GSAP dependencies are no longer bundled. Saved or imported follow cursor preferences run as PRTS Native cursor without changing other colors or appearance settings. New installations default to PRTS Native cursor.
 
 Upgrading the theme from `2.6.1` to `2.7.0` automatically falls back from the experimental follow cursor to PRTS Native cursor without manual configuration changes. System cursor and PRTS Native cursor are unaffected. Loading an old preference alone does not write the fallback back to the server. If the follow cursor is required, keep theme `2.6.1` paired with one of its supported DSH versions: `0.2.1-rc.2`, `0.2.1-rc.3`, or `0.2.1-rc.5`. Theme `2.6.1` does not declare support for DSH `0.2.2-rc.1`.

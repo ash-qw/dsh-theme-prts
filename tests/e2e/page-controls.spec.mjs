@@ -33,7 +33,7 @@ test('page controls preserve form events, keyboard selection and color cancellat
  await page.evaluate(()=>controls.dispose())
  await expect(page.locator('.prts-page-control')).toHaveCount(0)
 })
-test('saved experimental cursor falls back to native without exposing the paused mode',async({page})=>{
+test('saved experimental cursor falls back to native without exposing the removed mode',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{preferencesInitialized:true,enabled:true,cursor:'prts-follower',bootAnimation:false}})))
  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
  await page.locator('[data-prts-rail-brand]').click()
@@ -99,7 +99,7 @@ test('settings row hover does not activate its menu and standard cursors cover t
 
 for(const width of [390,1440])test('page controls fit settings and color editor keyboard navigation at '+width,async({page})=>{
  await page.setViewportSize({width,height:900})
- await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{preferencesInitialized:true,enabled:true,cursor:'prts-follower',bootAnimation:false,sessionFlow:true,sessionFlowPalette:'custom'}})))
+ await page.addInitScript(()=>localStorage.setItem('prtsFixtureNativeConfig',JSON.stringify({revision:1,value:{preferencesInitialized:true,enabled:true,cursor:'prts',bootAnimation:false,sessionFlow:true,sessionFlowPalette:'custom'}})))
  await page.goto('/tests/fixtures/rc7-harness.html?native-forms')
  if(width<640)await page.locator('[data-prts-rail-launcher]').click()
  await page.locator('[data-prts-rail-brand]').click()

@@ -43,21 +43,6 @@ html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="e"],[
 html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="nw"],[data-prts-region-handle="se"]) { cursor:nwse-resize!important; }
 html[data-dsh-prts] [data-prts-region-stage] :is([data-prts-region-handle="ne"],[data-prts-region-handle="sw"]) { cursor:nesw-resize!important; }
 
-/* A single renderer owns every in-page cursor state. State classification
-   reads mirrored cursor metadata, so hiding never needs to be toggled to read. */
-html[data-dsh-prts][data-prts-follower-visible],
-html[data-dsh-prts][data-prts-follower-visible] :is(*,#prts-cursor-layer-specificity) {
-  cursor:none!important;
-}
-.prts-cursor-follower {
-  position:fixed;top:0;left:0;width:1px;height:1px;z-index:2147483647;
-  pointer-events:none!important;user-select:none;contain:layout style;
-  margin:0;padding:0;border:0;background:transparent;overflow:visible;right:auto;bottom:auto;
-}
-.prts-cursor-follower[hidden] { display:none!important; }
-.prts-cursor-follower * { pointer-events:none!important; }
-.prts-cursor-follower img { position:absolute;max-width:none!important;max-height:none!important; }
-
 /* Known DSH horizontal resize boundaries must have their native image before
    pointer events fire, including the chat width handle and its hit children. */
 html[data-dsh-prts][data-prts-cursor="prts"] :is([class$="_widthHandle"],[class$="_detailsResizeHandle"],.dsh-ssh-workbench-resizer),
