@@ -6,7 +6,7 @@ import { themeSettingsMarkup } from '../src/client/theme-settings-workbench.js'
 test('all settings categories declare explicit group titles without promoting individual controls', () => {
   const dom = new JSDOM(themeSettingsMarkup())
   const panel = dom.window.document.querySelector('#prts-theme-settings')
-  const categories = ['appearance', 'background', 'interaction', 'flow', 'particles', 'assistance', 'ai-tools']
+  const categories = ['appearance', 'background', 'flow', 'interaction', 'particles', 'assistance', 'ai-tools']
   assert.deepEqual([...panel.querySelectorAll('[data-prts-settings-jump]')].map(button => button.dataset.prtsSettingsJump), categories)
   for (const category of categories) {
     const page = panel.querySelector(`[data-prts-settings-section="${category}"]`)
@@ -21,8 +21,13 @@ test('all settings categories declare explicit group titles without promoting in
   }
   for (const subtitle of panel.querySelectorAll('[data-prts-settings-subtitle]')) assert.equal(subtitle.tagName, 'H4')
   const interaction = panel.querySelector('#prts-page-interaction')
-  assert.deepEqual([...interaction.querySelectorAll('[data-prts-settings-group-title]')].map(title => title.textContent), ['交互行为', '交互提示框颜色', '卡片侧脊配色'])
-  assert.equal(interaction.querySelectorAll('[data-prts-settings-group] [data-prts-spine-row]').length, 3)
+  assert.deepEqual([...interaction.querySelectorAll('[data-prts-settings-group-title]')].map(title => title.textContent), ['交互行为', '交互提示框颜色'])
+  const cards = panel.querySelector('#prts-page-flow')
+  assert.equal(panel.querySelector('#prts-tab-flow').textContent, '侧栏卡片')
+  assert.deepEqual([...cards.querySelectorAll('[data-prts-settings-group-title]')].map(title => title.textContent), ['卡片高度', '卡片侧脊配色', '会话流线'])
+  assert.equal(cards.querySelectorAll('[data-prts-settings-group] [data-prts-spine-row]').length, 3)
+  assert.equal(cards.querySelector('[data-prts-card-heights]').dataset.prtsSettingsGroup, 'first')
+  assert.equal(interaction.querySelector('[data-prts-card-heights], [data-prts-spine-colors]'), null)
   assert.equal(panel.querySelector('[data-prts-avatars] [data-prts-baker-options]'), null)
   assert.equal(panel.querySelector('[data-prts-baker-options] [data-prts-settings-group-title]').textContent, 'Baker 消息选项')
   assert.equal(panel.querySelector('[data-prts-opacity-settings] > legend').hasAttribute('data-prts-settings-group-title'), true)

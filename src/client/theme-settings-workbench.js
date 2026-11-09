@@ -1,6 +1,8 @@
+import { colorEditorMarkup, renderColorEditor } from './color-editor.js'
 import { sessionStatusSignalMarkup } from './session-status-markers.js'
+import { cardHeightMarkup, mountCardHeights } from './card-heights.js'
 import { mountPageControls } from './page-controls.js'
-import { spineColorMarkup, renderSpineColors } from './spine-colors.js'
+import { spineColorMarkup, renderSpineColors, spineCustomColorKey } from './spine-colors.js'
 import { themeTransferMarkup, mountThemeTransfer } from './theme-transfer-panel.js'
 import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
@@ -138,8 +140,8 @@ export function themeSettingsMarkup() {
         <nav data-prts-settings-nav role="tablist" aria-label="设置分区">
           <button type="button" data-prts-settings-jump="appearance" role="tab" id="prts-tab-appearance" aria-controls="prts-page-appearance" aria-selected="true" tabindex="0">会话主题</button>
           <button type="button" data-prts-settings-jump="background" role="tab" id="prts-tab-background" aria-controls="prts-page-background" aria-selected="false" tabindex="-1">会话背景</button>
+          <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">侧栏卡片</button>
           <button type="button" data-prts-settings-jump="interaction" role="tab" id="prts-tab-interaction" aria-controls="prts-page-interaction" aria-selected="false" tabindex="-1">交互</button>
-          <button type="button" data-prts-settings-jump="flow" role="tab" id="prts-tab-flow" aria-controls="prts-page-flow" aria-selected="false" tabindex="-1">会话流线</button>
           <button type="button" data-prts-settings-jump="particles" role="tab" id="prts-tab-particles" aria-controls="prts-page-particles" aria-selected="false" tabindex="-1">粒子徽记</button>
           <button type="button" data-prts-settings-jump="assistance" role="tab" id="prts-tab-assistance" aria-controls="prts-page-assistance" aria-selected="false" tabindex="-1">辅助功能</button>
           <button type="button" data-prts-settings-jump="ai-tools" role="tab" id="prts-tab-ai-tools" aria-controls="prts-page-ai-tools" aria-selected="false" tabindex="-1">AI 工具</button>
@@ -185,8 +187,7 @@ export function themeSettingsMarkup() {
               <section data-prts-settings-group="first"><h3 data-prts-settings-group-title>交互行为</h3>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               </section>
-              <div data-prts-setting-row="cornerColor" data-prts-settings-group><span><span data-prts-corner-heading><strong data-prts-settings-group-title role="heading" aria-level="3">交互提示框颜色</strong><span data-prts-corner-modes role="group" aria-label="编辑配色模式"><button type="button" data-prts-corner-mode="light" aria-pressed="false">☀ 日间</button><button type="button" data-prts-corner-mode="dark" aria-pressed="false">☾ 夜间</button></span><button type="button" data-prts-corner-sync role="switch" aria-checked="false" title="开启后，日间和夜间共用颜色"><span>日夜共用</span><i aria-hidden="true"></i></button></span><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small><small data-prts-setting-note>开启后，日夜都使用当前选定模式的配色，修改也保存到该模式；关闭后各用各的，另一套配色不变。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<span data-prts-corner-picker><button type="button" data-prts-corner-custom aria-expanded="false" title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" tabindex="-1"><span data-prts-color-editor hidden role="group" aria-label="自定义提示框颜色"><span data-prts-color-editor-title>自定义颜色</span><span data-prts-color-sample></span><label data-prts-color-hex-label>HEX<input data-prts-color-hex aria-label="HEX 颜色" maxlength="7" spellcheck="false"></label><label data-prts-color-channel><span>R</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="0" aria-label="R 通道"><output>0</output></label><label data-prts-color-channel><span>G</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="1" aria-label="G 通道"><output>0</output></label><label data-prts-color-channel><span>B</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="2" aria-label="B 通道"><output>0</output></label><span data-prts-color-actions><button type="button" data-prts-color-cancel>取消</button><button type="button" data-prts-color-apply>应用颜色</button></span></span></span></div></div>
-              ${spineColorMarkup()}
+              <div data-prts-setting-row="cornerColor" data-prts-settings-group><span><span data-prts-corner-heading><strong data-prts-settings-group-title role="heading" aria-level="3">交互提示框颜色</strong><span data-prts-corner-modes role="group" aria-label="编辑配色模式"><button type="button" data-prts-corner-mode="light" aria-pressed="false">☀ 日间</button><button type="button" data-prts-corner-mode="dark" aria-pressed="false">☾ 夜间</button></span><button type="button" data-prts-corner-sync role="switch" aria-checked="false" title="开启后，日间和夜间共用颜色"><span>日夜共用</span><i aria-hidden="true"></i></button></span><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small><small data-prts-setting-note>开启后，日夜都使用当前选定模式的配色，修改也保存到该模式；关闭后各用各的，另一套配色不变。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<span data-prts-corner-picker><button type="button" data-prts-corner-custom aria-expanded="false" title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" tabindex="-1"><span data-prts-color-editor hidden role="group" aria-label="自定义提示框颜色">${colorEditorMarkup()}</span></span></div></div>
             </div>
           </section>
           <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
@@ -283,7 +284,9 @@ export function themeSettingsMarkup() {
             </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="flow" role="tabpanel" id="prts-page-flow" aria-labelledby="prts-tab-flow" tabindex="0" hidden>
-            <div data-prts-settings-common-grid data-prts-settings-group="first"><h3 data-prts-settings-group-title>会话流线</h3>
+            ${cardHeightMarkup()}
+            ${spineColorMarkup()}
+            <div data-prts-settings-common-grid data-prts-settings-group><h3 data-prts-settings-group-title>会话流线</h3>
               ${COMMON_CONTROLS.filter(([key]) => ['sessionFlow', 'sessionGlow', 'sessionFlowPalette'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               ${sessionFlowColorMarkup()}
               <label data-prts-setting-row="sessionFlowSpeed" data-prts-setting-range-row data-prts-session-flow-speed>
@@ -329,6 +332,7 @@ export function createThemeSettingsOverlay({
   onRetrySave = () => {},
 }) {
   const window = document?.defaultView
+  const cardHeightEditor = mountCardHeights({ panel, onPreferenceChange, onPreferencePreview })
   const transferEditor = mountThemeTransfer({ panel, window, transfer: themeTransfer })
   const backgroundEditor = mountBackgroundSettings({panel,window,store:backgroundStore,onChange:onPreferenceChange})
   const avatarEditor = mountAvatarSettings({panel,window,store:avatarStore})
@@ -348,20 +352,7 @@ export function createThemeSettingsOverlay({
     if (restoreFocus) panel.querySelector('[data-prts-corner-custom]').focus()
   }
   function renderColorDraft() {
-    const editor = panel.querySelector('[data-prts-color-editor]')
-    editor.querySelector('[data-prts-color-sample]').style.background = colorDraft
-    const hex = editor.querySelector('[data-prts-color-hex]')
-    hex.value = colorDraft.toUpperCase()
-    hex.removeAttribute('aria-invalid')
-    const channels = [1, 3, 5].map(start => parseInt(colorDraft.slice(start, start + 2), 16))
-    for (const slider of editor.querySelectorAll('[data-prts-color-channel-index]')) {
-      const index = Number(slider.dataset.prtsColorChannelIndex)
-      slider.value = channels[index]
-      slider.nextElementSibling.value = channels[index]
-      const end = [...channels], start = [...channels]
-      start[index] = 0; end[index] = 255
-      slider.style.background = 'linear-gradient(to right,rgb(' + start.join(',') + '),rgb(' + end.join(',') + '))'
-    }
+    renderColorEditor(panel.querySelector('[data-prts-color-editor]'), colorDraft)
   }
   let spineEditMode = 'dark'
   let cornerEditMode = 'dark'
@@ -430,6 +421,7 @@ export function createThemeSettingsOverlay({
       commitParticleTraversalSpeed()
       commitSessionFlowSpeed()
       commitSessionFlowColors()
+      cardHeightEditor.commit()
     }
     isOpen = value
     trigger.setAttribute('aria-expanded', String(isOpen))
@@ -674,6 +666,7 @@ export function createThemeSettingsOverlay({
       if (button.getAttribute('role') === 'radio') button.setAttribute('aria-checked', String(selected))
     }
     renderSpineColors(panel, currentPreferences, spineEditMode)
+    cardHeightEditor.update(currentPreferences)
     const motionStatus = panel.querySelector('[data-prts-effective-motion]')
     if (motionStatus) motionStatus.hidden = !(currentPreferences.motion === 'system' && motionMedia?.matches)
     const transparency = panel.querySelector('[data-prts-transparency-status]')
@@ -797,7 +790,7 @@ export function createThemeSettingsOverlay({
     if (target?.matches?.('[data-prts-color-channel-index], [data-prts-color-hex]')) {
       if (target.hasAttribute('data-prts-color-hex')) {
         const value = target.value.trim()
-        if (!/^#?[0-9a-f]{6}$/i.test(value)) { target.setAttribute('aria-invalid', 'true'); return }
+        if (!/^#?[0-9a-f]{6}$/i.test(value)) { target.setAttribute('aria-invalid', 'true'); panel.querySelector('[data-prts-color-apply]').disabled = true; return }
         colorDraft = (value.startsWith('#') ? value : '#' + value).toLowerCase()
       } else {
         const channels = [...panel.querySelectorAll('[data-prts-color-channel-index]')].map(input => Number(input.value).toString(16).padStart(2, '0'))
@@ -874,7 +867,7 @@ export function createThemeSettingsOverlay({
     if (target?.matches?.('[data-prts-cursor-mode]')) { if (event.type === 'change') onPreferenceChange('cursor', target.value); return }
     if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange(cornerCustomKey(), target.value); return }
     if (target?.matches?.('[data-prts-spine-color]')) {
-      if (event.type === 'change') onPreferenceChange(target.dataset.prtsSettingKey, target.value)
+      if (event.type === 'change') onPreferenceChange(spineCustomColorKey(target.dataset.prtsSettingKey), target.value)
       return
     }
     if (target?.matches?.('input[data-prts-setting-color]')) {
@@ -886,7 +879,15 @@ export function createThemeSettingsOverlay({
     if (target.dataset.prtsSettingKey === 'sessionFlowSpeed') commitSessionFlowSpeed()
   }
 
-  const pageControls = mountPageControls({panel,window})
+  const pageControls = mountPageControls({ panel, window, onColorPreview(control, draft) {
+    const key = control.dataset.prtsSettingKey
+    const value = draft ?? currentPreferences?.[key]
+    if (value === undefined) return
+    onPreferencePreview(key, value)
+    if (key?.startsWith('sessionFlowColor')) {
+      panel.querySelector('[data-prts-session-flow-preview]')?.style.setProperty('--prts-session-flow-' + key.slice(16).toLowerCase(), value)
+    }
+  } })
   trigger?.addEventListener('click', toggle)
   panel?.addEventListener('click', onPanelClick)
   selectSection('appearance')
@@ -927,6 +928,7 @@ export function createThemeSettingsOverlay({
     toggle,
     dispose() {
       pageControls.dispose()
+      cardHeightEditor.dispose()
       transferEditor.dispose()
       customEditor.dispose()
       avatarEditor.dispose()

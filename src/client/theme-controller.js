@@ -1,5 +1,6 @@
 import { normalizePreferences } from './preferences.js'
 import { applySpineColors } from './spine-colors.js'
+import { applyCardHeights } from './card-heights.js'
 
 const ROOT_ATTRIBUTES = [
   'data-dsh-prts',
@@ -50,6 +51,7 @@ export function createThemeController({ document, window, cssText, service }) {
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
     for (const property of Object.keys(SESSION_FLOW_COLOR_PROPERTIES)) root.style.removeProperty(property)
     applySpineColors(root)
+    applyCardHeights(root)
   }
 
   function removeOwnedState() {
@@ -129,6 +131,7 @@ export function createThemeController({ document, window, cssText, service }) {
       root.dataset.prtsSessionFlowSpeed = String(preferences.sessionFlowSpeed)
       for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences.cornerColorLinked && (key === 'cornerColor' || key === 'cornerColorLight') ? preferences[preferences.cornerColorSource === 'light' ? 'cornerColorLight' : 'cornerColor'] : preferences[key])
       applySpineColors(root, preferences)
+      applyCardHeights(root, preferences)
       root.dataset.prtsConversationStyle = preferences.conversationStyle
       refresh()
     },

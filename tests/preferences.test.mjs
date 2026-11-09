@@ -62,6 +62,9 @@ test('loads and migrates a complete version-one payload without losing independe
   }
   const migrated = api.loadPreferences({ getItem: () => JSON.stringify(legacy) })
   assert.deepEqual(migrated, {
+    cardHeightMode: 'auto',
+    workspaceCardHeight: 36,
+    sessionCardHeight: 36,
     cornerColorLinked: false,
     cornerColorSource: 'dark',
     cornerColor: '#f0c800',
@@ -74,6 +77,12 @@ test('loads and migrates a complete version-one payload without losing independe
     workspaceSpineColorLight: 'auto',
     sessionSpineColorLight: 'auto',
     currentSessionSpineColorLight: 'auto',
+    workspaceSpineCustomColor: '#33ccff',
+    workspaceSpineCustomColorLight: '#33ccff',
+    sessionSpineCustomColor: '#5e6a70',
+    sessionSpineCustomColorLight: '#65727a',
+    currentSessionSpineCustomColor: '#ffcc00',
+    currentSessionSpineCustomColorLight: '#ffcc00',
     spineColorLinked: false,
     spineColorSource: 'dark',
     version: 12,
@@ -109,6 +118,9 @@ test('loads and migrates a complete version-one payload without losing independe
     sessionFlowColorBack: '#f7ddeb',
     sessionFlowColorCore: '#65ddb0',
     sessionFlowColorFront: '#6eb7f3',
+    sessionFlowCustomColorBack: '#f7ddeb',
+    sessionFlowCustomColorCore: '#65ddb0',
+    sessionFlowCustomColorFront: '#6eb7f3',
     sessionFlowSpeed: 1,
     conversationStyle: 'native',
     bakerGroupAvatars: true,

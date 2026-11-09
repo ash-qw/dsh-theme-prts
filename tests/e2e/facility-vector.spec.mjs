@@ -45,7 +45,7 @@ for (const scheme of ['dark', 'light']) {
     const row = page.locator('[data-prts-workspace-row]')
     const face = row.locator('[data-prts-facility-face]')
     for (const viewportHeight of [820, 600, 821, 900, 820, 900]) {
-      const height = viewportHeight <= 820 ? 34 : 38
+      const height = viewportHeight <= 820 ? 32 : 36
       await page.setViewportSize({ width: 1440, height: viewportHeight })
       await expect(row).toHaveCSS('height', `${height}px`)
       await expect.poll(() => face.evaluate(node => node.querySelector('svg').viewBox.baseVal.height)).toBe(height)

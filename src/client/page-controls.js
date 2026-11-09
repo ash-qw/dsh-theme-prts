@@ -1,6 +1,8 @@
+import { colorEditorMarkup, renderColorEditor } from './color-editor.js'
+
 // Keep the existing form values/events as the model; render interactive UI in
 // the page so native popup windows never take ownership of the cursor.
-export function mountPageControls({panel,window}){
+export function mountPageControls({panel,window,onColorPreview=()=>{}}){
   // Keep native controls usable in hosts without the popover API.
   if(!panel || !window || typeof window.HTMLElement.prototype.showPopover!=='function')return {dispose(){}}
   const document=panel.ownerDocument, cleanups=[]
@@ -30,7 +32,8 @@ export function mountPageControls({panel,window}){
   const close=(focus=false)=>{
     hideTip()
     if(!active)return
-    const {popup,button}=active;active=undefined
+    const {popup,button,onClose}=active;active=undefined
+    onClose?.()
     popup.hidePopover();popup.remove();button.setAttribute('aria-expanded','false');button.removeAttribute('aria-controls')
     if(focus){
       restoringFocus=true
@@ -146,24 +149,22 @@ export function mountPageControls({panel,window}){
         present(popup,button)
         popup.querySelector('[aria-selected="true"]:not(:disabled)')?.focus({preventScroll:true})
       }else{
-        popup.classList.add('prts-page-color-editor')
-        popup.innerHTML='<strong>自定义颜色</strong><i class="prts-page-sample"></i><label>HEX<input aria-label="HEX 颜色" maxlength="7" spellcheck="false"></label>'+['R','G','B'].map((name,i)=>'<label>'+name+'<input type="range" min="0" max="255" aria-label="'+name+' 通道" data-channel="'+i+'"><output></output></label>').join('')+'<footer><button type="button" data-cancel>取消</button><button type="button" data-apply>应用颜色</button></footer>'
+        popup.setAttribute('data-prts-color-editor','')
+        popup.innerHTML=colorEditorMarkup()
+        active.onClose=()=>onColorPreview(control)
         let draft=control.value
-        const hex=popup.querySelector('input:not([type])'),ranges=Array.from(popup.querySelectorAll('[type=range]'))
-        const render=()=>{
-          hex.value=draft.toUpperCase();hex.removeAttribute('aria-invalid')
-          popup.querySelector('[data-apply]').disabled=false
-          popup.querySelector('i').style.background=draft
-          ranges.forEach((range,i)=>{range.value=parseInt(draft.slice(1+i*2,3+i*2),16);range.nextElementSibling.textContent=range.value})
-        }
+        const hex=popup.querySelector('[data-prts-color-hex]'),ranges=Array.from(popup.querySelectorAll('[data-prts-color-channel-index]'))
+        const render=()=>renderColorEditor(popup,draft)
+        popup.addEventListener('input',event=>event.stopPropagation())
+        popup.addEventListener('click',event=>event.stopPropagation())
         hex.addEventListener('input',()=>{
           const valid=/^#?[0-9a-f]{6}$/i.test(hex.value)
-          hex.setAttribute('aria-invalid',String(!valid));popup.querySelector('[data-apply]').disabled=!valid
-          if(valid){draft='#'+hex.value.replace('#','');render()}
+          hex.setAttribute('aria-invalid',String(!valid));popup.querySelector('[data-prts-color-apply]').disabled=!valid
+          if(valid){draft=('#'+hex.value.replace('#','')).toLowerCase();render();onColorPreview(control,draft)}
         })
-        ranges.forEach(range=>range.addEventListener('input',()=>{draft='#'+ranges.map(r=>Number(r.value).toString(16).padStart(2,'0')).join('');render()}))
-        popup.querySelector('[data-cancel]').onclick=()=>close(true)
-        popup.querySelector('[data-apply]').onclick=()=>{close(true);commit(draft)}
+        ranges.forEach(range=>range.addEventListener('input',()=>{draft='#'+ranges.map(input=>Number(input.value).toString(16).padStart(2,'0')).join('');render();onColorPreview(control,draft)}))
+        popup.querySelector('[data-prts-color-cancel]').onclick=()=>close(true)
+        popup.querySelector('[data-prts-color-apply]').onclick=()=>{close(true);commit(draft)}
         render();present(popup,button);hex.focus({preventScroll:true})
       }
     }

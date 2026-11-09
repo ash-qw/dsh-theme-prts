@@ -64,7 +64,7 @@ test('spine settings expose three presets, scheme-aware defaults and one shared 
   assert.equal(panel.querySelectorAll('[data-prts-spine-reset]').length, 1)
   assert.equal(panel.textContent.includes('跟随主题'), false)
   for (const [key, , , fallback] of SPINE_COLOR_SETTINGS) assert.equal(spineColorValue(DEFAULT_PREFERENCES, key, 'dark'), fallback)
-  renderSpineColors(panel, { ...DEFAULT_PREFERENCES, sessionSpineColor: '#5ccddb' }, 'dark')
+  renderSpineColors(panel, normalizePreferences({ sessionSpineColor: '#5ccddb' }), 'dark')
   assert.equal(panel.querySelector('[data-prts-spine-custom-active] input').value, '#5ccddb')
   renderSpineColors(panel, { ...DEFAULT_PREFERENCES, spineColorLinked: true, spineColorSource: 'light' }, 'dark')
   assert.equal(panel.querySelector('[data-prts-spine-modes]').hidden, true)

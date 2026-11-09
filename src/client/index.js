@@ -1,4 +1,5 @@
 import { applySpineColors, SPINE_COLOR_KEYS } from './spine-colors.js'
+import { applyCardHeights, CARD_HEIGHT_SETTINGS } from './card-heights.js'
 import { createThemeTransfer } from './theme-transfer.js'
 import { createBackgroundStore } from './custom-background.js'
 import { createNativePreferences } from './native-preferences.js'
@@ -225,6 +226,10 @@ export function applyPrtsPlugin(ctx, environment) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
       onPreferencePreview(key, value) {
+        if (CARD_HEIGHT_SETTINGS.some(([name]) => name === key)) {
+          applyCardHeights(document.documentElement, { ...preferences, [key]: value })
+          return
+        }
         if (SPINE_COLOR_KEYS.has(key)) {
           applySpineColors(document.documentElement, { ...preferences, [key]: value })
           return

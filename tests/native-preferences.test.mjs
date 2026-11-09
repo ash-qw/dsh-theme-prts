@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createNativePreferences } from '../src/client/native-preferences.js'
-import { DEFAULT_PREFERENCES, PRTS_STORAGE_KEY } from '../src/client/preferences.js'
+import { DEFAULT_PREFERENCES, CUSTOM_COLOR_MEMORY_KEYS, updatePreferenceValue, PRTS_STORAGE_KEY } from '../src/client/preferences.js'
 const tick = () => new Promise(resolve => setImmediate(resolve))
 function setup(initial = {}, legacy) {
   const data = new Map(legacy ? [[PRTS_STORAGE_KEY, JSON.stringify(legacy)]] : [])
@@ -216,5 +216,29 @@ test('legacy shared spine overrides are materialized before either palette chang
   assert.equal(fixture.store.value.workspaceSpineColorLight, '#abcdef')
   assert.equal(fixture.store.value.sessionSpineColorLight, '#123456')
   assert.equal(fixture.store.value.currentSessionSpineColorLight, '#fedcba')
+  fixture.store.dispose()
+})
+
+
+test('missing custom-color memories are materialized once before presets can replace active colors', async () => {
+  const fixture = setup()
+  const value = { ...DEFAULT_PREFERENCES, preferencesInitialized: true, workspaceSpineColor: '#123abc', sessionFlowPalette: 'custom', sessionFlowColorFront: '#abcdef' }
+  for (const key of CUSTOM_COLOR_MEMORY_KEYS) delete value[key]
+  fixture.state({ value })
+  fixture.store.bind(fixture.form)
+  await tick()
+  assert.deepEqual(fixture.writes[0].ops.map(operation => operation.path[0]), [...CUSTOM_COLOR_MEMORY_KEYS, 'preferencesInitialized'])
+  assert.equal(fixture.store.value.workspaceSpineCustomColor, '#123abc')
+  assert.equal(fixture.store.value.sessionFlowCustomColorFront, '#abcdef')
+  fixture.store.update(updatePreferenceValue(fixture.store.value, 'workspaceSpineColor', '#ccff66'))
+  await tick()
+  assert.equal(fixture.store.value.workspaceSpineCustomColor, '#123abc')
+  fixture.store.update(updatePreferenceValue(fixture.store.value, 'sessionFlowPalette', 'amber'))
+  await tick()
+  assert.equal(fixture.store.value.sessionFlowCustomColorFront, '#abcdef')
+  fixture.store.update(updatePreferenceValue(fixture.store.value, 'sessionFlowPalette', 'custom'))
+  await tick()
+  assert.equal(fixture.store.value.sessionFlowColorFront, '#abcdef')
+  assert.equal(fixture.writes.length, 4)
   fixture.store.dispose()
 })

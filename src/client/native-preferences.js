@@ -1,4 +1,4 @@
-import { DEFAULT_PREFERENCES, PRTS_STORAGE_KEY, loadPreferences, normalizePreferences } from './preferences.js'
+import { DEFAULT_PREFERENCES, CUSTOM_COLOR_MEMORY_KEYS, PRTS_STORAGE_KEY, loadPreferences, normalizePreferences } from './preferences.js'
 
 // Host snapshots are authoritative. This cache must never become a migration source.
 const NATIVE_CACHE_KEY = 'dsh.ui.prts.host-cache.v1'
@@ -35,7 +35,7 @@ export function createNativePreferences({ storage, onChange }) {
           if (s.value[key] !== host[key] && !Object.hasOwn(pending, key) && !Object.hasOwn(inFlight, key) && !Object.hasOwn(failed, key)) pending[key] = host[key]
         }
       }
-      for (const key of ['rightSidebarOpacity', 'rightSidebarBlur', 'cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource', 'workspaceSpineColorLight', 'sessionSpineColorLight', 'currentSessionSpineColorLight']) {
+      for (const key of ['rightSidebarOpacity', 'rightSidebarBlur', 'cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource', 'workspaceSpineColorLight', 'sessionSpineColorLight', 'currentSessionSpineColorLight', ...CUSTOM_COLOR_MEMORY_KEYS]) {
         if (s.value[key] == null && !Object.hasOwn(pending, key) && !Object.hasOwn(inFlight, key) && !Object.hasOwn(failed, key)) pending[key] = host[key]
       }
     }

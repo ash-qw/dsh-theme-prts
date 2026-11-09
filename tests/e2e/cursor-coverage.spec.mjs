@@ -339,7 +339,7 @@ test('settings tabs show only the selected page and expose particle controls', a
   await page.evaluate(() => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({ version: 12, enabled: true, bootAnimation: false })))
   await page.reload()
   await page.locator('[data-prts-rail-brand]').click()
-  await page.getByRole('tab', { name: '会话流线', exact: true }).click()
+  await page.getByRole('tab', { name: '侧栏卡片', exact: true }).click()
   const flow = page.locator('[data-prts-settings-section="flow"]')
   await expect(flow).toBeVisible()
   await expect(page.locator('[data-prts-settings-jump="flow"]')).toHaveAttribute('aria-selected', 'true')

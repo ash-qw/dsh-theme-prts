@@ -11,8 +11,11 @@ export const SPINE_COLOR_PRESETS = Object.freeze([
 ])
 
 export const SPINE_COLOR_KEYS = new Set(SPINE_COLOR_SETTINGS.flatMap(([key]) => [key, key + 'Light']))
+export const spineCustomColorKey = key => key.replace('SpineColor', 'SpineCustomColor')
+export const SPINE_CUSTOM_COLOR_KEYS = new Set([...SPINE_COLOR_KEYS].map(spineCustomColorKey))
 export const SPINE_COLOR_DEFAULTS = Object.freeze({
   ...Object.fromEntries([...SPINE_COLOR_KEYS].map(key => [key, 'auto'])),
+  ...Object.fromEntries(SPINE_COLOR_SETTINGS.flatMap(([key]) => ['dark', 'light'].map(mode => [spineCustomColorKey(mode === 'light' ? key + 'Light' : key), spineColorValue({}, key, mode)]))),
   spineColorLinked: false,
   spineColorSource: 'dark',
 })
@@ -62,13 +65,14 @@ export function renderSpineColors(panel, preferences, editMode = panel.ownerDocu
     const setting = mode === 'light' ? key + 'Light' : key
     const color = spineColorValue(preferences, key, mode)
     input.dataset.prtsSettingKey = setting
-    input.value = color
+    const customColor = preferences[spineCustomColorKey(setting)] ?? color
+    input.value = customColor
     for (const button of row.querySelectorAll('[data-prts-spine-swatch]')) {
       button.dataset.prtsSpineKey = setting
       const selected = button.dataset.prtsSettingValue === color
       button.setAttribute('aria-pressed', String(selected))
     }
-    const custom = preferences[setting] !== 'auto' && !SPINE_COLOR_PRESETS.some(([, value]) => value === color)
+    const custom = preferences[setting] !== 'auto' && color === customColor
     input.parentElement.toggleAttribute('data-prts-spine-custom-active', custom)
     input.parentElement.querySelector('.prts-page-control')?.setAttribute('aria-pressed', String(custom))
   }

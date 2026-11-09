@@ -14,7 +14,7 @@ async function mount(page, preferences = {}) {
 async function openColors(page) {
   if (!await page.locator('[data-prts-rail-brand]').isVisible()) await page.locator('[data-prts-rail-launcher]').click()
   await page.locator('[data-prts-rail-brand]').click()
-  await page.locator('#prts-tab-interaction').click()
+  await page.locator('#prts-tab-flow').click()
 }
 
 const saved = (page, key) => page.evaluate(key => window.__PRTS_FIXTURE_RUNTIME__.nativeConfigForm.getSnapshot().value[key], key)
@@ -72,7 +72,7 @@ for (const scheme of ['dark', 'light']) for (const height of [900, 600]) {
     const workspace = page.locator('[data-prts-workspace-row]')
     const session = page.locator('[data-prts-session-row]')
     const surface = row => row.locator('> [data-prts-facility-spine] [data-prts-facility-layer="surface"]')
-    await expect(workspace).toHaveCSS('height', height <= 820 ? '34px' : '38px')
+    await expect(workspace).toHaveCSS('height', height <= 820 ? '32px' : '36px')
     await expect(surface(workspace)).toHaveCSS('fill', 'rgb(51, 204, 255)')
     await expect(surface(session)).toHaveCSS('fill', 'rgb(255, 204, 0)')
     await session.evaluate(row => { row.setAttribute('aria-selected', 'false'); row.removeAttribute('data-prts-selection-target') })
@@ -121,11 +121,11 @@ test('spine controls and their in-page color editor fit a narrow viewport', asyn
   await page.screenshot({ path: '/tmp/prts-spine-v2-mobile.png' })
 })
 
-test('spine settings are last in Interaction, use three presets and reset both palettes only', async ({ page }) => {
+test('sidebar cards group height, spine colors and flow; reset affects both palettes only', async ({ page }) => {
   await mount(page, { sessionFlow: false, cornerColor: '#abcdef', workspaceSpineColor: '#123456', workspaceSpineColorLight: '#654321', sessionSpineColor: '#ffffff', sessionSpineColorLight: '#000000', currentSessionSpineColor: '#5ccddb', currentSessionSpineColorLight: '#ccff66', spineColorLinked: true, spineColorSource: 'light' })
   await openColors(page)
   const colors = page.locator('[data-prts-spine-colors]')
-  await expect(page.locator('#prts-page-interaction [data-prts-settings-common-grid] > :last-child')).toHaveAttribute('data-prts-spine-colors', '')
+  await expect(page.locator('#prts-page-flow [data-prts-settings-group-title]')).toHaveText(['卡片高度', '卡片侧脊配色', '会话流线'])
   await expect(colors.locator('[data-prts-spine-swatch]')).toHaveCount(9)
   await expect(colors.getByRole('button', { name: '恢复默认', exact: true })).toHaveCount(1)
   await expect(colors.getByRole('button', { name: '跟随主题', exact: true })).toHaveCount(0)

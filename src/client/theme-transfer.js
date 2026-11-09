@@ -1,3 +1,4 @@
+import { SPINE_COLOR_KEYS, SPINE_COLOR_PRESETS, spineCustomColorKey } from './spine-colors.js'
 import { validBackgroundRegion } from '../shared/background-region.js'
 import { DEFAULT_PREFERENCES, normalizePreferences } from './preferences.js'
 
@@ -91,6 +92,10 @@ export function validateThemePackage(value) {
 export function mergeThemePreferences(current, imported) {
   const normalized = normalizePreferences(imported)
   const patch = Object.fromEntries(Object.keys(DEFAULT_PREFERENCES).filter(key => key !== 'version' && Object.hasOwn(imported, key)).map(key => [key, normalized[key]]))
+  for (const key of SPINE_COLOR_KEYS) {
+    const customKey = spineCustomColorKey(key)
+    if (Object.hasOwn(imported, key) && !Object.hasOwn(imported, customKey) && normalized[key] !== 'auto' && !SPINE_COLOR_PRESETS.some(([, color]) => color === normalized[key])) patch[customKey] = normalized[key]
+  }
   return normalizePreferences({ ...current, ...patch, version: DEFAULT_PREFERENCES.version })
 }
 

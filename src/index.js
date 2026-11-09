@@ -1,6 +1,6 @@
 import { createBackgroundService, registerBackgroundApi } from './server/backgrounds.js'
 import Schema from '@deepseek-ai/schemastery'
-import { DEFAULT_PREFERENCES } from './client/preferences.js'
+import { DEFAULT_PREFERENCES, CUSTOM_COLOR_MEMORY_KEYS } from './client/preferences.js'
 import { createAvatarService, registerAvatarApi } from './server/avatars.js'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
@@ -19,7 +19,7 @@ export const inject = ['tools', 'attachments', 'connection', 'webServer']
 // Leave new palette fields absent until normalization can inherit the legacy color.
 export const Config = Schema.object(Object.fromEntries([
   ...Object.entries(DEFAULT_PREFERENCES).map(([key, value]) => [key,
-    (typeof value === 'boolean' ? Schema.boolean() : typeof value === 'number' ? Schema.number() : Schema.string()).default((['cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource'].includes(key) || key.endsWith('SpineColorLight')) ? undefined : value).volatile(),
+    (typeof value === 'boolean' ? Schema.boolean() : typeof value === 'number' ? Schema.number() : Schema.string()).default((['cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource'].includes(key) || key.endsWith('SpineColorLight') || CUSTOM_COLOR_MEMORY_KEYS.includes(key)) ? undefined : value).volatile(),
   ]),
   ['preferencesInitialized', Schema.boolean().default(false).volatile()],
 ]))

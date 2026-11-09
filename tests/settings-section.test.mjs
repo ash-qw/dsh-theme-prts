@@ -382,7 +382,7 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   const document = dom.window.document
   assert.equal(document.querySelector('[data-prts-theme-settings]').tagName, 'DIALOG')
   assert.equal(document.querySelectorAll('[data-prts-preset-card]').length, 0)
-  assert.equal(document.querySelectorAll('[data-prts-settings-group]').length, 15)
+  assert.equal(document.querySelectorAll('[data-prts-settings-group]').length, 16)
   assert.ok(document.querySelector('[data-prts-settings-common]'))
   assert.equal(document.querySelector('[data-prts-settings-diagnostic]'), null)
   assert.equal(document.querySelectorAll('[data-prts-option-sample="texture"]').length, 0)

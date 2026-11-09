@@ -1,4 +1,5 @@
-import { SPINE_COLOR_KEYS, SPINE_COLOR_DEFAULTS } from './spine-colors.js'
+import { SPINE_COLOR_KEYS, SPINE_COLOR_DEFAULTS, SPINE_CUSTOM_COLOR_KEYS, SPINE_COLOR_PRESETS, spineCustomColorKey, spineColorValue } from './spine-colors.js'
+import { CARD_HEIGHT_DEFAULTS, CARD_HEIGHT_SETTINGS, normalizeCardHeight } from './card-heights.js'
 
 export const PRTS_STORAGE_KEY = 'dsh.ui.prts.v1'
 
@@ -48,6 +49,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   cornerColorLight: '#f0c800',
   cornerCustomColorLight: '#f0c800',
   ...SPINE_COLOR_DEFAULTS,
+  ...CARD_HEIGHT_DEFAULTS,
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
@@ -70,6 +72,9 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   sessionFlowColorBack: SESSION_FLOW_PALETTES.triad.back,
   sessionFlowColorCore: SESSION_FLOW_PALETTES.triad.core,
   sessionFlowColorFront: SESSION_FLOW_PALETTES.triad.front,
+  sessionFlowCustomColorBack: SESSION_FLOW_PALETTES.triad.back,
+  sessionFlowCustomColorCore: SESSION_FLOW_PALETTES.triad.core,
+  sessionFlowCustomColorFront: SESSION_FLOW_PALETTES.triad.front,
   sessionFlowSpeed: SESSION_FLOW_SPEED_DEFAULT,
   conversationStyle: 'native',
   bakerGroupAvatars: true,
@@ -116,8 +121,8 @@ export const PREFERENCE_GROUPS = Object.freeze({
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor', 'cornerColorLinked', 'cornerColorSource', 'cornerColor', 'cornerCustomColor', 'cornerColorLight', 'cornerCustomColorLight']),
   aiTools: Object.freeze(['aiToolsEnabled']),
-  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit', ...Object.keys(SPINE_COLOR_DEFAULTS)]),
-  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
+  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit', ...Object.keys(SPINE_COLOR_DEFAULTS), ...Object.keys(CARD_HEIGHT_DEFAULTS)]),
+  conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowCustomColorBack', 'sessionFlowCustomColorCore', 'sessionFlowCustomColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
 })
 
 const TEXTURES = new Set(['off', 'restrained', 'full'])
@@ -128,6 +133,7 @@ const PRESETS = new Set([...Object.keys(VISUAL_PRESETS), 'custom'])
 const CONVERSATION_STYLES = new Set(['native', 'deck-chat'])
 const SESSION_FLOW_PALETTE_IDS = new Set([...Object.keys(SESSION_FLOW_PALETTES), 'custom'])
 const SESSION_FLOW_COLOR_KEYS = new Set(['sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront'])
+export const CUSTOM_COLOR_MEMORY_KEYS = Object.freeze([...SPINE_CUSTOM_COLOR_KEYS, ...[...SESSION_FLOW_COLOR_KEYS].map(key => key.replace('sessionFlowColor', 'sessionFlowCustomColor'))])
 const PRESET_LINKED_KEYS = new Set(Object.keys(VISUAL_PRESETS['standard-tactical']))
 
 
@@ -215,6 +221,11 @@ export function normalizePreferences(value) {
     front: colorOr(input.sessionFlowColorFront, DEFAULT_PREFERENCES.sessionFlowColorFront),
   }
   const sessionFlowColors = paletteColors ?? customColors
+  const spineColors = Object.fromEntries([...SPINE_COLOR_KEYS].map(key => [key, colorOr(input[key], key.endsWith('Light') && input[key] == null ? colorOr(input[key.slice(0, -5)], 'auto') : 'auto')]))
+  const rememberedFlowColors = Object.fromEntries([...SESSION_FLOW_COLOR_KEYS].map(key => {
+    const customKey = key.replace('sessionFlowColor', 'sessionFlowCustomColor')
+    return [customKey, sessionFlowPalette === 'custom' ? customColors[key.slice(16).toLowerCase()] : colorOr(input[customKey], customColors[key.slice(16).toLowerCase()])]
+  }))
   const normalized = {
     version: 12,
     enabled: booleanOr(input.enabled, DEFAULT_PREFERENCES.enabled),
@@ -244,9 +255,12 @@ export function normalizePreferences(value) {
     cornerColor: colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor),
     cornerColorLight: colorOr(input.cornerColorLight, colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor)),
     cornerCustomColorLight: colorOr(input.cornerCustomColorLight, colorOr(input.cornerCustomColor, DEFAULT_PREFERENCES.cornerCustomColor)),
-    ...Object.fromEntries([...SPINE_COLOR_KEYS].map(key => [key, colorOr(input[key], key.endsWith('Light') && input[key] == null ? colorOr(input[key.slice(0, -5)], 'auto') : 'auto')])),
+    ...spineColors,
+    ...Object.fromEntries([...SPINE_COLOR_KEYS].map(key => [spineCustomColorKey(key), colorOr(input[spineCustomColorKey(key)], spineColorValue(spineColors, key.replace(/Light$/, ''), key.endsWith('Light') ? 'light' : 'dark'))])),
     spineColorLinked: booleanOr(input.spineColorLinked, false),
     spineColorSource: input.spineColorSource === 'light' ? 'light' : 'dark',
+    cardHeightMode: input.cardHeightMode === 'custom' ? 'custom' : 'auto',
+    ...Object.fromEntries(CARD_HEIGHT_SETTINGS.map(([key]) => [key, normalizeCardHeight(key, input[key])])),
     cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
@@ -259,6 +273,7 @@ export function normalizePreferences(value) {
     sessionFlow: booleanOr(input.sessionFlow, DEFAULT_PREFERENCES.sessionFlow),
     sessionGlow: booleanOr(input.sessionGlow, DEFAULT_PREFERENCES.sessionGlow),
     sessionFlowPalette,
+    ...rememberedFlowColors,
     sessionFlowColorBack: sessionFlowColors.back,
     sessionFlowColorCore: sessionFlowColors.core,
     sessionFlowColorFront: sessionFlowColors.front,
@@ -312,8 +327,14 @@ export function updatePreferenceValue(value, key, nextValue) {
     return normalizePreferences({ ...current, spineColorLinked: enabled,
       ...(enabled ? { spineColorSource: nextValue } : {}) })
   }
+  if (SPINE_CUSTOM_COLOR_KEYS.has(key)) {
+    const color = colorOr(nextValue, current[key])
+    return normalizePreferences({ ...current, [key]: color, [key.replace('SpineCustomColor', 'SpineColor')]: color })
+  }
   if (SPINE_COLOR_KEYS.has(key)) {
-    return normalizePreferences({ ...current, [key]: nextValue === 'auto' ? 'auto' : colorOr(nextValue, current[key]) })
+    const color = nextValue === 'auto' ? 'auto' : colorOr(nextValue, current[key])
+    const custom = color !== 'auto' && !SPINE_COLOR_PRESETS.some(([, preset]) => preset === color)
+    return normalizePreferences({ ...current, [key]: color, ...(custom ? { [spineCustomColorKey(key)]: color } : {}) })
   }
   if (key === 'cornerColorLink') {
     const enabled = nextValue === 'light' || nextValue === 'dark'
@@ -332,6 +353,7 @@ export function updatePreferenceValue(value, key, nextValue) {
     return normalizePreferences({
       ...current,
       sessionFlowPalette: palette,
+      ...(palette === 'custom' ? Object.fromEntries([...SESSION_FLOW_COLOR_KEYS].map(key => [key, current[key.replace('sessionFlowColor', 'sessionFlowCustomColor')]])) : {}),
       ...(colors ? {
         sessionFlowColorBack: colors.back,
         sessionFlowColorCore: colors.core,

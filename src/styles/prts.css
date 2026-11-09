@@ -26,8 +26,8 @@ html[data-dsh-prts] {
   --prts-host-top-inset: 0px;
   --prts-rail-width: 52px;
   --prts-nav-width: 52px;
-  --prts-workspace-height: 38px;
-  --prts-session-height: 36px;
+  --prts-workspace-height: var(--prts-workspace-custom-height, 36px);
+  --prts-session-height: var(--prts-session-custom-height, 36px);
   --prts-facility-gap: 7px;
   --prts-facility-height: var(--prts-workspace-height);
   --prts-spine-width: 8px;
@@ -890,9 +890,11 @@ html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]) > * 
 
 @media (max-height: 820px) and (hover: hover) and (pointer: fine) {
   html[data-dsh-prts] {
-    --prts-workspace-height: 34px;
-    --prts-session-height: 32px;
     --prts-facility-gap: 5px;
+  }
+  html[data-dsh-prts]:not([data-prts-card-height="custom"]) {
+    --prts-workspace-height: 32px;
+    --prts-session-height: 32px;
   }
 }
 

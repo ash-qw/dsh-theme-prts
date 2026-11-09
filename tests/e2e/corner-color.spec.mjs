@@ -28,7 +28,7 @@ test('corner color saves, previews, exports and survives reload',async({page})=>
  await expect(input).toHaveValue('#42b8d5')
  await page.locator('[data-prts-corner-custom]').click()
  await page.getByLabel('HEX 颜色').fill('oops')
- await page.locator('[data-prts-color-apply]').click()
+ await expect(page.locator('[data-prts-color-apply]')).toBeDisabled()
  await expect(page.locator('[data-prts-color-editor]')).toBeVisible()
  await expect(page.getByLabel('HEX 颜色')).toHaveAttribute('aria-invalid','true')
  await page.getByLabel('R 通道').fill('100')

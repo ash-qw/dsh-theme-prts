@@ -51,6 +51,13 @@ test('facility graphic accepts a non-destructive default texture', () => {
   assert.equal(graphic.getAttribute('viewBox'), '0 0 240 34')
   assert.equal(content.getAttribute('transform'), 'translate(0 1) scale(1 0.84211)')
 
+  for (const height of [32, 36, 48]) {
+    assert.equal(renderFacilityGraphic(owner, { width: 240, height }), true)
+    assert.equal(content.getAttribute('transform'), `translate(0 1) scale(1 ${Number(((height - 2) / 38).toFixed(5))})`)
+    assert.equal(graphic.querySelector('[data-prts-facility-clip]').getAttribute('d'), graphic.querySelector('[data-prts-facility-layer="surface"]').getAttribute('d'))
+    assert.equal(graphic.querySelector('[data-prts-facility-silhouette]').hasAttribute('transform'), false)
+  }
+
   owner.setAttribute('data-prts-facility-texture', 'grid')
   ensureFacilityGraphic(document, owner, { kind: 'face', texture: 'silhouette' })
   assert.equal(owner.getAttribute('data-prts-facility-texture'), 'grid')
