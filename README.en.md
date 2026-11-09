@@ -51,6 +51,8 @@ Cursor artwork comes from [crowninggg/prts-cursor v1.1.4](https://github.com/cro
 
 ## Usage and settings
 
+Card spine colors, at the bottom of Interaction, provides independent colors for workspace, ordinary-session, and current-session cards. Presets include Trading Post Blue (`#33ccff`), Power Plant Green (`#ccff66`), and Factory Yellow (`#ffcc00`). Custom colors use an in-page HEX / RGB editor. Edit day and night palettes independently, or share the selected palette with the Day/night shared switch; turning sharing off preserves the other palette. One Restore defaults button resets both palettes: blue for workspaces, the original light/dark grays for ordinary sessions, and yellow for the current session. Settings are saved to the current DSH instance and included in theme imports and exports; status indicators, session flow, and expansion animations are unchanged.
+
 “Settings → Plugins → P.R.T.S.” provides the theme and startup-animation switches. The Rhodes Island emblem at the upper left of the main interface provides presets, environment texture, particle marks, interface material, navigation, and accessibility controls.
 
 The appearance panel has four pages: Appearance, Interaction, Session Flow, and Particle Effects. Switching pages preserves each page’s scroll position. On narrow screens, tabs appear above the content; arrow keys also switch pages.

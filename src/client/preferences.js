@@ -1,3 +1,5 @@
+import { SPINE_COLOR_KEYS, SPINE_COLOR_DEFAULTS } from './spine-colors.js'
+
 export const PRTS_STORAGE_KEY = 'dsh.ui.prts.v1'
 
 export const PARTICLE_TRAVERSAL_SPEED_MIN = 0
@@ -45,6 +47,7 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   cornerCustomColor: '#f0c800',
   cornerColorLight: '#f0c800',
   cornerCustomColorLight: '#f0c800',
+  ...SPINE_COLOR_DEFAULTS,
   conversationParticleDensity: 'sparse',
   heroParticleDensity: 'light',
   particleTraversalSpeed: PARTICLE_TRAVERSAL_SPEED_DEFAULT,
@@ -113,7 +116,7 @@ export const PREFERENCE_GROUPS = Object.freeze({
   material: Object.freeze(['glass', 'composerGlass']),
   accessibility: Object.freeze(['motion', 'bootAnimation', 'cursor', 'cornerColorLinked', 'cornerColorSource', 'cornerColor', 'cornerCustomColor', 'cornerColorLight', 'cornerCustomColorLight']),
   aiTools: Object.freeze(['aiToolsEnabled']),
-  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit']),
+  navigation: Object.freeze(['railDefaultHidden', 'sessionPreview', 'previewOngoing', 'previewTools', 'previewWarning', 'previewDone', 'previewDoubleClick', 'previewFollowOngoing', 'previewFollowWarning', 'previewReplyLimit', ...Object.keys(SPINE_COLOR_DEFAULTS)]),
   conversation: Object.freeze(['sessionFlow', 'sessionGlow', 'sessionFlowPalette', 'sessionFlowColorBack', 'sessionFlowColorCore', 'sessionFlowColorFront', 'sessionFlowSpeed', 'conversationStyle', 'bakerGroupAvatars', 'bakerLoading', 'conversationEmblem']),
 })
 
@@ -241,6 +244,9 @@ export function normalizePreferences(value) {
     cornerColor: colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor),
     cornerColorLight: colorOr(input.cornerColorLight, colorOr(input.cornerColor, DEFAULT_PREFERENCES.cornerColor)),
     cornerCustomColorLight: colorOr(input.cornerCustomColorLight, colorOr(input.cornerCustomColor, DEFAULT_PREFERENCES.cornerCustomColor)),
+    ...Object.fromEntries([...SPINE_COLOR_KEYS].map(key => [key, colorOr(input[key], key.endsWith('Light') && input[key] == null ? colorOr(input[key.slice(0, -5)], 'auto') : 'auto')])),
+    spineColorLinked: booleanOr(input.spineColorLinked, false),
+    spineColorSource: input.spineColorSource === 'light' ? 'light' : 'dark',
     cursor: input.cursor === 'system' ? 'system' : DEFAULT_PREFERENCES.cursor,
     conversationParticleDensity: enumOr(legacyDensities.conversation, PARTICLE_DENSITIES, particlePreset.conversationParticleDensity),
     heroParticleDensity: enumOr(legacyDensities.hero, PARTICLE_DENSITIES, particlePreset.heroParticleDensity),
@@ -300,6 +306,15 @@ export function updatePreferenceValue(value, key, nextValue) {
   if (key === 'preset') return applyVisualPreset(value, nextValue)
   if (key === 'particleDetail') return applyParticleDetail(value, nextValue)
   const current = normalizePreferences(value)
+  if (key === 'spineColorsReset') return normalizePreferences({ ...current, ...SPINE_COLOR_DEFAULTS })
+  if (key === 'spineColorLink') {
+    const enabled = nextValue === 'light' || nextValue === 'dark'
+    return normalizePreferences({ ...current, spineColorLinked: enabled,
+      ...(enabled ? { spineColorSource: nextValue } : {}) })
+  }
+  if (SPINE_COLOR_KEYS.has(key)) {
+    return normalizePreferences({ ...current, [key]: nextValue === 'auto' ? 'auto' : colorOr(nextValue, current[key]) })
+  }
   if (key === 'cornerColorLink') {
     const enabled = nextValue === 'light' || nextValue === 'dark'
     return normalizePreferences({ ...current, cornerColorLinked: enabled,

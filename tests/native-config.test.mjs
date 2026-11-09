@@ -5,7 +5,7 @@ import { DEFAULT_PREFERENCES, normalizePreferences } from '../src/client/prefere
 test('native Config declares all preferences as dynamically editable fields',()=>{
   for(const [key,value] of Object.entries(DEFAULT_PREFERENCES)) {
     assert.equal(Config.dict[key].meta.volatile,true,key)
-    assert.equal(Config.dict[key].meta.default,['cornerColorLight','cornerCustomColorLight','cornerColorSource'].includes(key)?undefined:value,key)
+    assert.equal(Config.dict[key].meta.default,(['cornerColorLight','cornerCustomColorLight','cornerColorSource'].includes(key)||key.endsWith('SpineColorLight'))?undefined:value,key)
   }
   assert.equal(Config.dict.preferencesInitialized.meta.volatile,true)
   assert.deepEqual(normalizePreferences(Object.fromEntries(Object.entries(Config({})).map(([key,value])=>[key,value.get()]))),DEFAULT_PREFERENCES)

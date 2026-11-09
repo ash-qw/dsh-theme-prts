@@ -27,7 +27,7 @@ export function opacityDialMarkup() {
       <small data-prts-opacity-note></small>
     </div>`
   })
-  return `<fieldset data-prts-opacity-settings hidden><legend>材质透明度与模糊度</legend><small>透明度数值越高越透明；模糊度以像素计。调整时预览，松手后保存。</small><div data-prts-opacity-grid>${controls.join('')}</div></fieldset>`
+  return `<fieldset data-prts-opacity-settings data-prts-settings-group hidden><legend data-prts-settings-group-title>材质透明度与模糊度</legend><small>透明度数值越高越透明；模糊度以像素计。调整时预览，松手后保存。</small><div data-prts-opacity-grid>${controls.join('')}</div></fieldset>`
 }
 export function mountOpacityDials({ section, window, onChange }) {
   const root = section.ownerDocument.documentElement

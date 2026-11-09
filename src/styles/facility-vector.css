@@ -99,17 +99,20 @@ html[data-dsh-prts] [data-prts-session-summary-trigger] {
   cursor: pointer;
 }
 
-html[data-dsh-prts] [data-prts-session-summary-group="ongoing"] {
+html[data-dsh-prts] [data-prts-session-summary-group="ongoing"],
+html[data-dsh-prts] [data-prts-settings-status-marker="ongoing"] {
   --prts-summary-state-color: var(--dsw-static-deepseek-450, var(--prts-cyan));
   color: var(--prts-summary-state-color);
 }
 
-html[data-dsh-prts] [data-prts-session-summary-group="warning"] {
+html[data-dsh-prts] [data-prts-session-summary-group="warning"],
+html[data-dsh-prts] [data-prts-settings-status-marker="warning"] {
   --prts-summary-state-color: var(--dsw-alias-state-warn-primary, var(--prts-yellow));
   color: var(--prts-summary-state-color);
 }
 
-html[data-dsh-prts] [data-prts-session-summary-group="done"] {
+html[data-dsh-prts] [data-prts-session-summary-group="done"],
+html[data-dsh-prts] [data-prts-settings-status-marker="done"] {
   --prts-summary-state-color: var(--dsw-alias-state-success-primary, var(--prts-green));
   color: var(--prts-summary-state-color);
 }
@@ -609,7 +612,7 @@ html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true
 /* The side spine is a semantic fill, not a bordered miniature card. */
 html[data-dsh-prts] [data-prts-workspace-row] > [data-prts-facility-spine],
 html[data-dsh-prts] [data-prts-session-row] > [data-prts-facility-spine] {
-  --prts-facility-surface: var(--prts-line-strong);
+  --prts-facility-surface: var(--prts-session-spine-color, var(--prts-line-strong));
   position: absolute !important;
   z-index: 2 !important;
   inset: 0 auto 0 0;
@@ -624,11 +627,11 @@ html[data-dsh-prts] [data-prts-session-row] > [data-prts-facility-spine] {
 }
 
 html[data-dsh-prts] [data-prts-workspace-row] > [data-prts-facility-spine] {
-  --prts-facility-surface: var(--prts-cyan);
+  --prts-facility-surface: var(--prts-workspace-spine-color, var(--prts-cyan));
 }
 
 html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) > [data-prts-facility-spine] {
-  --prts-facility-surface: var(--prts-yellow);
+  --prts-facility-surface: var(--prts-current-session-spine-color, var(--prts-yellow));
 }
 
 html[data-dsh-prts] [data-prts-facility-spine] [data-prts-facility-layer="outline"] {

@@ -75,8 +75,8 @@ export function createBackgroundStore({ window, document }) {
   }
 }
 export function backgroundMarkup(heroContrastControl = '') {
-  return `<section data-prts-background-settings>
-    <header><strong>会话背景</strong><small>分区使用不同图片，或让一张完整背景贯穿侧边栏与正文。</small></header>
+  return `<section data-prts-background-settings data-prts-settings-group="first">
+    <header><h3 data-prts-settings-group-title>会话背景</h3><small>分区使用不同图片，或让一张完整背景贯穿侧边栏与正文。</small></header>
     <div data-prts-background-modes role="group" aria-label="背景模式">
       ${[['off','默认背景','使用主题原有底色'],['split','分区背景','左侧边栏与正文独立配置'],['full','完整背景','一张图片贯穿整个界面']].map(([value,label,hint]) => `<button type="button" data-prts-setting-key="backgroundMode" data-prts-setting-value="${value}" aria-pressed="false"><span data-prts-background-diagram="${value}" aria-hidden="true"><i></i><i></i></span><span><strong>${label}</strong><small>${hint}</small></span></button>`).join('')}
     </div>

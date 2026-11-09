@@ -897,7 +897,7 @@ html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]) > * 
 }
 
 html[data-dsh-prts] [data-prts-workspace-row]::before {
-  background: var(--prts-cyan) !important;
+  background: var(--prts-workspace-spine-color, var(--prts-cyan)) !important;
 }
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"],
@@ -912,7 +912,7 @@ html[data-dsh-prts] [data-prts-session-row]::before {
   z-index: 2;
   inset: 0 auto 0 0;
   width: var(--prts-spine-width);
-  background: var(--prts-line-strong);
+  background: var(--prts-session-spine-color, var(--prts-line-strong));
   transform: scaleX(var(--prts-spine-rest));
   transform-origin: left center;
   transition: transform 220ms var(--prts-ease-spring), background-color 160ms ease;
@@ -924,7 +924,7 @@ html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:
 }
 
 html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"]))::before {
-  background: var(--prts-yellow);
+  background: var(--prts-current-session-spine-color, var(--prts-yellow));
 }
 
 html[data-dsh-prts] [data-prts-facility-face] {

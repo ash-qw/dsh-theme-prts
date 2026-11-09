@@ -1,3 +1,4 @@
+import { createRunningMarker, createSessionStatusSignal } from './session-status-markers.js'
 import { createSessionCardReveal } from './session-card-reveal.js'
 import { createSessionSummaryPreview, scrollSummaryTitle } from './session-summary-preview.js'
 import { ensureFacilityGraphic, ensureFacilityTextureDefs, renderFacilityGraphic } from './facility-vector.js'
@@ -224,20 +225,6 @@ function ensureFacilitySpine(document, row, kind, next) {
   return spine
 }
 
-
-function createRunningMarker(document) {
-  const svgNode = name => document.createElementNS('http://www.w3.org/2000/svg', name)
-  const marker = svgNode('g')
-  marker.setAttribute('data-prts-running-marker', '')
-  const letter = svgNode('text')
-  letter.setAttribute('x', '12')
-  letter.setAttribute('y', '16')
-  letter.textContent = 'A'
-  const ring = svgNode('circle')
-  for (const [key, value] of Object.entries({cx:12, cy:12, r:10, 'stroke-dasharray':'4.5 11.208'})) ring.setAttribute(key, value)
-  marker.append(letter, ring)
-  return marker
-}
 
 export function createSidebarControlAdapter({ document, window, sessions, workspaces, getSessionStatus, getUiWorkspace, getUiConversation, getSessions, getWorkspaces, getContextMenus }) {
   let previewPreferences = {}
@@ -561,19 +548,6 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     })
   }
 
-  function statusSignal(document, state) {
-    const signal = state === 'ongoing'
-      ? document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      : document.createElement('span')
-    if (state === 'ongoing') {
-      signal.setAttribute('viewBox', '0 0 24 24')
-      signal.append(createRunningMarker(document))
-    }
-    signal.setAttribute('data-prts-session-summary-signal', state)
-    signal.setAttribute('aria-hidden', 'true')
-    return signal
-  }
-
   function buildSummaryGroup(state, label, items) {
     const group = document.createElement('span')
     group.setAttribute('data-prts-session-summary-group', state)
@@ -589,7 +563,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     trigger.setAttribute('data-prts-session-summary-trigger', state)
     trigger.setAttribute('aria-haspopup', 'menu')
     trigger.setAttribute('aria-label', `${label} ${items.length}`)
-    trigger.append(statusSignal(document, state))
+    trigger.append(createSessionStatusSignal(document, state))
     const count = document.createElement('span')
     count.setAttribute('data-prts-session-summary-count', '')
     count.textContent = String(items.length)
@@ -724,7 +698,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       button.type = 'button'
       button.setAttribute('role', 'menuitem')
       button.setAttribute('data-prts-session-summary-item', item.id)
-      button.append(statusSignal(document, state))
+      button.append(createSessionStatusSignal(document, state))
       const title = document.createElement('span')
       title.setAttribute('data-prts-summary-title', '')
       const text = document.createElement('span')

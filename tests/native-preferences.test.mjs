@@ -201,3 +201,20 @@ test('fresh installation uses native PRTS cursor without saving experimental def
   assert.equal(x.writes.length,0)
   x.store.dispose()
 })
+
+test('legacy shared spine overrides are materialized before either palette changes', async () => {
+  const fixture = setup()
+  const value = { ...DEFAULT_PREFERENCES, preferencesInitialized: true, workspaceSpineColor: '#abcdef', sessionSpineColor: '#123456', currentSessionSpineColor: '#fedcba' }
+  for (const key of ['workspaceSpineColorLight', 'sessionSpineColorLight', 'currentSessionSpineColorLight']) delete value[key]
+  fixture.state({ value })
+  fixture.store.bind(fixture.form)
+  await tick()
+  assert.deepEqual(fixture.writes[0].ops.map(operation => operation.path[0]), ['workspaceSpineColorLight', 'sessionSpineColorLight', 'currentSessionSpineColorLight', 'preferencesInitialized'])
+  fixture.store.update({ ...fixture.store.value, workspaceSpineColor: '#ffffff' })
+  await tick()
+  assert.equal(fixture.store.value.workspaceSpineColor, '#ffffff')
+  assert.equal(fixture.store.value.workspaceSpineColorLight, '#abcdef')
+  assert.equal(fixture.store.value.sessionSpineColorLight, '#123456')
+  assert.equal(fixture.store.value.currentSessionSpineColorLight, '#fedcba')
+  fixture.store.dispose()
+})

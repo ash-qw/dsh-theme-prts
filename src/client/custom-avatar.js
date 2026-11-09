@@ -64,8 +64,8 @@ export function createAvatarStore({window,document}){
 }
 
 export function avatarMarkup(){
-  return `<section data-prts-avatars hidden>
-    <header><strong>Baker 头像</strong><small>点击头像调整图片与裁剪范围，所有会话共用。</small></header>
+  return `<section data-prts-avatars data-prts-settings-group hidden>
+    <header><h3 data-prts-settings-group-title>Baker 头像</h3><small>点击头像调整图片与裁剪范围，所有会话共用。</small></header>
     <div data-prts-avatar-choices>${roles.map(role=>`<div data-prts-avatar-row="${role}">
       <button type="button" data-prts-avatar-preview="${role}" aria-label="设置${role==='user'?'用户':'AI'}头像"></button>
       <span><strong>${role==='user'?'用户头像':'AI 头像'}</strong><small>点击编辑</small></span>

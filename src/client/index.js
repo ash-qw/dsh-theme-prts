@@ -1,3 +1,4 @@
+import { applySpineColors, SPINE_COLOR_KEYS } from './spine-colors.js'
 import { createThemeTransfer } from './theme-transfer.js'
 import { createBackgroundStore } from './custom-background.js'
 import { createNativePreferences } from './native-preferences.js'
@@ -224,6 +225,10 @@ export function applyPrtsPlugin(ctx, environment) {
         persistAndApply(updatePreferenceValue(preferences, key, value))
       },
       onPreferencePreview(key, value) {
+        if (SPINE_COLOR_KEYS.has(key)) {
+          applySpineColors(document.documentElement, { ...preferences, [key]: value })
+          return
+        }
         if (key === 'cornerColor' || key === 'cornerColorLight') {
           const properties = preferences.cornerColorLinked ? ['--prts-corner-color-light', '--prts-corner-color-dark'] : [key === 'cornerColorLight' ? '--prts-corner-color-light' : '--prts-corner-color-dark']
           for (const property of properties) document.documentElement.style.setProperty(property, String(value))

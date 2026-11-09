@@ -1,4 +1,6 @@
+import { sessionStatusSignalMarkup } from './session-status-markers.js'
 import { mountPageControls } from './page-controls.js'
+import { spineColorMarkup, renderSpineColors } from './spine-colors.js'
 import { themeTransferMarkup, mountThemeTransfer } from './theme-transfer-panel.js'
 import { backgroundMarkup, mountBackgroundSettings } from './custom-background.js'
 import { avatarMarkup, mountAvatarSettings } from './custom-avatar.js'
@@ -40,8 +42,8 @@ const PARTICLE_OPTIONS = [
   ['precise', '精细', 18],
 ]
 
-function previewSetting(key, label, description) {
-  return settingButtons(key, label, []).replace('</strong>', `</strong><small data-prts-preview-setting-description>${description}</small>`)
+function previewSetting(key, label, description, state) {
+  return settingButtons(key, label, []).replace('<strong>', key === 'aiToolsEnabled' ? '<strong data-prts-settings-group-title role="heading" aria-level="3">' : '<strong>' + (state ? '<span data-prts-settings-status-marker="' + state + '">' + sessionStatusSignalMarkup(state) + '</span>' : '')).replace('</strong>', `</strong><small data-prts-preview-setting-description>${description}</small>`)
 }
 
 function settingButtons(key, label, options) {
@@ -162,35 +164,42 @@ export function themeSettingsMarkup() {
         </div>
         <div data-prts-theme-settings-scroll>
           <section data-prts-settings-section="appearance" role="tabpanel" id="prts-page-appearance" aria-labelledby="prts-tab-appearance" tabindex="0">
-          <section data-prts-conversation-settings>
-            <header><strong>会话主题</strong><small>选择消息的呈现方式</small></header>
+          <section data-prts-conversation-settings data-prts-settings-group="first">
+            <header><h3 data-prts-settings-group-title>会话主题</h3><small>选择消息的呈现方式</small></header>
             <div data-prts-conversation-cards>
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="native" aria-pressed="false"><span data-prts-conversation-sample="classic" aria-hidden="true"><i></i><i></i></span><strong>经典</strong><small>简洁正文，保留熟悉的阅读布局</small></button>
               <button type="button" data-prts-setting-key="conversationStyle" data-prts-setting-value="deck-chat" aria-pressed="false"><span data-prts-conversation-sample="baker" aria-hidden="true"><i></i><i></i></span><strong>Baker</strong><small>终末地通讯风格，圆形头像与消息气泡</small></button>
             </div>
             <div data-prts-classic-options>${settingButtons('conversationEmblem', '正文徽记', [])}</div>
             ${avatarMarkup()}
-            <div data-prts-baker-options>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}</div>
+            <div data-prts-baker-options data-prts-settings-group><h3 data-prts-settings-group-title>Baker 消息选项</h3>${settingButtons('bakerGroupAvatars', '合并过程回复头像', [])}${settingButtons('bakerLoading', '回复完成前显示加载动画', [])}</div>
           </section>
           </section>
           <section data-prts-settings-section="background" role="tabpanel" id="prts-page-background" aria-labelledby="prts-tab-background" tabindex="0" hidden>
             ${backgroundMarkup(settingButtons('heroContrast', '新会话徽记增强', []))}
-            <div data-prts-composer-glass-setting>${settingButtons('composerGlass', '输入框增强毛玻璃', [])}</div>
+            <div data-prts-composer-glass-setting data-prts-settings-group><h3 data-prts-settings-group-title>输入框材质</h3>${settingButtons('composerGlass', '输入框增强毛玻璃', [])}</div>
             <small data-prts-composer-glass-required hidden>自定义背景下，输入框增强毛玻璃始终开启。</small>
           </section>
           <section data-prts-settings-common data-prts-settings-section="interaction" role="tabpanel" id="prts-page-interaction" aria-labelledby="prts-tab-interaction" tabindex="0" hidden>
             <div data-prts-settings-common-grid>
+              <section data-prts-settings-group="first"><h3 data-prts-settings-group-title>交互行为</h3>
               ${COMMON_CONTROLS.filter(([key]) => ['cursor', 'railDefaultHidden', 'motion'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
-              <div data-prts-setting-row="cornerColor"><span><span data-prts-corner-heading><strong>交互提示框颜色</strong><span data-prts-corner-modes role="group" aria-label="编辑配色模式"><button type="button" data-prts-corner-mode="light" aria-pressed="false">☀ 日间</button><button type="button" data-prts-corner-mode="dark" aria-pressed="false">☾ 夜间</button></span><button type="button" data-prts-corner-sync role="switch" aria-checked="false" title="开启后，日间和夜间共用颜色"><span>日夜共用</span><i aria-hidden="true"></i></button></span><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small><small data-prts-setting-note>开启后，日夜都使用当前选定模式的配色，修改也保存到该模式；关闭后各用各的，另一套配色不变。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<span data-prts-corner-picker><button type="button" data-prts-corner-custom aria-expanded="false" title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" tabindex="-1"><span data-prts-color-editor hidden role="group" aria-label="自定义提示框颜色"><span data-prts-color-editor-title>自定义颜色</span><span data-prts-color-sample></span><label data-prts-color-hex-label>HEX<input data-prts-color-hex aria-label="HEX 颜色" maxlength="7" spellcheck="false"></label><label data-prts-color-channel><span>R</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="0" aria-label="R 通道"><output>0</output></label><label data-prts-color-channel><span>G</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="1" aria-label="G 通道"><output>0</output></label><label data-prts-color-channel><span>B</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="2" aria-label="B 通道"><output>0</output></label><span data-prts-color-actions><button type="button" data-prts-color-cancel>取消</button><button type="button" data-prts-color-apply>应用颜色</button></span></span></span></div></div>
+              </section>
+              <div data-prts-setting-row="cornerColor" data-prts-settings-group><span><span data-prts-corner-heading><strong data-prts-settings-group-title role="heading" aria-level="3">交互提示框颜色</strong><span data-prts-corner-modes role="group" aria-label="编辑配色模式"><button type="button" data-prts-corner-mode="light" aria-pressed="false">☀ 日间</button><button type="button" data-prts-corner-mode="dark" aria-pressed="false">☾ 夜间</button></span><button type="button" data-prts-corner-sync role="switch" aria-checked="false" title="开启后，日间和夜间共用颜色"><span>日夜共用</span><i aria-hidden="true"></i></button></span><small data-prts-setting-note>部分按钮和卡片的四角提示颜色，危险操作保持红色。</small><small data-prts-setting-note>开启后，日夜都使用当前选定模式的配色，修改也保存到该模式；关闭后各用各的，另一套配色不变。</small></span><div data-prts-corner-presets role="group" aria-label="交互提示框预设颜色">${[['黄色','#f0c800'],['白色','#ffffff'],['青色','#65ddb0'],['蓝色','#6eb7f3'],['紫色','#b487ef']].map(([name,color]) => `<button type="button" data-prts-corner-preset="${color}" aria-label="${name}" title="${name}" aria-pressed="false" style="--swatch:${color}"><i aria-hidden="true"></i></button>`).join('')}<span data-prts-corner-picker><button type="button" data-prts-corner-custom aria-expanded="false" title="选择自定义颜色"><i data-prts-corner-preview aria-hidden="true"></i><span>自定义</span></button><input type="color" data-prts-corner-color aria-label="交互提示框颜色" value="#f0c800" tabindex="-1"><span data-prts-color-editor hidden role="group" aria-label="自定义提示框颜色"><span data-prts-color-editor-title>自定义颜色</span><span data-prts-color-sample></span><label data-prts-color-hex-label>HEX<input data-prts-color-hex aria-label="HEX 颜色" maxlength="7" spellcheck="false"></label><label data-prts-color-channel><span>R</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="0" aria-label="R 通道"><output>0</output></label><label data-prts-color-channel><span>G</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="1" aria-label="G 通道"><output>0</output></label><label data-prts-color-channel><span>B</span><input type="range" min="0" max="255" step="1" data-prts-color-channel-index="2" aria-label="B 通道"><output>0</output></label><span data-prts-color-actions><button type="button" data-prts-color-cancel>取消</button><button type="button" data-prts-color-apply>应用颜色</button></span></span></span></div></div>
+              ${spineColorMarkup()}
             </div>
           </section>
           <section data-prts-settings-section="ai-tools" data-prts-ai-tools role="tabpanel" id="prts-page-ai-tools" aria-labelledby="prts-tab-ai-tools" tabindex="0" hidden>
-            <div data-prts-preview-settings><div data-prts-preview-master>
+            <div data-prts-preview-settings data-prts-settings-group="first" data-prts-ai-permission>
+            <small data-prts-ai-permission-label>权限控制 · 当前 DSH 实例</small><div data-prts-preview-master>
             ${previewSetting('aiToolsEnabled', '允许 AI 定制主题', '默认开启 · 12 个定制工具，另有只读状态入口 · 影响此 DSH 实例的所有会话')}
-            </div></div>
+            </div>
             <p>开启后，AI 可以通过工具调整粒子徽记、Baker 头像和背景图片、保护区域、背景模式、遮罩与材质，以及导入、导出主题配置。关闭后停止提供定制工具，仅保留只读状态入口，提示 AI 请你手动开启开关，不自行改文件绕过。手动设置不受影响；已有对话中的工具记录不会删除。</p>
-            <section>
-              <h3>粒子徽记 <small>3 个工具</small></h3>
+            </div>
+            <section data-prts-settings-group data-prts-ai-guide>
+            <h3 data-prts-settings-group-title>使用说明</h3>
+            <section data-prts-ai-guide-part>
+              <h4 data-prts-settings-subtitle>粒子徽记 <small>3 个工具</small></h4>
               <p>将会话中的图片制作成粒子徽记，用于新会话页面或正文轮换。</p>
               <ol><li>上传图片，或让 AI 读取已生成的图片。</li><li>让 AI 制作草稿，调整轮廓、位置和缩放，先查看预览。</li><li>满意后明确要求应用到新会话徽记，或加入正文轮换。</li></ol>
               <blockquote>“把这张图片做成粒子徽记，先给我看看效果。”</blockquote>
@@ -200,8 +209,8 @@ export function themeSettingsMarkup() {
                 <dt><code>prts_emblem_apply</code></dt><dd>经你确认后，替换新会话徽记，或添加、替换正文轮换徽记。</dd>
               </dl><p>单张来源图片最大 8 MB。徽记设置跨工作区和会话共享。粒子预览不等同于原图；配置发生变化时，AI 需要重新核对后再应用。</p></details>
             </section>
-            <section>
-              <h3>Baker 头像 <small>2 个工具</small></h3>
+            <section data-prts-ai-guide-part>
+              <h4 data-prts-settings-subtitle>Baker 头像 <small>2 个工具</small></h4>
               <p>为用户和 AI 设置头像，调整圆形裁剪，或恢复默认头像。仅在 Baker 会话样式下显示。</p>
               <ol><li>上传图片，说明要修改用户头像还是 AI 头像。</li><li>让 AI 查看当前配置，再按你的要求替换、裁剪或恢复默认。</li></ol>
               <blockquote>“把这张图片设为 AI 头像，居中裁剪。”</blockquote>
@@ -210,8 +219,8 @@ export function themeSettingsMarkup() {
                 <dt><code>prts_avatar_apply</code></dt><dd>替换用户或 AI 头像、基于现有原图重新裁剪，或恢复默认头像。</dd>
               </dl><p>单图最大 5 MB、2500 万像素；裁剪支持 1～4 倍缩放。修改立即影响此实例所有会话，不会自动切换会话样式。替换后不保留旧原图；恢复默认会删除自定义原图。</p></details>
             </section>
-            <section>
-              <h3>会话背景 <small>4 个工具</small></h3>
+            <section data-prts-ai-guide-part>
+              <h4 data-prts-settings-subtitle>会话背景 <small>4 个工具</small></h4>
               <p>使用上传、AI 生成或搜索下载的图片设置背景，也可以调整重要区域保护、背景模式、遮罩和材质。</p>
               <ol><li>提供图片，或让具备相应工具的 AI 生成、寻找图片。</li><li>让 AI 将图片设为完整背景、左侧边栏背景或会话正文背景，再启用对应模式。</li></ol>
               <blockquote>“找一张适合阅读的背景图，设为完整背景，尽量保住图中的人物。”</blockquote>
@@ -222,8 +231,8 @@ export function themeSettingsMarkup() {
                 <dt><code>prts_background_configure</code></dt><dd>切换默认、分区或完整背景，调整遮罩及五个区域的模糊度、底色不透明度。</dd>
               </dl><p>支持 PNG、JPEG、WebP、AVIF，单图最大 10 MB、4000 万像素。图片在同一实例共享，模式、遮罩和材质在同一 profile 同步。替换或移除不保留旧图；切回默认背景会保留素材。图片列表按最近出现排序，并标记同名图片的最近版本。生成与搜索需要会话已有相应工具，下载或生成的本地图片可先用 read_image 读取，无需重新上传。工具不会自动启用主题总开关。</p></details>
             </section>
-            <section>
-              <h3>主题导入与导出 <small>3 个工具</small></h3>
+            <section data-prts-ai-guide-part>
+              <h4 data-prts-settings-subtitle>主题导入与导出 <small>3 个工具</small></h4>
               <p>在会话中导出主题文件，或上传主题文件，让 AI 先检查内容再导入。</p>
               <blockquote>“导出当前主题，包含素材。” “检查这个主题文件，告诉我会覆盖哪些设置。”</blockquote>
               <details><summary>工具说明与限制</summary><dl>
@@ -233,37 +242,48 @@ export function themeSettingsMarkup() {
               </dl><p>与设置界面文件互通，最大 160 MB。完整导入会清理被替换的旧背景和头像，并为自定义徽记生成新草稿；草稿约 200 份时清理较旧且未受保护的记录，正在使用的徽记受保护。预检 15 分钟内有效，仅限当前会话，配置发生变化后需重新预检。导入可能关闭主题或 AI 工具，请先核对变化；需要恢复时可重新导入备份文件。</p></details>
             </section>
             <details><summary>工具关闭时的提示</summary><p><code>prts_theme_status</code> 始终可用，仅报告开关状态和手动开启位置，不读取素材、不修改配置。AI 应先检查此状态；关闭时先提醒你开启，不通过脚本、接口或文件编辑绕过开关。</p></details>
+            </section>
           </section>
           <section data-prts-settings-section="assistance" role="tabpanel" id="prts-page-assistance" aria-labelledby="prts-tab-assistance" tabindex="0" hidden>
-            <section data-prts-preview-settings>
+            <section data-prts-preview-settings data-prts-preview-feature data-prts-settings-group="first">
               <div data-prts-preview-master>
-                ${previewSetting('sessionPreview', '会话状态预览', '在工作区右侧查看会话进度，无需切换当前会话')}
+                <div data-prts-preview-feature-heading>
+                  <h3 data-prts-settings-group-title>会话状态预览</h3>
+                  <button type="button" role="switch" aria-label="会话状态预览" aria-checked="false" data-prts-setting-switch="sessionPreview"><span aria-hidden="true"></span></button>
+                </div>
+                <p data-prts-preview-setting-description>在工作区右侧查看会话进度，无需切换当前会话</p>
               </div>
               <div data-prts-preview-options>
                 <section data-prts-preview-setting-group>
-                  <header><strong>悬停预览</strong><small>选择哪些状态显示详细浮窗</small></header>
-                  ${previewSetting('previewOngoing', '运行中预览', '逐轮查看已完成的回复，最新内容置顶')}
+                  <header><h4 data-prts-settings-subtitle>悬停预览</h4><small>选择哪些状态显示详细浮窗</small></header>
+                  <div data-prts-preview-status="ongoing" role="group" aria-label="运行中预览选项">
+                  ${previewSetting('previewOngoing', '运行中预览', '逐轮查看已完成的回复，最新内容置顶', 'ongoing')}
                   <div data-prts-preview-details="previewOngoing">
                   ${previewSetting('previewTools', '显示工具调用', '显示工具进度，悬停查看最新正文之后的调用记录')}
                   <label data-prts-setting-row="previewReplyLimit"><span><strong>回复条数</strong><small data-prts-preview-setting-description>仅保留最新回复</small></span><select data-prts-preview-reply-limit aria-label="最多显示回复"><option value="5">最新 5 条</option><option value="10">最新 10 条</option><option value="0">不限制</option></select></label>
                   ${previewSetting('previewFollowOngoing', '运行结束后跟随', '转为待处理或已完成时，自动切换预览')}
                   </div>
-                  ${previewSetting('previewWarning', '待处理预览（回答与审批）', '查看问题或审批请求，并直接提交选择')}
+                  </div>
+                  <div data-prts-preview-status="warning" role="group" aria-label="待处理预览选项">
+                  ${previewSetting('previewWarning', '待处理预览（回答与审批）', '查看问题或审批请求，并直接提交选择', 'warning')}
                   <div data-prts-preview-details="previewWarning">
                   ${previewSetting('previewFollowWarning', '待处理结束后跟随', '回答或审批后继续跟随；关闭则留在待处理列表')}
                   </div>
-                  ${previewSetting('previewDone', '已完成预览', '查看本轮最终回复')}
+                  </div>
+                  <div data-prts-preview-status="done" role="group" aria-label="已完成预览选项">
+                  ${previewSetting('previewDone', '已完成预览', '查看本轮最终回复', 'done')}
+                  </div>
 
                 </section>
                 <section data-prts-preview-setting-group>
-                  <header><strong>快捷操作</strong></header>
+                  <header><h4 data-prts-settings-subtitle>快捷操作</h4></header>
                   ${previewSetting('previewDoubleClick', '双击浮窗进入会话', '双击正文或空白区域，打开对应会话')}
                 </section>
               </div>
             </section>
           </section>
           <section data-prts-settings-common data-prts-settings-section="flow" role="tabpanel" id="prts-page-flow" aria-labelledby="prts-tab-flow" tabindex="0" hidden>
-            <div data-prts-settings-common-grid>
+            <div data-prts-settings-common-grid data-prts-settings-group="first"><h3 data-prts-settings-group-title>会话流线</h3>
               ${COMMON_CONTROLS.filter(([key]) => ['sessionFlow', 'sessionGlow', 'sessionFlowPalette'].includes(key)).map(([key, label, options]) => settingButtons(key, label, options)).join('')}
               ${sessionFlowColorMarkup()}
               <label data-prts-setting-row="sessionFlowSpeed" data-prts-setting-range-row data-prts-session-flow-speed>
@@ -277,8 +297,8 @@ export function themeSettingsMarkup() {
           <section data-prts-settings-advanced data-prts-settings-section="particles" role="tabpanel" id="prts-page-particles" aria-labelledby="prts-tab-particles" tabindex="0" hidden>
             <div data-prts-settings-advanced-content>
               ${customEmblemMarkup()}
-              <section data-prts-particle-detail>
-                <header><strong>粒子精度</strong><span>同时调整会话与新会话徽记</span><output data-prts-advanced-summary>标准</output></header>
+              <section data-prts-particle-detail data-prts-settings-group>
+                <header><h3 data-prts-settings-group-title>粒子精度</h3><span>同时调整会话与新会话徽记</span><output data-prts-advanced-summary>标准</output></header>
                 <div role="radiogroup" aria-label="粒子精度">${particleMarkup()}</div>
                 <label data-prts-setting-row="particleTraversalSpeed" data-prts-setting-range-row data-prts-particle-traversal>
                   <span><strong>跟随移动速度</strong><small>控制普通会话徽记移动及破碎重组的滚动距离</small></span>
@@ -343,6 +363,7 @@ export function createThemeSettingsOverlay({
       slider.style.background = 'linear-gradient(to right,rgb(' + start.join(',') + '),rgb(' + end.join(',') + '))'
     }
   }
+  let spineEditMode = 'dark'
   let cornerEditMode = 'dark'
   const cornerMode = () => currentPreferences?.cornerColorLinked ? currentPreferences.cornerColorSource : cornerEditMode
   const cornerKey = () => cornerMode() === 'light' ? 'cornerColorLight' : 'cornerColor'
@@ -416,6 +437,7 @@ export function createThemeSettingsOverlay({
     panel.setAttribute('aria-hidden', String(!isOpen))
     if (isOpen) {
       cornerEditMode = document.documentElement.getAttribute('data-prts-scheme') === 'light' ? 'light' : 'dark'
+      spineEditMode = cornerEditMode
       renderState()
       previousFocus = document.activeElement
       onOpen()
@@ -651,6 +673,7 @@ export function createThemeSettingsOverlay({
       button.setAttribute('aria-pressed', String(selected))
       if (button.getAttribute('role') === 'radio') button.setAttribute('aria-checked', String(selected))
     }
+    renderSpineColors(panel, currentPreferences, spineEditMode)
     const motionStatus = panel.querySelector('[data-prts-effective-motion]')
     if (motionStatus) motionStatus.hidden = !(currentPreferences.motion === 'system' && motionMedia?.matches)
     const transparency = panel.querySelector('[data-prts-transparency-status]')
@@ -709,6 +732,10 @@ export function createThemeSettingsOverlay({
     if (!event.target?.closest?.('[data-prts-corner-picker]')) closeColorEditor()
     const target = event.target?.closest?.('button')
     if (!target) return
+    if (target.hasAttribute('data-prts-spine-swatch')) { onPreferenceChange(target.dataset.prtsSpineKey, target.dataset.prtsSettingValue); return }
+    if (target.hasAttribute('data-prts-spine-mode')) { spineEditMode = target.dataset.prtsSpineMode; renderState(); return }
+    if (target.hasAttribute('data-prts-spine-sync')) { if (currentPreferences.spineColorLinked) spineEditMode = currentPreferences.spineColorSource; onPreferenceChange('spineColorLink', currentPreferences.spineColorLinked ? false : spineEditMode); return }
+    if (target.hasAttribute('data-prts-spine-reset')) { spineEditMode = document.documentElement.dataset.prtsScheme === 'light' ? 'light' : 'dark'; onPreferenceChange('spineColorsReset'); return }
     if (target.hasAttribute('data-prts-corner-mode')) { onPreferencePreview(cornerKey(), currentPreferences[cornerKey()]); cornerEditMode = target.dataset.prtsCornerMode; renderState(); return }
     if (target.hasAttribute('data-prts-corner-sync')) { if (currentPreferences.cornerColorLinked) cornerEditMode = currentPreferences.cornerColorSource; onPreferenceChange('cornerColorLink', currentPreferences.cornerColorLinked ? false : cornerEditMode); return }
     if (target.hasAttribute('data-prts-color-cancel')) { closeColorEditor(true); return }
@@ -782,6 +809,7 @@ export function createThemeSettingsOverlay({
     }
     if (target?.matches?.('[data-prts-corner-color]')) { onPreferencePreview(cornerKey(), target.value); return }
     if (target?.matches?.('[data-prts-preview-reply-limit]')) { onPreferenceChange('previewReplyLimit', Number(target.value)); return }
+    if (target?.matches?.('[data-prts-spine-color]')) { onPreferencePreview(target.dataset.prtsSettingKey, target.value); return }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       const key = target.dataset.prtsSettingKey
       const value = normalizeSessionFlowColor(target.value, currentSessionFlowColor(key))
@@ -845,6 +873,10 @@ export function createThemeSettingsOverlay({
     const target = event.target
     if (target?.matches?.('[data-prts-cursor-mode]')) { if (event.type === 'change') onPreferenceChange('cursor', target.value); return }
     if (target?.matches?.('[data-prts-corner-color]')) { if (event.type === 'change') onPreferenceChange(cornerCustomKey(), target.value); return }
+    if (target?.matches?.('[data-prts-spine-color]')) {
+      if (event.type === 'change') onPreferenceChange(target.dataset.prtsSettingKey, target.value)
+      return
+    }
     if (target?.matches?.('input[data-prts-setting-color]')) {
       if (event.type === 'change' || event.type === 'focusout') commitSessionFlowColor(target.dataset.prtsSettingKey)
       return

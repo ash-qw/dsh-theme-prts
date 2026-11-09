@@ -39,7 +39,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 287_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 287 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 297_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 297 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls)')
 })
 
 test('models the facility card as one notched face and one notched side spine', () => {
@@ -64,8 +64,9 @@ test('models the facility card as one notched face and one notched side spine', 
     'transform: scaleX(var(--prts-spine-rest))',
     'transform: translate3d(var(--prts-row-shift), 0, 0)',
   ])
-  assert.match(css, /\[data-prts-workspace-row\]::before\s*\{[^}]*background:\s*var\(--prts-cyan\)/s)
-  assert.match(css, /\[data-prts-session-row\]:is\(\[data-prts-selection-target="true"\], \[aria-selected="true"\]:not\(\[data-prts-selection-target="false"\]\)\)::before\s*\{[^}]*background:\s*var\(--prts-yellow\)/s)
+  assert.match(css, /\[data-prts-workspace-row\]::before\s*\{[^}]*background:\s*var\(--prts-workspace-spine-color, var\(--prts-cyan\)\)/s)
+  assert.match(css, /\[data-prts-session-row\]:is\(\[data-prts-selection-target="true"\], \[aria-selected="true"\]:not\(\[data-prts-selection-target="false"\]\)\)::before\s*\{[^}]*background:\s*var\(--prts-current-session-spine-color, var\(--prts-yellow\)\)/s)
+  assert.match(css, /background:\s*var\(--prts-session-spine-color, var\(--prts-line-strong\)\)/)
   assert.doesNotMatch(css, /\[aria-selected="true"\][^{]*\[data-prts-facility-face\][^{]*\{[^}]*yellow/s)
   assert.doesNotMatch(css, /\b(?:chassis|shoulder|bracket|foot|feet)\b/i)
 })

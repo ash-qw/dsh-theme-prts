@@ -57,6 +57,7 @@ export function mountPageControls({panel,window}){
   const present=(popup,button)=>{
     popup.showPopover()
     const rect=button.getBoundingClientRect()
+    active.anchor=rect
     popup.style.minWidth=Math.min(260,Math.max(160,rect.width))+'px'
     const size=popup.getBoundingClientRect()
     popup.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-size.width-8))+'px'
@@ -101,7 +102,7 @@ export function mountPageControls({panel,window}){
     control.setAttribute('aria-hidden','true')
     const sync=()=>{
       button.disabled=control.disabled
-      const text=isSelect?(control.selectedOptions[0]?.textContent || ''):''
+      const text=isSelect?(control.selectedOptions[0]?.textContent || ''):(control.dataset.prtsColorCaption || '')
       if(caption.textContent!==text){caption.textContent=text;if(tipTarget===button)showTip(button,control.selectedOptions[0]?.dataset.description)}
       if(!isSelect){button.classList.add('prts-page-color');button.style.setProperty('--sample',control.value);button.title=control.value.toUpperCase()}
     }
@@ -174,7 +175,11 @@ export function mountPageControls({panel,window}){
     cleanups.push(()=>{observer.disconnect();control.removeEventListener('change',sync);delete control.value;button.remove();control.removeAttribute('data-prts-native-model');control.removeAttribute('aria-hidden');control.removeAttribute('tabindex')})
   }
   const outside=e=>{if(active&&!active.popup.contains(e.target)&&!active.button.contains(e.target))close()}
-  const scroll=e=>{if(active && (e.target===document || e.target.contains?.(active.button)) && !active.popup.contains(e.target))close()}
+  const scroll=event=>{
+    if(!active || !(event.target===document || event.target.contains?.(active.button)) || active.popup.contains(event.target))return
+    const rect=active.button.getBoundingClientRect()
+    if(rect.top!==active.anchor?.top || rect.left!==active.anchor?.left)close()
+  }
   document.addEventListener('pointerdown',outside,true)
   document.addEventListener('focusin',outside,true)
   const dismiss=()=>close()

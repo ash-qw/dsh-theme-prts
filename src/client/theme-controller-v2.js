@@ -1,3 +1,4 @@
+import { applySpineColors } from './spine-colors.js'
 import { createCursorAdapter } from './cursor-adapter.js'
 import { normalizePreferences } from './preferences.js'
 
@@ -126,6 +127,7 @@ export function createThemeController({ document, window, cssText, service, curs
     root.style.removeProperty('--prts-classic-user-blur')
     for (const attribute of ROOT_ATTRIBUTES) root.removeAttribute(attribute)
     for (const property of Object.keys(SESSION_FLOW_COLOR_PROPERTIES)) root.style.removeProperty(property)
+    applySpineColors(root)
     clearTransitionState()
   }
 
@@ -769,6 +771,7 @@ export function createThemeController({ document, window, cssText, service, curs
       root.dataset.prtsSessionFlowPalette = preferences.sessionFlowPalette
       root.dataset.prtsSessionFlowSpeed = String(preferences.sessionFlowSpeed)
       for (const [property, key] of Object.entries(SESSION_FLOW_COLOR_PROPERTIES)) root.style.setProperty(property, preferences.cornerColorLinked && (key === 'cornerColor' || key === 'cornerColorLight') ? preferences[preferences.cornerColorSource === 'light' ? 'cornerColorLight' : 'cornerColor'] : preferences[key])
+      applySpineColors(root, preferences)
       root.dataset.prtsConversationStyle = preferences.conversationStyle
       root.toggleAttribute('data-prts-baker-individual-avatars', preferences.conversationStyle === 'deck-chat' && !preferences.bakerGroupAvatars)
       root.toggleAttribute('data-prts-baker-loading', preferences.bakerLoading === true)

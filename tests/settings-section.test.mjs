@@ -382,7 +382,7 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
   const document = dom.window.document
   assert.equal(document.querySelector('[data-prts-theme-settings]').tagName, 'DIALOG')
   assert.equal(document.querySelectorAll('[data-prts-preset-card]').length, 0)
-  assert.equal(document.querySelectorAll('[data-prts-settings-group]').length, 0)
+  assert.equal(document.querySelectorAll('[data-prts-settings-group]').length, 15)
   assert.ok(document.querySelector('[data-prts-settings-common]'))
   assert.equal(document.querySelector('[data-prts-settings-diagnostic]'), null)
   assert.equal(document.querySelectorAll('[data-prts-option-sample="texture"]').length, 0)
@@ -413,7 +413,8 @@ test('Rhodes mark overlay owns the complete visual controls without retired opti
     [['triad', '三色'], ['rhodes', '青蓝'], ['amber', '金黄'], ['alert', '赤红'], ['custom', '自定义']],
   )
   assert.equal(document.querySelectorAll('[data-prts-option-sample="sessionFlowPalette"]').length, 5)
-  assert.equal(document.querySelectorAll('[data-prts-setting-color]').length, 3)
+  assert.equal(document.querySelectorAll('[data-prts-session-flow-color-inputs] [data-prts-setting-color]').length, 3)
+  assert.equal(document.querySelectorAll('[data-prts-spine-color]').length, 3)
   assert.equal(document.querySelectorAll('[data-prts-session-flow-preview-filament]').length, 3)
   assert.equal(document.querySelectorAll('[data-prts-session-flow-preview-layer]').length, 9)
   assert.deepEqual(

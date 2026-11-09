@@ -35,7 +35,7 @@ export function createNativePreferences({ storage, onChange }) {
           if (s.value[key] !== host[key] && !Object.hasOwn(pending, key) && !Object.hasOwn(inFlight, key) && !Object.hasOwn(failed, key)) pending[key] = host[key]
         }
       }
-      for (const key of ['rightSidebarOpacity', 'rightSidebarBlur', 'cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource']) {
+      for (const key of ['rightSidebarOpacity', 'rightSidebarBlur', 'cornerColorLight', 'cornerCustomColorLight', 'cornerColorSource', 'workspaceSpineColorLight', 'sessionSpineColorLight', 'currentSessionSpineColorLight']) {
         if (s.value[key] == null && !Object.hasOwn(pending, key) && !Object.hasOwn(inFlight, key) && !Object.hasOwn(failed, key)) pending[key] = host[key]
       }
     }
