@@ -155,6 +155,7 @@ test('pairs the active-session filament with a hover-only pickup and keeps the n
     '[data-prts-session-lifeline-layer="body"]',
     '[data-prts-session-lifeline-layer="core"]',
     ':is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline]',
+    'html[data-dsh-prts]:not([data-prts-session-flow="off"]) [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline]',
     '[data-prts-session-flow="off"]',
     '[data-prts-session-glow="on"]',
     '[data-prts-session-glow="off"]',

@@ -516,7 +516,7 @@ html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data
   stroke-width: .52;
 }
 
-html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline] {
+html[data-dsh-prts]:not([data-prts-session-flow="off"]) [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline] {
   opacity: .98;
 }
 
