@@ -50,6 +50,32 @@ test('classifies body portals while leaving embedded application dialogs alone',
   assert.equal(document.querySelector('[data-prts-floating-scrim]'), null)
 })
 
+test('native wrapped inputs keep their own layout while standalone popup inputs remain themed', async () => {
+  const dom = new JSDOM('<body><div role="menu"><span class="_wrap_fixture_1"><input class="_input_fixture_25" role="searchbox"></span><span class="custom-wrap"><input class="_input_fixture_25"></span><input aria-label="Standalone"></div></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  try {
+    adapter.start()
+    const menu = document.querySelector('[role="menu"]')
+    const search = menu.querySelector('[role="searchbox"]')
+    const wrapper = search.parentElement
+    assert.equal(search.hasAttribute('data-prts-floating-input'), false)
+    assert.ok(menu.querySelector('.custom-wrap input').hasAttribute('data-prts-floating-input'))
+    assert.ok(menu.querySelector('[aria-label="Standalone"]').hasAttribute('data-prts-floating-input'))
+    menu.append(search)
+    await flush(dom.window)
+    assert.ok(search.hasAttribute('data-prts-floating-input'))
+    wrapper.append(search)
+    await flush(dom.window)
+    assert.equal(search.hasAttribute('data-prts-floating-input'), false)
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-floating-input], [data-prts-floating-glass]'), null)
+  } finally {
+    adapter.dispose()
+    dom.window.close()
+  }
+})
+
 for (const slot of ['settings.section', 'settings.plugins.tab']) {
   test(`preserves embedded ${slot} controls while adapting independent nested popups`, async () => {
     const dom = new JSDOM('<body><div role="presentation"><div role="dialog" aria-modal="true"><div data-slot="' + slot + '"></div></div></div></body>', { pretendToBeVisual: true })
