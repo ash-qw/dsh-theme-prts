@@ -42,6 +42,14 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.ok(Buffer.byteLength(css + addedCss) < 300_500, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 300.5 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices)')
 })
 
+test('restored card focus stays idle without hiding focused menu buttons or touching native focus', () => {
+  assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*:is\(:hover, :focus-visible, /)
+  assert.match(css, /\[data-dsh-automatic-focus\]:focus-visible\s*\{\s*outline:\s*none !important;/)
+  assert.match(css, /@media \(hover: hover\)\s*\{\s*html\[data-dsh-prts\][^{]*\[data-dsh-automatic-focus\]:focus:not\(:hover, \[data-prts-row-menu-open\]\)[^{]*\[data-prts-session-actions\]\)\s*\{\s*display:\s*none;/)
+  assert.match(css, /\[data-dsh-automatic-focus\]:focus:not\(:hover, \[data-prts-row-menu-open\]\) \[data-prts-session-resting\]\s*\{\s*display:\s*inline-flex !important;/)
+  assert.doesNotMatch(css, /:has\(:focus-visible:not\(\[data-dsh-automatic-focus\]\)\)/)
+})
+
 test('models the facility card as one notched face and one notched side spine', () => {
   includesAll([
     '--prts-workspace-height: var(--prts-workspace-custom-height, 36px)',
@@ -76,9 +84,9 @@ test('models the facility card as one notched face and one notched side spine', 
 test('keeps the spine left edge fixed and moves the facility face to the right on expansion', () => {
   assert.match(css, /\[data-slot="sidebar\.workspaces"\] \[role="tree"\][^{]*\{[^}]*overflow-x:\s*hidden;/s)
   assert.match(css, /\[data-prts-(?:workspace|session)-row\]::before\s*\{[\s\S]*?inset:\s*0 auto 0 0;[\s\S]*?width:\s*var\(--prts-spine-width\);[\s\S]*?transform-origin:\s*left center;/)
-  assert.match(css, /:is\(:hover, :focus-visible, :has\(:focus-visible\), \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
+  assert.match(css, /:is\(:hover, :focus-visible:not\(\[data-dsh-automatic-focus\]\), :has\(:focus-visible\), \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
   assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*:is\(:hover, :focus-within, /)
-  assert.match(css, /:focus-within:not\(:focus:not\(:focus-visible\), :has\(:focus:not\(:focus-visible\)\)\)/)
+  assert.match(css, /:focus-within:not\(:focus:is\(\[data-dsh-automatic-focus\], :not\(:focus-visible\)\), :has\(:focus:not\(:focus-visible\)\)\)/)
   assert.match(css, /\[data-prts-facility-face\][^{]*\{[^}]*transform:\s*translate3d\(var\(--prts-row-shift\), 0, 0\)/s)
   assert.doesNotMatch(css, /\[data-prts-facility-face\][^{]*\{[^}]*transition:[^;]*(?:left|width|height)/s)
   assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*\{[^}]*transition:[^;]*(?:left|width|height)/s)

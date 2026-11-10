@@ -332,13 +332,13 @@ html[data-dsh-prts][data-prts-scheme="light"] [data-prts-workspace-row] {
 }
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"],
-html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) {
+html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) {
   --prts-silhouette-far-opacity: .24;
   --prts-silhouette-near-opacity: .52;
 }
 
 html[data-dsh-prts][data-prts-scheme="light"] [data-prts-workspace-row][aria-expanded="true"],
-html[data-dsh-prts][data-prts-scheme="light"] [data-prts-workspace-row]:is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) {
+html[data-dsh-prts][data-prts-scheme="light"] [data-prts-workspace-row]:is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) {
   --prts-silhouette-far-opacity: .25;
   --prts-silhouette-near-opacity: .5;
 }
@@ -639,7 +639,7 @@ html[data-dsh-prts] [data-prts-facility-spine] [data-prts-facility-layer="outlin
 }
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"] > [data-prts-facility-spine],
-html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible, :has(:focus-visible), [data-prts-row-menu-open]) > [data-prts-facility-spine] {
+html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) > [data-prts-facility-spine] {
   transform: scaleX(1);
 }
 
