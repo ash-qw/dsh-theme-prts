@@ -26,6 +26,80 @@ async function openHarness(page, width = 1440) {
   return errors
 }
 
+for (const scheme of ['dark', 'light']) {
+  for (const width of [1440, 390]) {
+    test(`0.2.2-rc.2 right sidebar search retains theme materials (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
+      const errors = await openHarness(page, width)
+      const expand = page.getByRole('button', { name: '打开右侧边栏', exact: true })
+      if (await expand.isVisible()) await expand.click()
+      const navigator = page.locator('[data-files-page] [data-files-navigator]:visible').first()
+      if (!await navigator.isVisible()) {
+        const guide = page.getByRole('button', { name: /工作区文件/ })
+        if (await guide.isVisible()) await guide.click()
+        else {
+          await page.locator('[data-dockkit-add-tab]:visible').first().click()
+          await page.getByRole('menuitem', { name: /工作区文件/ }).click()
+        }
+      }
+      await expect(navigator).toBeVisible()
+      await page.locator('html').evaluate((node, scheme) => {
+        node.dataset.prtsScheme = scheme
+        node.dataset.prtsGlass = 'standard'
+      }, scheme)
+      await expect(navigator).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      const pane = navigator.locator('xpath=ancestor::*[@data-dockkit-pane][1]')
+      expect(await pane.evaluate(node => getComputedStyle(node, '::before').backdropFilter)).toContain('blur(')
+      const search = navigator.locator('[data-files-search]')
+      if (!await search.isVisible()) await pane.locator('[data-files-search-toggle]').click()
+      await search.fill('prts')
+      await expect(navigator.locator('[data-files-body]')).toHaveAttribute('data-files-view', 'search')
+      await expect(navigator.locator('[data-files-body]')).toHaveAttribute('aria-busy', 'false')
+      await expect(navigator.locator('[data-files-search-status]')).not.toBeEmpty()
+      const trigger = navigator.locator('[data-files-search-settings-toggle]')
+      await trigger.click()
+      const settings = navigator.locator('[data-files-search-settings]')
+      await expect(settings).toBeVisible()
+      expect(await settings.getAttribute('aria-modal')).toBeNull()
+      await expect(settings).toHaveCSS('backdrop-filter', 'blur(22px) saturate(1.55)')
+      const add = settings.locator('input[type="text"]')
+      await expect(add).toBeFocused()
+      expect((await add.boundingBox()).height).toBeLessThan(40)
+      const bounds = await settings.boundingBox()
+      expect(bounds.x).toBeGreaterThanOrEqual(0)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width + 1)
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(900)
+      const rulesBefore = await settings.locator('input[type="checkbox"]').evaluateAll(nodes => nodes.map(node => ({ label: node.getAttribute('aria-label'), checked: node.checked })))
+      await add.fill('../')
+      await add.press('Enter')
+      await expect(add).toHaveAttribute('aria-invalid', 'true')
+      await expect(settings.getByRole('alert')).toBeVisible()
+      expect(await settings.locator('input[type="checkbox"]').evaluateAll(nodes => nodes.map(node => ({ label: node.getAttribute('aria-label'), checked: node.checked })))).toEqual(rulesBefore)
+      await page.locator('html').evaluate(node => node.dataset.prtsGlass = 'off')
+      await expect(settings).toHaveCSS('backdrop-filter', 'none')
+      await add.press('Escape')
+      await expect(settings).toBeHidden()
+      await expect(trigger).toBeFocused()
+      await search.fill('')
+      await expect(navigator.locator('[data-files-body]')).toHaveAttribute('data-files-view', 'tree')
+      if (width === 1440) {
+        const panel = navigator.locator('xpath=ancestor::*[@data-sidebar-right-panel][1]')
+        await panel.locator('[data-sidebar-right-mode="fullscreen"]').click()
+        await expect(panel).toHaveAttribute('data-sidebar-right-panel', 'fullscreen')
+        await expect(navigator).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await trigger.click()
+        await expect(settings).toBeVisible()
+        const fullscreenBounds = await settings.boundingBox()
+        expect(fullscreenBounds.x).toBeGreaterThanOrEqual(0)
+        expect(fullscreenBounds.x + fullscreenBounds.width).toBeLessThanOrEqual(width + 1)
+        await add.press('Escape')
+        await panel.locator('[data-sidebar-right-mode="push"]').click()
+        await expect(panel).toHaveAttribute('data-sidebar-right-panel', 'push')
+      }
+      expect(errors).toEqual([])
+    })
+  }
+}
+
 test('0.2.2-rc.2 loads the current client and authenticated theme services @live-rc0222', async ({ page, playwright }) => {
   const scripts = []
   page.on('response', response => {

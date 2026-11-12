@@ -1,0 +1,86 @@
+html[data-dsh-prts] [data-sidebar-right-panel] {
+  --dsw-alias-border-l3: var(--prts-line);
+  --dsw-alias-border-l4: var(--prts-line);
+  --dsw-alias-label-tertiary: var(--prts-muted);
+  --dsw-alias-label-caption: var(--prts-muted);
+  --dsw-alias-label-dimmed: var(--prts-dim);
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--prts-ink) 8%, transparent);
+  --dsw-alias-state-business-primary: var(--prts-cyan);
+  --dsw-focus-ring-color: var(--prts-cyan);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] :is([data-dockkit-host] > [data-dockkit-pane], [data-dockkit-empty]) {
+  border-color: var(--prts-line);
+  background: var(--prts-panel);
+  color: var(--prts-ink);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-dockkit-float] {
+  border-color: var(--prts-glass-border);
+  border-radius: var(--prts-radius-overlay);
+  background: var(--prts-active-glass);
+  box-shadow: var(--prts-shadow-glass-overlay);
+  -webkit-backdrop-filter: var(--prts-active-glass-filter);
+  backdrop-filter: var(--prts-active-glass-filter);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-navigator] {
+  border-color: var(--prts-line);
+  background: transparent;
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-navigator-mode="overlay"] {
+  border-radius: var(--prts-radius-card);
+  background: var(--prts-active-glass);
+  -webkit-backdrop-filter: var(--prts-active-glass-filter);
+  backdrop-filter: var(--prts-active-glass-filter);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-navigator] div:has(> [data-files-search]) {
+  border-color: var(--prts-line);
+  border-radius: var(--prts-radius-control);
+  background: color-mix(in srgb, var(--prts-panel) 88%, transparent);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-navigator] div:has(> [data-files-search]):focus-within {
+  border-color: var(--prts-cyan);
+  box-shadow: 0 0 0 1px var(--prts-cyan);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-search-settings] {
+  box-sizing: border-box;
+  border: 1px solid var(--prts-glass-border);
+  border-radius: var(--prts-radius-overlay);
+  background: var(--prts-active-glass);
+  color: var(--prts-ink);
+  box-shadow: var(--prts-shadow-glass-overlay);
+  -webkit-backdrop-filter: var(--prts-active-glass-filter);
+  backdrop-filter: var(--prts-active-glass-filter);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] :is([data-files-search], [data-files-search-settings] input[type="text"]) {
+  color: var(--prts-ink);
+  caret-color: var(--prts-cyan);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-search-settings] div:has(> input[type="text"]):focus-within {
+  border-color: var(--prts-cyan);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-search-settings] div:has(> input[aria-invalid="true"]) {
+  border-color: var(--prts-red);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-search-settings] input[type="checkbox"] {
+  accent-color: var(--prts-cyan);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] :is([data-files-search], [data-files-search-settings] input[type="text"])::placeholder {
+  color: var(--prts-dim);
+}
+
+html[data-dsh-prts] [data-sidebar-right-panel] :is([data-dockkit-strip], [data-dockkit-float-grip], [data-files-page], [data-files-navigator], [data-document-preview]) button:not(:disabled):focus-visible,
+html[data-dsh-prts] [data-sidebar-right-panel] [data-files-search-settings] input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--prts-cyan);
+  outline-offset: 2px;
+}
