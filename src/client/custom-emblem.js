@@ -250,7 +250,7 @@ export function customEmblemMarkup() {
       <ol data-prts-emblem-list></ol>
       <div data-prts-emblem-actions><button type="button" data-prts-emblem-add>新增徽记</button><button type="button" data-prts-emblem-reset-list>恢复内置列表</button></div>
     </div>
-    <dialog data-prts-emblem-reset-confirm hidden aria-label="确认恢复内置徽记">
+    <dialog data-prts-emblem-reset-confirm data-window-drag-exclude hidden aria-label="确认恢复内置徽记">
       <strong data-prts-emblem-reset-title></strong>
       <p>是否先导出自定义徽记？恢复内置后，以下徽记将从此处移除；未导出的素材将无法从设置中找回。请确认下载文件已保存，再恢复内置。</p>
       <div data-prts-emblem-reset-exports></div>
@@ -260,11 +260,11 @@ export function customEmblemMarkup() {
         <button type="button" data-prts-emblem-reset-proceed>确认恢复内置</button>
       </div>
     </dialog>
-    <dialog data-prts-emblem-discard hidden aria-label="放弃未应用的修改">
+    <dialog data-prts-emblem-discard data-window-drag-exclude hidden aria-label="放弃未应用的修改">
       <strong>放弃未应用的修改？</strong><p>当前预览和参数尚未应用，关闭后需要重新编辑。</p>
       <div data-prts-emblem-actions><button type="button" data-prts-emblem-keep autofocus>继续编辑</button><button type="button" data-prts-emblem-discard-apply>放弃修改</button></div>
     </dialog>
-    <dialog data-prts-emblem-workspace hidden aria-label="编辑粒子徽记">
+    <dialog data-prts-emblem-workspace data-window-drag-exclude hidden aria-label="编辑粒子徽记">
       <div data-prts-emblem-edit-header>
       <strong data-prts-emblem-target></strong>
       <button type="button" data-prts-emblem-cancel aria-label="关闭徽记编辑">×</button></div>

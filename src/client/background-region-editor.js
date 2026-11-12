@@ -1,7 +1,7 @@
 import { backgroundPlacement } from '../shared/background-region.js'
 
 export function backgroundRegionMarkup(slot) {
-  return `<dialog data-prts-region-editor="${slot}" aria-labelledby="prts-region-title-${slot}">
+  return `<dialog data-prts-region-editor="${slot}" data-window-drag-exclude aria-labelledby="prts-region-title-${slot}">
     <header><div><strong id="prts-region-title-${slot}">保护重要区域</strong><p>拖动框移动，拖动四边或四角缩放。横向优先保留中心，纵向优先保留顶端。</p></div><button type="button" data-prts-region-cancel aria-label="关闭保护区域设置">×</button></header>
     <div data-prts-region-workspace><section data-prts-region-original><strong>原图与保护框</strong><div data-prts-region-stage><img alt="背景原图" draggable="false"><div data-prts-region-box tabindex="0" role="group" aria-label="保护区域，方向键移动"><span>保护区域</span>${['nw','ne','sw','se','n','e','s','w'].map((corner,i)=>`<button type="button" data-prts-region-handle="${corner}" aria-label="调整${['左上角','右上角','左下角','右下角','上边','右边','下边','左边'][i]}，使用方向键"></button>`).join('')}</div><div data-prts-region-ruler="x"></div><div data-prts-region-ruler="y"></div></div><small>边缘刻度为图片坐标。可用方向键移动，Shift 加速。</small></section>
     <section data-prts-region-samples><strong>窗口裁剪预览</strong><p>${slot==='sidebar' ? '按当前侧栏高度等比例预览，包含导航栏背景。' : '白框标出保护区域，调整时同步更新。'}</p><div data-prts-region-preview-grid>${(slot==='sidebar' ? [['narrow','较窄侧栏 · 264px'],['wide','较宽侧栏 · 420px']] : [['wide','横向窗口 · 16:9'],['narrow','纵向窗口 · 9:16']]).map(([kind,label])=>`<figure><figcaption>${label}</figcaption><div data-prts-region-preview="${kind}"><i></i></div><small data-prts-region-warning hidden>此比例无法完整显示保护区域：横向保中心，纵向保顶端。</small></figure>`).join('')}</div></section></div>

@@ -88,7 +88,7 @@ export function backgroundMarkup(heroContrastControl = '') {
       ${backgroundRegionMarkup(slot)}
       <input type="file" data-prts-background-file="${slot}" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
     </article>`).join('')}</div>
-    <dialog data-prts-background-confirm aria-labelledby="prts-background-confirm-title" aria-describedby="prts-background-confirm-note">
+    <dialog data-prts-background-confirm data-window-drag-exclude aria-labelledby="prts-background-confirm-title" aria-describedby="prts-background-confirm-note">
       <header><small>会话背景</small><h2 id="prts-background-confirm-title"></h2></header>
       <div data-prts-background-compare>
         <figure><img data-prts-background-before alt="当前背景"><figcaption>当前背景</figcaption></figure>

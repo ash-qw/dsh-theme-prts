@@ -124,8 +124,8 @@ function sessionFlowColorMarkup() {
 }
 
 export function themeSettingsMarkup() {
-  return `<div data-prts-settings-backdrop hidden aria-hidden="true"></div>
-    <dialog id="prts-theme-settings" data-prts-theme-settings aria-label="P.R.T.S. 主题设置" aria-hidden="true">
+  return `<div data-prts-settings-backdrop data-window-drag-exclude hidden aria-hidden="true"></div>
+    <dialog id="prts-theme-settings" data-prts-theme-settings data-window-drag-exclude aria-label="P.R.T.S. 主题设置" aria-hidden="true">
       <div data-prts-settings-frame>
         <header data-prts-theme-settings-header>
           <span><small>P.R.T.S. / 设置</small><strong>主题设置</strong></span>

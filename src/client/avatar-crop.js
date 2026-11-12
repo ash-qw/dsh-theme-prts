@@ -2,6 +2,7 @@ import { mountFileDrop } from './file-drop.js'
 export function mountAvatarCrop({panel,window,load,onSave}){
   const dialog=panel.ownerDocument.createElement('dialog')
   dialog.setAttribute('data-prts-avatar-crop','')
+  dialog.setAttribute('data-window-drag-exclude','')
   dialog.setAttribute('aria-labelledby','prts-avatar-crop-title')
   dialog.innerHTML=`<header><strong id="prts-avatar-crop-title">头像设置</strong><label data-prts-avatar-upload>更换图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" data-crop-file aria-label="上传新头像"></label></header>
     <p>可拖入图片更换头像。拖动亮区选择头像范围，滚轮或触摸板调整大小。</p>
@@ -11,6 +12,7 @@ export function mountAvatarCrop({panel,window,load,onSave}){
     <footer><button type="button" data-crop-reset>恢复默认</button><span></span><button type="button" data-crop-cancel>取消</button><button type="button" data-crop-save>保存头像</button></footer>`
   const confirmation=panel.ownerDocument.createElement('dialog')
   confirmation.className='prts-page-confirm'
+  confirmation.setAttribute('data-window-drag-exclude','')
   confirmation.setAttribute('aria-labelledby','prts-avatar-reset-title')
   confirmation.innerHTML='<strong id="prts-avatar-reset-title">恢复默认头像？</strong><p>当前头像图片及裁剪设置将被移除。</p><footer><button type="button" data-keep>保留头像</button><button type="button" data-confirm>恢复默认</button></footer>'
   dialog.append(confirmation)

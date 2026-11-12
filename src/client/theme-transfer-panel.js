@@ -2,7 +2,7 @@ import { mountFileDrop } from './file-drop.js'
 import { checkTransferCancelled, readTransferFile, THEME_PACKAGE_LIMIT, validateThemePackage, describeThemePackage, ignoredThemePackageFields } from './theme-transfer.js'
 
 export function themeTransferMarkup() {
-  return `<dialog data-prts-transfer-dialog aria-labelledby="prts-transfer-title">
+  return `<dialog data-prts-transfer-dialog data-window-drag-exclude aria-labelledby="prts-transfer-title">
     <section data-prts-transfer>
       <header data-prts-transfer-heading><div><small>P.R.T.S. / 主题文件</small><h2 id="prts-transfer-title">导入与导出</h2></div><button type="button" data-prts-transfer-close aria-label="关闭导入与导出">×</button></header>
       <div data-prts-transfer-columns>
