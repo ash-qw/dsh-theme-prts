@@ -9,6 +9,7 @@ const CONTENT_HINT_SELECTOR = [
   '[data-markdown]',
   '[data-slot*="markdown" i]',
   '.markdown-body',
+  '[class*="_markdown_"]',
 ].join(', ')
 const EXCLUDED_SELECTOR = [
   '[role="toolbar"]',

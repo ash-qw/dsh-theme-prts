@@ -1311,7 +1311,7 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role
   left: -80px;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
+html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body, [class*="_markdown_"])),
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-ai-surface] {
   position: relative;
   box-sizing: border-box;
@@ -1338,39 +1338,26 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
 }
 
 html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
+  :where([data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body, [class*="_markdown_"]))),
   [data-prts-ai-surface],
   [data-message-role="assistant"],
   [data-message-role="user"],
   :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
-) :is([data-markdown], [class*="markdown" i]) {
+) {
+& :is([data-markdown], [class*="markdown" i]) {
   background: transparent !important;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-  [data-prts-ai-surface],
-  [data-message-role="assistant"],
-  [data-message-role="user"],
-  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
-) :is(pre, table, blockquote) {
+& :is(pre, table, blockquote) {
   border: 1px solid color-mix(in srgb, var(--prts-cyan) 24%, var(--prts-line));
   background: color-mix(in srgb, var(--prts-canvas) 88%, transparent);
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-  [data-prts-ai-surface],
-  [data-message-role="assistant"],
-  [data-message-role="user"],
-  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
-) :is(pre, code) {
+& :is(pre, code) {
   font-family: var(--prts-mono) !important;
 }
 
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-  [data-prts-ai-surface],
-  [data-message-role="assistant"],
-  [data-message-role="user"],
-  :is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
-) pre {
+& pre {
   max-width: 100%;
   overflow: auto;
   padding: 14px;
@@ -1378,11 +1365,6 @@ html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
   color: var(--prts-ink) !important;
 }
 
-/* Baker code cards and tables. */
-html[data-dsh-prts][data-prts-conversation-style="deck-chat"] :is(
-[data-prts-ai-surface], [data-message-role="assistant"], [data-message-role="user"],
-:is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])
-) {
 /* Clip preserves header stickiness. */
 & .md-code-block{
 box-sizing:border-box;max-width:100%;border:1px solid var(--prts-line);border-left:3px solid var(--prts-cyan);border-radius:12px;overflow:clip;
@@ -1862,7 +1844,7 @@ html[data-dsh-prts-settings] :is(.prts-plugin-settings button[role='switch'], [d
     border-radius: 16px 0 16px 16px !important;
   }
 
-  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body)),
+  html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"]) [class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body, [class*="_markdown_"])),
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-prts-ai-surface],
   html[data-dsh-prts][data-prts-conversation-style="deck-chat"] [data-message-role="assistant"] {
     padding: 10px 16px !important;

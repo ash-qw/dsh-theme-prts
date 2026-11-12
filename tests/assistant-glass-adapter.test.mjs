@@ -45,6 +45,17 @@ test('crosses the rc.7 display-contents slot and marks the real assistant body',
   adapter.dispose()
 })
 
+test('recognizes rc.2 hashed Markdown roots without legacy content attributes', () => {
+  const dom = domWith(`
+    <div data-chat-flow-kind="assistant-step">
+      <div class="decoration_body">装饰内容</div>
+      <div class="reply_body"><div class="_markdown_fixture_5"><p>真实回复</p></div></div>
+    </div>
+  `)
+  const step = dom.window.document.querySelector('[data-chat-flow-kind="assistant-step"]')
+  assert.equal(resolveAssistantSurface(step), step.querySelector('.reply_body'))
+})
+
 test('leaves 0.1.7 reasoning fragments native and marks only the answer', async () => {
   const dom = domWith(`
     <div data-chat-flow-kind="assistant-step" data-chat-group-part="reasoning">

@@ -223,11 +223,11 @@ test('keeps the native turn navigator while adding chat avatars and asymmetric b
     '[data-chat-flow-kind="assistant-step"]:not([data-chat-group-part="reasoning"])::before',
     ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering]))::after',
     ':is([data-chat-flow-kind="user"], [data-submission-echo]:not([data-pending-steering])) :is([data-message-bubble], [class$="_bubble"])',
-    '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body))',
+    '[class$="_body"]:has(:is([data-markdown], [data-slot*="markdown" i], .markdown-body, [class*="_markdown_"]))',
     '[data-prts-ai-surface]',
     'border-radius: 18px 0 18px 18px',
     'border-radius: 0 18px 18px 18px',
-    ') :is(pre, code)',
+    '& :is(pre, code)',
   ])
   assert.doesNotMatch(css, /\[data-conversation-scroll\]::before/)
   assert.doesNotMatch(css, /\[data-chat-flow-kind="assistant-step"\](?!:not\(\[data-chat-group-part="reasoning"\]\))/)

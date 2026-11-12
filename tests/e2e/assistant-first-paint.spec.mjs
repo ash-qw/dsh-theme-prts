@@ -31,7 +31,7 @@ for (const scheme of ['dark', 'light']) {
             <div data-chat-flow-kind="user"><div class="firstpaint_bubble"><div data-markdown>用户消息</div></div></div>
             <div data-chat-flow-kind="assistant-step" data-chat-group-part="response">
               <div data-slot="conversation.chat.node" style="display: contents">
-                <div class="firstpaint_root"><div class="firstpaint_body"><div data-markdown>
+                <div class="firstpaint_root"><div class="firstpaint_body"><div class="_markdown_fixture_5" data-text-interaction-source>
                   <p>第一帧即显示主题正文。</p>
                   <div class="md-code-block"><div data-code-block-banner>text</div><div data-code-block-content><pre><code>example</code></pre></div></div>
                   <div class="md-table-wide"><table><tbody><tr><td>主题表格</td></tr></tbody></table></div>
@@ -105,5 +105,54 @@ for (const scheme of ['dark', 'light']) {
         expect(frames.second).toEqual(frames.first)
       })
     }
+    test(`history body geometry is stable before deferred marking (${scheme}, ${width})`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.addInitScript(scheme => {
+        localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({
+          version: 12, enabled: true, bootAnimation: false, conversationStyle: 'deck-chat', scheme,
+        }))
+      }, scheme)
+      await page.goto('/tests/fixtures/rc7-harness.html')
+      await expect(page.locator('html')).toHaveAttribute('data-prts-conversation-style', 'deck-chat')
+      await expect(page.locator('[data-prts-startup]')).toBeHidden()
+      await page.addStyleTag({ content: '.history_body { padding: 0; }' })
+      const geometry = await page.evaluate(() => {
+        const sample = document.createElement('section')
+        sample.style.cssText = 'width:100%;min-width:0'
+        sample.innerHTML = `
+          <div data-chat-flow-kind="assistant-step" data-chat-group-part="response">
+            <div class="history_body"><div class="_markdown_fixture_5" data-text-interaction-source>
+              <p>延迟扫描前后的正文几何必须保持一致。</p>
+              <div class="md-code-block"><div data-code-block-banner>text</div><div data-code-block-content><pre><code>example</code></pre></div></div>
+              <div class="md-table-wide"><table><tbody><tr><td>分页表格</td></tr></tbody></table></div>
+            </div></div>
+          </div>
+          <div data-chat-flow-kind="assistant-step" data-chat-group-part="reasoning">
+            <div class="history_body"><div class="_markdown_fixture_5"><p>推理过程不套用正文气泡。</p></div></div>
+          </div>
+        `
+        document.querySelector('[data-conversation-scroll]').prepend(sample)
+        const body = sample.querySelector('.history_body')
+        const read = () => {
+          const bounds = body.getBoundingClientRect()
+          return {
+            width: bounds.width, height: bounds.height, padding: getComputedStyle(body).padding,
+            codeHeight: body.querySelector('.md-code-block').getBoundingClientRect().height,
+            tableHeight: body.querySelector('.md-table-wide').getBoundingClientRect().height,
+          }
+        }
+        const unmarked = !body.hasAttribute('data-prts-ai-surface')
+        const before = read()
+        body.setAttribute('data-prts-ai-surface', 'body')
+        const after = read()
+        const reasoningPadding = getComputedStyle(sample.querySelector('[data-chat-group-part="reasoning"] .history_body')).padding
+        sample.remove()
+        return { unmarked, before, after, reasoningPadding }
+      })
+      expect(geometry.unmarked).toBe(true)
+      expect(geometry.before.padding).toBe(width < 760 ? '10px 16px' : '12px 22px')
+      expect(geometry.after).toEqual(geometry.before)
+      expect(geometry.reasoningPadding).toBe('0px')
+    })
   }
 }
