@@ -20,6 +20,25 @@ function includesAll(values) {
   for (const value of values) assert.ok(css.includes(value), `missing CSS contract: ${value}`)
 }
 
+test('native semantic tokens follow theme surfaces without flattening status or syntax colors', () => {
+  const aliases = css.match(/html\[data-dsh-prts\] body\s*\{([^}]+)\}/)?.[1]
+  assert.ok(aliases)
+  for (const [native, theme] of [
+    ['border-selected', 'line-strong'],
+    ['card-fill', 'panel-raised'],
+    ['card-fill-hover', 'panel-muted'],
+    ['hovercard-bg', 'hovercard-surface'],
+    ['hovercard-label-primary', 'hovercard-ink'],
+    ['hovercard-label-secondary', 'hovercard-muted'],
+    ['hovercard-label-tertiary', 'hovercard-muted'],
+    ['json-tree-icon', 'muted'],
+    ['json-tree-punctuation', 'ink'],
+  ]) assert.ok(aliases.includes(`--dsw-alias-${native}: var(--prts-${theme});`))
+  assert.match(aliases, /--dsw-alias-card-tile-fill: color-mix\(in srgb, var\(--prts-ink\) 6%, transparent\);/)
+  assert.match(aliases, /--dsw-alias-json-tree-hover: color-mix\(in srgb, var\(--prts-ink\) 8%, transparent\);/)
+  assert.doesNotMatch(aliases, /--dsw-alias-(?:state-|chart-|file-diff-|hovercard-state-|json-tree-(?:keyword|number|property|string))[^:]*:/)
+})
+
 test('styles the host frame without taking ownership of the shared details column', () => {
   includesAll([
     'html[data-dsh-prts][data-prts-scheme="dark"]',

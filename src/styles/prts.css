@@ -15,6 +15,9 @@ html[data-dsh-prts] {
   --prts-ink: #edf1f2;
   --prts-muted: #98a3a9;
   --prts-dim: #68747a;
+  --prts-hovercard-surface: #171d21;
+  --prts-hovercard-ink: #edf1f2;
+  --prts-hovercard-muted: #98a3a9;
   --prts-line: #38434a;
   --prts-line-strong: #5e6a70;
   --prts-yellow: #f0c800;
@@ -156,6 +159,17 @@ html[data-dsh-prts] body {
   --dsw-alias-label-primary: var(--prts-ink);
   --dsw-alias-label-secondary: var(--prts-muted);
   --dsw-alias-border-l2: var(--prts-line);
+  --dsw-alias-border-selected: var(--prts-line-strong);
+  --dsw-alias-card-fill: var(--prts-panel-raised);
+  --dsw-alias-card-fill-hover: var(--prts-panel-muted);
+  --dsw-alias-card-tile-fill: color-mix(in srgb, var(--prts-ink) 6%, transparent);
+  --dsw-alias-hovercard-bg: var(--prts-hovercard-surface);
+  --dsw-alias-hovercard-label-primary: var(--prts-hovercard-ink);
+  --dsw-alias-hovercard-label-secondary: var(--prts-hovercard-muted);
+  --dsw-alias-hovercard-label-tertiary: var(--prts-hovercard-muted);
+  --dsw-alias-json-tree-hover: color-mix(in srgb, var(--prts-ink) 8%, transparent);
+  --dsw-alias-json-tree-icon: var(--prts-muted);
+  --dsw-alias-json-tree-punctuation: var(--prts-ink);
   min-height: 100dvh;
   margin: 0;
   overflow: hidden;
