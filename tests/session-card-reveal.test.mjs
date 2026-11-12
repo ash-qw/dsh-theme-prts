@@ -164,3 +164,63 @@ test('cancelled pre-navigation reveal never opens its old destination',async()=>
     assert.deepEqual(f.calls.at(-1),{top:100,behavior:'instant'})
   } finally {f.close()}
 })
+
+function nestedFixture(options) {
+  const fixtureState=fixture(options)
+  const {window,root,scroller,row}=fixtureState
+  const outer=window.document.createElement('aside')
+  outer.setAttribute('data-prts-region','sessions')
+  outer.style.overflowY='auto'
+  root.before(outer)
+  outer.append(root)
+  Object.defineProperties(outer,{clientHeight:{value:40},clientTop:{value:0},scrollHeight:{value:200},scrollTop:{value:0,writable:true}})
+  outer.getBoundingClientRect=()=>({top:0,bottom:40,height:40})
+  outer.scrollTo=options=>{outer.scrollTop=options.top}
+  scroller.getBoundingClientRect=()=>({top:-outer.scrollTop,bottom:100-outer.scrollTop,height:100})
+  row.getBoundingClientRect=()=>({top:20-outer.scrollTop-scroller.scrollTop,bottom:52-outer.scrollTop-scroller.scrollTop,height:32})
+  const reveals=[]
+  row.scrollIntoView=options=>{reveals.push(options);if(options.behavior==='instant')outer.scrollTop=12}
+  return {...fixtureState,outer,reveals}
+}
+
+test('outer clipping blocks navigation until the ancestor scroll has settled',async()=>{
+  let done=0
+  const fixtureState=nestedFixture({onDone:()=>done++})
+  try {
+    fixtureState.select()
+    await fixtureState.pump();await fixtureState.pump()
+    assert.deepEqual(fixtureState.reveals,[{block:'nearest',inline:'nearest',behavior:'smooth'}])
+    await new Promise(resolve=>setTimeout(resolve,100));await fixtureState.pump()
+    assert.equal(done,0)
+    assert.equal(fixtureState.reveals.length,1)
+    fixtureState.outer.scrollTop=12
+    await fixtureState.pump();await fixtureState.pump()
+    await new Promise(resolve=>setTimeout(resolve,100));await fixtureState.pump()
+    assert.equal(done,1)
+  } finally {fixtureState.close()}
+})
+
+test('expiry fixes outer clipping before completing navigation',async()=>{
+  let visibleAtNavigation=false
+  const fixtureState=nestedFixture({onDone:()=>{visibleAtNavigation=fixtureState.row.getBoundingClientRect().bottom<=40}})
+  try {
+    fixtureState.select();await fixtureState.pump();await fixtureState.pump()
+    fixtureState.finish()
+    assert.deepEqual(fixtureState.reveals.at(-1),{block:'nearest',inline:'nearest',behavior:'instant'})
+    assert.equal(visibleAtNavigation,true)
+  } finally {fixtureState.close()}
+})
+
+test('nonoverflowing wrappers do not hide the actual session scrollport',async()=>{
+  const fixtureState=fixture()
+  try {
+    const wrapper=fixtureState.window.document.createElement('div')
+    wrapper.style.overflowY='auto'
+    Object.defineProperties(wrapper,{clientHeight:{value:700},scrollHeight:{value:700}})
+    wrapper.getBoundingClientRect=()=>({top:0,bottom:700,height:700})
+    fixtureState.row.before(wrapper)
+    wrapper.append(fixtureState.row)
+    fixtureState.select();await fixtureState.pump()
+    assert.deepEqual(fixtureState.calls,[{top:332,behavior:'smooth'}])
+  } finally {fixtureState.close()}
+})

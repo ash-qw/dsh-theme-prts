@@ -82,6 +82,32 @@ test('0.2.2-rc.2 theme dialogs own their macOS window exclusions @live-rc0222', 
   expect(errors).toEqual([])
 })
 
+for (const height of [560, 700]) for (const reduced of [false, true]) {
+  test(`0.2.2-rc.2 session reveal respects the native outer scrollport (${height}, reduced=${reduced}) @live-rc0222`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' })
+    const errors = await openHarness(page)
+    await page.setViewportSize({ width: 1440, height })
+    const source = await readFile(new URL('../../src/client/session-card-reveal.js', import.meta.url), 'utf8')
+    await page.addScriptTag({ content: source.replace('export function createSessionCardReveal', 'window.__prtsRevealForRegression = function createSessionCardReveal') })
+    const row = page.locator('[data-prts-session-row]').last()
+    await expect(row).toBeAttached()
+    const result = await row.evaluate(async target => {
+      const root = target.closest('[data-slot="sidebar.workspaces"]')
+      const outer = target.closest('[data-sidebar-scrollport]')
+      const sessionId = target.getAttribute('data-row-key')?.replace(/^session:/, '') || target.getAttribute('data-session-id')
+      for (let node = target.parentElement; node && node !== outer.parentElement; node = node.parentElement) node.scrollTop = 0
+      target.setAttribute('data-prts-selection-target', 'true')
+      return new Promise(resolve => window.__prtsRevealForRegression({ window, root, sessionId, onDone: () => {
+        const card = target.getBoundingClientRect()
+        const box = outer.getBoundingClientRect()
+        resolve({ visible: card.top >= box.top + outer.clientTop - 1 && card.bottom <= box.top + outer.clientTop + outer.clientHeight + 1 })
+      } }))
+    })
+    expect(result.visible).toBe(true)
+    expect(errors).toEqual([])
+  })
+}
+
 for (const width of [1440, 390]) {
   test(`0.2.2-rc.2 CSS-anchored workspace menus retain theme controls (${width}) @live-rc0222`, async ({ page }) => {
     const errors = await openHarness(page, width)

@@ -2,16 +2,22 @@
 // Keep the destination stable through unrelated reflow; retarget smoothly only when needed.
 export function createSessionCardReveal({window, root, sessionId, onDone, onStart}) {
   let row, scroller, frame, timer, started = false, disposed = false, geometry, destination, stableSince, lastPosition
+  let ancestorScrolls = [], revealingAncestors = false
   const findRow = () => [...root.querySelectorAll('[data-row-key], [data-session-id]')].find(el =>
     el.getAttribute('data-row-key') === `session:${sessionId}` || el.getAttribute('data-session-id') === sessionId)
-  const instant = top => {
-    try { scroller.scrollTo({top, behavior: 'instant'}) }
-    catch { scroller.scrollTop = top }
+  const instant = (top, node = scroller) => {
+    try { node.scrollTo({top, behavior: 'instant'}) }
+    catch { node.scrollTop = top }
   }
   function cancel() {
     if (disposed) return
     disposed = true
     if (scroller && destination !== undefined) instant(scroller.scrollTop)
+    if (revealingAncestors) {
+      for (const {node} of ancestorScrolls) {
+        if (node !== scroller || destination === undefined) instant(node.scrollTop, node)
+      }
+    }
     destination = undefined
     window.cancelAnimationFrame(frame)
     window.clearTimeout(timer)
@@ -39,12 +45,14 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
     const remounted = nextRow !== row
     if (remounted) {
       row = nextRow
+      revealingAncestors = false
       const previousScroller = scroller
       scroller?.removeEventListener('scrollend', scrollEnded)
       resize?.disconnect()
       scroller = undefined
       for (let node = row.parentElement; node && node !== root.parentElement; node = node.parentElement) {
-        if (/^(auto|scroll)$/.test(window.getComputedStyle(node).overflowY) && node.clientHeight > 0) { scroller = node; break }
+        if (/^(auto|scroll)$/.test(window.getComputedStyle(node).overflowY) && node.clientHeight > 0
+          && node.scrollHeight > node.clientHeight + 1) { scroller = node; break }
       }
       if (scroller !== previousScroller) destination = undefined
       for (let node = row; node && node !== root.parentElement; node = node.parentElement) {
@@ -93,7 +101,32 @@ export function createSessionCardReveal({window, root, sessionId, onDone, onStar
       lastPosition = current
       geometry = next
     } else if (first || remounted || final) {
-      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:'instant'})
+      row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:reduced || final ? 'instant' : 'smooth'})
+      revealingAncestors = true
+    }
+    const boundary = root.closest('[data-prts-region="sessions"]') ?? root
+    const card = row.getBoundingClientRect()
+    const ancestors = []
+    let clipped = false
+    for (let node = row.parentElement; node && node !== boundary.parentElement; node = node.parentElement) {
+      if (!/^(auto|scroll|hidden|clip)$/.test(window.getComputedStyle(node).overflowY) || node.clientHeight <= 0) continue
+      const box = node.getBoundingClientRect()
+      const top = box.top + node.clientTop
+      const bottom = top + node.clientHeight
+      clipped ||= card.height > node.clientHeight
+        ? card.bottom <= top + 1 || card.top >= bottom - 1
+        : card.top < top - 1 || card.bottom > bottom + 1
+      ancestors.push({node, top:node.scrollTop})
+    }
+    if (ancestors.length !== ancestorScrolls.length || ancestors.some((entry, index) =>
+      entry.node !== ancestorScrolls[index]?.node || entry.top !== ancestorScrolls[index]?.top)) settled = false
+    ancestorScrolls = ancestors
+    if (clipped) {
+      if (final || settled && !revealingAncestors) {
+        row.scrollIntoView?.({block:'nearest', inline:'nearest', behavior:reduced || final ? 'instant' : 'smooth'})
+        revealingAncestors = true
+      }
+      settled = false
     }
     for (let node = row; node && node !== root.parentElement; node = node.parentElement) {
       if ((node.getAnimations?.() ?? []).some(animation => animation.playState === 'running'

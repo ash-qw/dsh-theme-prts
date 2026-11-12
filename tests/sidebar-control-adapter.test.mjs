@@ -445,7 +445,7 @@ test('preview navigation reveals its nested workspace and hidden session card', 
   for(let i=0;i<25 && (!scrolled.length || !opened.length);i++)await flush(dom.window)
   assert.deepEqual(opened,['target'])
   assert.deepEqual(expanded,['parent','owner','overflow'])
-  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'instant'}])
+  assert.deepEqual(scrolled,[{block:'nearest',inline:'nearest',behavior:'smooth'}])
   adapter.dispose()
   dom.window.close()
 })
