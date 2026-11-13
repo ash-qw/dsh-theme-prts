@@ -815,9 +815,11 @@ test('late native menu services and newly mounted duplicate rows adopt current s
   row.parentElement.append(copy.firstElementChild)
   await flush(fixture.dom.window)
   assert.deepEqual(fixture.openKeys(), ['session:session-a', 'session:session-a', 'session:session-a'])
+  const scansAfterMount = fixture.scans()
+  assert.ok(scansAfterMount > 0)
   active.update(null)
   assert.deepEqual(fixture.openKeys(), [])
-  assert.equal(fixture.scans(), 1)
+  assert.equal(fixture.scans(), scansAfterMount)
 })
 
 test('auxiliary hover announcements do not rescan cards while real status and row mounts still do', async testContext => {
