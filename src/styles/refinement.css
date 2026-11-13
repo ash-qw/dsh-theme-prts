@@ -288,9 +288,14 @@ html[data-dsh-prts] [data-prts-composer-fallback]::after {
   pointer-events: none;
 }
 
-html[data-dsh-prts] [data-composer-card] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]),
-html[data-dsh-prts] [data-prts-composer-fallback] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]) {
+html[data-dsh-prts] [data-composer-card] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]):not([data-composer-overlay]),
+html[data-dsh-prts] [data-prts-composer-fallback] > :not([data-prts-composer-signal]):not([data-slot="conversation.input.attachments"]):not([data-composer-overlay]) {
   position: relative;
+  z-index: 2;
+}
+
+html[data-dsh-prts] [data-composer-card] > [data-composer-overlay],
+html[data-dsh-prts] [data-prts-composer-fallback] > [data-composer-overlay] {
   z-index: 2;
 }
 

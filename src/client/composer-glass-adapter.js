@@ -23,8 +23,18 @@ function localPopup(trigger) {
   return Array.from(trigger.parentElement?.children ?? []).find(node => node !== trigger && node.matches(POPUP_SELECTOR))
 }
 
-function linkedMenu(document, trigger) {
-  return controlledPopup(document, trigger) ?? localPopup(trigger)
+function anchoredPopup(trigger, popups) {
+  const boundary = trigger.closest('[data-composer-card], [data-slot="conversation.hero.agentPreset"]')
+  for (let anchor = trigger; anchor && anchor !== boundary; anchor = anchor.parentElement) {
+    for (const name of anchor.style.getPropertyValue('anchor-name').split(',').map(value => value.trim()).filter(Boolean)) {
+      const popup = popups.get(name)
+      if (popup) return popup
+    }
+  }
+}
+
+function linkedMenu(document, trigger, popups) {
+  return controlledPopup(document, trigger) ?? localPopup(trigger) ?? anchoredPopup(trigger, popups)
 }
 
 function markPopup(popup, kind, menus) {
@@ -32,7 +42,7 @@ function markPopup(popup, kind, menus) {
   const shell = popup.closest('[data-menu-material], [data-trigger-menu]') ?? popup
   menus.set(shell, kind)
   for (const nested of shell.querySelectorAll(POPUP_SELECTOR)) {
-    if (kind === 'model' && shell.hasAttribute('data-menu-material') && !nested.hasAttribute('data-menu-material')) {
+    if (shell.hasAttribute('data-menu-material') && !nested.hasAttribute('data-menu-material')) {
       menus.delete(nested)
       continue
     }
@@ -67,6 +77,8 @@ export function createComposerGlassAdapter({ document, window }) {
 
   function mutationTouchesComposer(mutation) {
     if (mutation.type === 'attributes') {
+      if (mutation.attributeName === 'style') return /(?:^|;)\s*(?:anchor-name|position-anchor)\s*:/.test(mutation.target.style.cssText)
+        || /(?:^|;)\s*(?:anchor-name|position-anchor)\s*:/.test(mutation.oldValue ?? '')
       if (mutation.attributeName === 'data-composer-card') return true
       if (mutation.attributeName === 'data-slot' && mutation.oldValue?.startsWith('conversation.')) return true
       return mutation.target.matches(COMPOSER_RELEVANCE_SELECTOR)
@@ -114,6 +126,11 @@ export function createComposerGlassAdapter({ document, window }) {
     }
     const controls = new Map()
     const menus = new Map()
+    const popups = new Map()
+    for (const popup of document.querySelectorAll('[data-menu-material]')) {
+      const anchor = popup.style.getPropertyValue('position-anchor').trim()
+      if (anchor) popups.set(anchor, popups.has(anchor) ? null : popup)
+    }
     for (const overlay of document.querySelectorAll('[data-slot="conversation.input.overlay"]')) {
       for (const popup of overlay.querySelectorAll(POPUP_SELECTOR)) markPopup(popup, 'action', menus)
     }
@@ -122,7 +139,7 @@ export function createComposerGlassAdapter({ document, window }) {
       for (const menu of composer.querySelectorAll(POPUP_SELECTOR)) markPopup(menu, 'action', menus)
       for (const trigger of composer.querySelectorAll(TRIGGER_SELECTOR)) {
         if (trigger.closest(POPUP_SELECTOR)) continue
-        const menu = linkedMenu(document, trigger)
+        const menu = linkedMenu(document, trigger, popups)
         const kind = trigger.closest('[data-slot="conversation.input.permission"]') ? 'permission'
           : trigger.closest('[data-slot="conversation.input.model"]') || menu?.hasAttribute('aria-busy') ? 'model' : 'action'
         controls.set(trigger, kind)
@@ -131,7 +148,7 @@ export function createComposerGlassAdapter({ document, window }) {
     }
     for (const trigger of document.querySelectorAll(PRESET_TRIGGER_SELECTOR)) {
       controls.set(trigger, 'preset')
-      if (trigger.getAttribute('aria-expanded') === 'true') markPopup(linkedMenu(document, trigger), 'preset', menus)
+      if (trigger.getAttribute('aria-expanded') === 'true') markPopup(linkedMenu(document, trigger, popups), 'preset', menus)
     }
     syncMarkers(ownedControls, controls, CONTROL_ATTRIBUTE)
     syncMarkers(ownedMenus, menus, MENU_ATTRIBUTE)
@@ -153,7 +170,7 @@ export function createComposerGlassAdapter({ document, window }) {
         childList: true,
         attributes: true,
         attributeOldValue: true,
-        attributeFilter: ['aria-controls', 'aria-expanded', 'aria-busy', 'aria-haspopup', 'role', 'data-composer-card', 'data-slot', 'data-menu-material'],
+        attributeFilter: ['aria-controls', 'aria-expanded', 'aria-busy', 'aria-haspopup', 'role', 'data-composer-card', 'data-slot', 'data-menu-material', 'style'],
       })
     },
     dispose() {

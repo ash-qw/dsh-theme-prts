@@ -33,11 +33,12 @@ for (const enhanced of [false, true]) test(`composer menus retain native hover a
       // The current host Menu portals to body without linking its anchor by ID.
       await expect(menu).not.toHaveAttribute('data-prts-glass-menu')
       await expect(menu.locator('button')).toHaveAttribute('data-prts-floating-item', '')
-      await expect(menu.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', 'none')
+      await expect(menu).toHaveCSS('backdrop-filter', 'none')
+      await expect(menu.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', 'blur(16px) saturate(1.45)')
     } else {
       await expect(menu).toHaveAttribute('data-prts-glass-menu', kind)
-      await expect(menu).toHaveCSS('backdrop-filter', enhanced ? 'none' : 'blur(22px) saturate(1.55)')
-      await expect(menu.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', enhanced ? 'blur(16px) saturate(1.15)' : 'none')
+      await expect(menu).toHaveCSS('backdrop-filter', kind === 'model' || enhanced ? 'none' : 'blur(22px) saturate(1.55)')
+      await expect(menu.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', kind === 'model' ? 'blur(16px) saturate(1.45)' : enhanced ? 'blur(16px) saturate(1.15)' : 'none')
     }
     const item = menu.locator('button')
     await item.hover()
@@ -82,7 +83,7 @@ test('unlinked native preset portals use generic menu material without guessing 
   await expect(popup).not.toHaveAttribute('data-prts-glass-menu')
   await expect(popup).toHaveAttribute('data-prts-floating-glass', 'menu')
   await expect(popup.locator('button')).toHaveAttribute('data-prts-floating-item', '')
-  await expect(popup.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', 'none')
-  await expect(popup).toHaveCSS('backdrop-filter', 'blur(22px) saturate(1.55)')
+  await expect(popup.locator('> [aria-hidden="true"]')).toHaveCSS('backdrop-filter', 'blur(16px) saturate(1.45)')
+  await expect(popup).toHaveCSS('backdrop-filter', 'none')
   await popup.locator('button').click({ trial: true })
 })

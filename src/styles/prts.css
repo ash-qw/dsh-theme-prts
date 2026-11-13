@@ -1138,6 +1138,11 @@ html[data-dsh-prts] [data-conversation-scroll] {
   z-index: 2;
 }
 
+html[data-dsh-prts] :is(
+  [data-slot="main.conversation"], [data-slot="conversation"]) > [data-phase="hero"]:has([data-prts-hero-active]) {
+  isolation: auto;
+}
+
 /* DSH renders transcript width handles beside the scroll surface. Its scroll
    surface needs this layer for our ambient backdrop, but must not cover the
    native handles' hit areas. Keep DSH's higher dragging layer intact. */

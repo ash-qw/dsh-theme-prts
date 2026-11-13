@@ -288,6 +288,12 @@ test("keeps display-contents attachment slots above composer glass without resty
   assert.equal(css.includes("[data-composer-card] button:active"), false)
 })
 
+test('themed hero scroll and menus share the operation stack above particle emblems', () => {
+  assert.match(css, /\[data-slot="main\.conversation"\], \[data-slot="conversation"\]\) > \[data-phase="hero"\]:has\(\[data-prts-hero-active\]\)\s*\{\s*isolation: auto;\s*\}/)
+  assert.match(css, /\[data-conversation-scroll\]\s*\{\s*position: relative;\s*z-index: 2;/)
+  assert.match(css, /\[data-prts-particle-layer\]\s*\{\s*position: absolute;\s*z-index: 1;/)
+})
+
 test('does not override host stacking order for settings and plugin surfaces', () => {
   assert.doesNotMatch(css, /\[data-prts-region="sessions"\]\s*\{[^}]*z-index:/s)
   assert.doesNotMatch(css, /\[data-prts-region="operation"\]\s*\{[^}]*z-index:/s)

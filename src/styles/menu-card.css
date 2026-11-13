@@ -1,0 +1,177 @@
+html[data-dsh-prts] {
+  --prts-menu-card-soft: rgba(15, 21, 25, .72);
+  --prts-menu-card-standard: rgba(15, 21, 25, .62);
+  --prts-menu-card-clear: rgba(15, 21, 25, .48);
+  --prts-menu-card-surface: var(--prts-menu-card-standard);
+  --prts-menu-card-filter: blur(16px) saturate(145%);
+  --prts-menu-card-selected: rgba(232, 237, 232, .94);
+  --prts-menu-card-selected-ink: #1f2a30;
+  --prts-menu-card-rail: rgba(5, 11, 15, .5);
+}
+
+html[data-dsh-prts][data-prts-scheme="light"] {
+  --prts-menu-card-soft: rgba(247, 250, 251, .78);
+  --prts-menu-card-standard: rgba(244, 249, 251, .68);
+  --prts-menu-card-clear: rgba(244, 249, 251, .54);
+  --prts-menu-card-selected: rgba(34, 51, 61, .94);
+  --prts-menu-card-selected-ink: #f4f7f4;
+  --prts-menu-card-rail: rgba(13, 27, 35, .68);
+}
+
+html[data-dsh-prts][data-prts-glass="soft"] {
+  --prts-menu-card-surface: var(--prts-menu-card-soft);
+  --prts-menu-card-filter: blur(12px) saturate(135%);
+}
+
+html[data-dsh-prts][data-prts-glass="clear"] {
+  --prts-menu-card-surface: var(--prts-menu-card-clear);
+  --prts-menu-card-filter: blur(20px) saturate(155%);
+}
+
+html[data-dsh-prts][data-prts-glass="off"] {
+  --prts-menu-card-surface: var(--prts-panel);
+  --prts-menu-card-filter: none;
+}
+
+html[data-dsh-prts] [data-menu-material]:is([data-prts-floating-glass="menu"], [data-prts-glass-menu]):not([role="dialog"], [role="listbox"], [data-prts-floating-preserved], [data-prts-preserve-popup-style]):has(> [aria-hidden="true"][class*="_material_"]) {
+  --prts-menu-card-caption: "PRTS";
+  box-sizing: border-box;
+  min-width: min(224px, calc(100vw - 24px));
+  padding: 29px 6px 7px 30px !important;
+  border-radius: 2px !important;
+  overflow: visible !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+
+  & > [aria-hidden="true"][class*="_material_"] {
+    background: var(--prts-menu-card-surface) !important;
+    backdrop-filter: var(--prts-menu-card-filter) !important;
+    -webkit-backdrop-filter: var(--prts-menu-card-filter) !important;
+  }
+
+  &[data-prts-glass-menu="model"] {
+    --prts-menu-card-caption: "MODEL";
+  }
+
+  &[data-prts-glass-menu="permission"] {
+    --prts-menu-card-caption: "ACCESS";
+  }
+
+  &:is([data-context-menu], [data-prts-glass-menu="action"]) {
+    --prts-menu-card-caption: "ACTION";
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: calc(50% - 13px);
+    top: -7px;
+    width: 26px;
+    height: 9px;
+    box-sizing: border-box;
+    border: 2px solid color-mix(in srgb, var(--prts-line-strong) 70%, var(--prts-ink));
+    border-bottom-width: 1px;
+    border-radius: 3px 3px 0 0;
+    background: color-mix(in srgb, var(--prts-active-glass) 60%, transparent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: auto;
+    width: 24px;
+    height: auto;
+    border-right: 1px solid rgba(194, 208, 208, .12);
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='112' viewBox='0 0 24 112'%3E%3Ctext x='14' y='8' transform='rotate(90 14 8)' fill='%23b6c1c5' font-family='monospace' font-size='8' letter-spacing='2'%3EP.R.T.S.%3C/text%3E%3C/svg%3E") left 30px / 24px 112px no-repeat,
+      repeating-linear-gradient(0deg, rgba(194, 208, 208, .5) 0 1px, transparent 1px 3px, rgba(194, 208, 208, .5) 3px 5px, transparent 5px 8px) 7px calc(100% - 8px) / 10px 24px no-repeat,
+      var(--prts-menu-card-rail);
+    pointer-events: none;
+  }
+
+  & > [aria-hidden="true"][class*="_material_"]::before {
+    content: "RHODES ISLAND";
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 0;
+    height: 24px;
+    box-sizing: border-box;
+    padding: 7px 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--prts-line) 55%, transparent);
+    color: var(--prts-muted);
+    font: 7px/10px var(--prts-mono);
+    letter-spacing: 1.1px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  & > [aria-hidden="true"][class*="_material_"]::after {
+    content: var(--prts-menu-card-caption);
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 65px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    padding-left: 6px;
+    box-sizing: border-box;
+    background: color-mix(in srgb, var(--prts-yellow) 86%, transparent);
+    color: var(--prts-yellow-ink);
+    clip-path: polygon(7px 0, 100% 0, 100% 100%, 0 100%);
+    font: 9px/1 var(--prts-mono);
+    letter-spacing: .7px;
+    pointer-events: none;
+  }
+
+  & :is([data-prts-floating-item], [role="option"]) {
+    border-radius: 1px !important;
+  }
+
+  & [role="option"] {
+    color: var(--prts-ink) !important;
+  }
+
+  & :is([data-prts-floating-item], [role="option"]):not([data-prts-floating-danger]):is([aria-checked="true"], [aria-selected="true"], [class*="_selected_"], [class$="_selected"], [class*="_selectedFill_"], [class$="_selectedFill"]) {
+    background: var(--prts-menu-card-selected) !important;
+    color: var(--prts-menu-card-selected-ink) !important;
+    box-shadow: inset 3px 0 var(--prts-yellow);
+
+    & :is([class*="_itemIcon"], [class*="_check_"], [class$="_check"]) {
+      color: inherit !important;
+    }
+  }
+
+  & :is([data-prts-floating-item], [role="option"]):focus-visible:not(:disabled, [aria-disabled="true"]) {
+    outline: 1px solid var(--prts-yellow) !important;
+    outline-offset: -2px;
+  }
+
+  &[data-trigger-menu][data-overflow-below] > [role="listbox"]::after {
+    content: "";
+    position: sticky;
+    bottom: 0;
+    flex: none;
+    height: 16px;
+    margin-top: -16px;
+    background: linear-gradient(to bottom, transparent, var(--prts-menu-card-surface));
+    pointer-events: none;
+  }
+
+  & [class$="_cellLabel"] {
+    color: var(--prts-muted);
+    font-size: 12px;
+  }
+
+  & [class$="_cellValue"] {
+    color: var(--prts-ink);
+    font-weight: 500;
+  }
+}

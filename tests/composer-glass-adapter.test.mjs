@@ -144,7 +144,8 @@ test('marks command and parameter material shells without depending on CSS hashe
   assert.equal(dom.window.document.querySelector('.uV2eYG_add').dataset.prtsGlassControl, 'action')
   assert.equal(dom.window.document.querySelector('[data-trigger-menu]').dataset.prtsGlassMenu, 'action')
   assert.equal(dom.window.document.querySelector('#parameters').dataset.prtsGlassMenu, 'action')
-  for (const listbox of dom.window.document.querySelectorAll('[role="listbox"]')) assert.equal(listbox.dataset.prtsGlassMenu, 'action')
+  assert.equal(dom.window.document.querySelector('[data-trigger-menu] [role="listbox"]').dataset.prtsGlassMenu, 'action')
+  assert.equal(dom.window.document.querySelector('#parameters [role="listbox"]').hasAttribute('data-prts-glass-menu'), false)
 })
 
 test('marks the rc.2 agent preset trigger and its semantic portal without touching unrelated portals', async t => {
@@ -223,6 +224,8 @@ test('editing text and unrelated class changes do not rescan composer controls',
     document.querySelector('#draft').textContent = 'draft ' + iteration
     document.querySelector('#stream').textContent = 'response ' + iteration
     document.querySelector('[data-composer-card]').className = 'native_' + iteration
+    document.querySelector('[data-composer-card]').style.setProperty('--fixture-height', `${iteration}px`)
+    document.querySelector('#draft').style.color = iteration % 2 ? 'red' : 'blue'
     document.querySelector('[aria-haspopup]').className = 'button_' + iteration
     await new Promise(resolve => dom.window.setTimeout(resolve, 24))
   }
@@ -293,4 +296,57 @@ test('removing the native composer marker releases signals and control ownership
   await new Promise(resolve => dom.window.setTimeout(resolve, 24))
   assert.equal(document.querySelector('[data-prts-composer-signal]'), null)
   assert.equal(document.querySelector('[data-prts-glass-control]'), null)
+})
+
+test('permission portals resolve their exact native CSS anchor without borrowing another composer popup', testContext => {
+  const dom = new JSDOM(`<body>
+    <div data-composer-card><div data-slot="conversation.input.permission"><span style="anchor-name: --permission"><button id="permission"></button></span></div></div>
+    <div data-composer-card><span style="anchor-name: --model"><button aria-haspopup="menu"></button></span></div>
+    <div id="permission-menu" data-menu-material style="position-anchor: --permission"><div role="menu"></div></div>
+    <div id="model-menu" data-menu-material style="position-anchor: --model"></div>
+    <div id="unlinked" data-menu-material></div>
+  </body>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  testContext.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  assert.equal(document.querySelector('#permission-menu').dataset.prtsGlassMenu, 'permission')
+  assert.equal(document.querySelector('#permission-menu [role="menu"]').hasAttribute('data-prts-glass-menu'), false)
+  assert.equal(document.querySelector('#model-menu').dataset.prtsGlassMenu, 'action')
+  assert.equal(document.querySelector('#unlinked').hasAttribute('data-prts-glass-menu'), false)
+  adapter.dispose()
+  assert.equal(document.querySelector('[data-prts-glass-menu]'), null)
+})
+
+test('native portal insertion and anchor style changes update permission ownership and release stale markers', async testContext => {
+  const dom = new JSDOM('<body><main data-prts-region="operation"><div data-composer-card><div data-slot="conversation.input.permission"><span id="anchor" style="anchor-name: --permission"><button></button></span></div></div></main></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  testContext.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  const popup = document.createElement('div')
+  popup.setAttribute('data-menu-material', '')
+  popup.style.setProperty('position-anchor', '--permission')
+  document.body.append(popup)
+  await Promise.resolve()
+  assert.equal(popup.dataset.prtsGlassMenu, 'permission')
+  document.querySelector('#anchor').style.removeProperty('anchor-name')
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  assert.equal(popup.hasAttribute('data-prts-glass-menu'), false)
+  document.querySelector('#anchor').style.setProperty('anchor-name', '--other, --permission')
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  assert.equal(popup.dataset.prtsGlassMenu, 'permission')
+  popup.remove()
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  assert.equal(popup.hasAttribute('data-prts-glass-menu'), false)
+})
+
+test('ambiguous native CSS anchors do not guess permission ownership', testContext => {
+  const dom = new JSDOM(`<body><div data-composer-card><div data-slot="conversation.input.permission"><span style="anchor-name: --duplicate"><button></button></span></div></div>
+    <div data-menu-material style="position-anchor: --duplicate"></div><div data-menu-material style="position-anchor: --duplicate"></div></body>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  testContext.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  assert.equal(document.querySelector('[data-prts-glass-menu]'), null)
 })

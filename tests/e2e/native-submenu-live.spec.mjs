@@ -130,8 +130,8 @@ async function expectInsideViewport(menu) {
 async function expectMaterial(menu) {
   await expect(menu).toHaveAttribute('data-prts-floating-glass', 'menu')
   await expect(menu).not.toHaveAttribute('data-prts-floating-nested')
-  await expect.poll(() => menu.evaluate(node => getComputedStyle(node).backdropFilter)).toContain('blur(')
-  await expect(menu.locator(':scope > [aria-hidden="true"][class*="_material_"]')).toHaveCSS('backdrop-filter', 'none')
+  await expect(menu).toHaveCSS('backdrop-filter', 'none')
+  await expect.poll(() => menu.locator(':scope > [aria-hidden="true"][class*="_material_"]').evaluate(node => getComputedStyle(node).backdropFilter)).toContain('blur(')
   await expect(menu.locator('[role="menuitem"]').first()).toHaveAttribute('data-prts-floating-item', '')
 }
 
