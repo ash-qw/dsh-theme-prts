@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
+const pkg = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
+const supportedVersions = pkg.engines.dsh.split(' || ')
+
 test.use({ locale: 'zh-CN', storageState: process.env.PRTS_RC022_STATE || undefined })
 test.beforeEach(() => {
   test.skip(!process.env.PRTS_RC022_STATE, 'Requires authenticated local 0.2.2 storage state')
@@ -28,7 +31,36 @@ async function openHarness(page, width = 1440) {
 
 for (const scheme of ['dark', 'light']) {
   for (const width of [1440, 390]) {
-    test(`0.2.2-rc.2 right sidebar search retains theme materials (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
+    test(`supported 0.2.2 sidebar session action retains native layout (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
+      const errors = await openHarness(page, width)
+      await page.locator('html').evaluate((node, value) => { node.dataset.prtsScheme = value }, scheme)
+      const expand = page.getByRole('button', { name: '打开侧边栏', exact: true })
+      if (await expand.isVisible()) await expand.click()
+      const sidebar = page.locator('[data-prts-region="sessions"]')
+      const button = sidebar.getByRole('button', { name: '新建会话', exact: true }).last()
+      await expect(button).toBeVisible()
+      await expect(button).toBeEnabled()
+      await button.focus()
+      await expect(button).toBeFocused()
+      const bounds = await button.boundingBox()
+      expect(bounds.width).toBeGreaterThan(30)
+      expect(bounds.height).toBeGreaterThanOrEqual(36)
+      expect(bounds.x).toBeGreaterThanOrEqual(0)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
+      if (await page.evaluate(() => window.__DSH_BOOT__.release.version) === '0.2.2-rc.3') {
+        const slot = sidebar.locator('[data-slot="sidebar.session.action"]')
+        await expect(slot).toHaveCSS('display', 'contents')
+        await expect(slot.getByRole('button', { name: '新建会话', exact: true })).toBeVisible()
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+      expect(errors).toEqual([])
+    })
+  }
+}
+
+for (const scheme of ['dark', 'light']) {
+  for (const width of [1440, 390]) {
+    test(`supported 0.2.2 right sidebar search retains theme materials (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
       const errors = await openHarness(page, width)
       const expand = page.getByRole('button', { name: '打开右侧边栏', exact: true })
       if (await expand.isVisible()) await expand.click()
@@ -100,7 +132,7 @@ for (const scheme of ['dark', 'light']) {
   }
 }
 
-test('0.2.2-rc.2 loads the current client and authenticated theme services @live-rc0222', async ({ page, playwright }) => {
+test('supported 0.2.2 host loads the current client and authenticated theme services @live-rc0222', async ({ page, playwright }) => {
   const scripts = []
   page.on('response', response => {
     if (response.request().resourceType() === 'script') scripts.push(response.text().catch(() => ''))
@@ -110,7 +142,8 @@ test('0.2.2-rc.2 loads the current client and authenticated theme services @live
     version: window.__DSH_BOOT__?.release?.version,
     theme: window.__DSH_BOOT__?.entries.some(entry => entry.id === '@ash-qw/dsh-theme-prts'),
   }))
-  expect(boot).toEqual({ version: '0.2.2-rc.2', theme: true })
+  expect(supportedVersions).toContain(boot.version)
+  expect(boot.theme).toBe(true)
   const expected = (await readFile(new URL('../../lib/client.js', import.meta.url), 'utf8')).trim()
   expect((await Promise.all(scripts)).some(script => script.includes(expected))).toBe(true)
   const anonymous = await playwright.request.newContext({ extraHTTPHeaders: { Host: 'prts-untrusted.invalid:3080' } })
@@ -129,7 +162,7 @@ test('0.2.2-rc.2 loads the current client and authenticated theme services @live
   expect(errors).toEqual([])
 })
 
-test('0.2.2-rc.2 theme dialogs own their macOS window exclusions @live-rc0222', async ({ page }) => {
+test('supported 0.2.2 theme dialogs own their macOS window exclusions @live-rc0222', async ({ page }) => {
   const errors = await openHarness(page)
   const launcher = page.locator('[data-prts-rail-launcher]')
   if (await launcher.isVisible() && await launcher.getAttribute('aria-expanded') === 'false') await launcher.click()
@@ -157,7 +190,7 @@ test('0.2.2-rc.2 theme dialogs own their macOS window exclusions @live-rc0222', 
 })
 
 for (const height of [560, 700]) for (const reduced of [false, true]) {
-  test(`0.2.2-rc.2 session reveal respects the native outer scrollport (${height}, reduced=${reduced}) @live-rc0222`, async ({ page }) => {
+  test(`supported 0.2.2 session reveal respects the native outer scrollport (${height}, reduced=${reduced}) @live-rc0222`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' })
     const errors = await openHarness(page)
     await page.setViewportSize({ width: 1440, height })
@@ -183,7 +216,7 @@ for (const height of [560, 700]) for (const reduced of [false, true]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`0.2.2-rc.2 CSS-anchored workspace menus retain theme controls (${width}) @live-rc0222`, async ({ page }) => {
+  test(`supported 0.2.2 CSS-anchored workspace menus retain theme controls (${width}) @live-rc0222`, async ({ page }) => {
     const errors = await openHarness(page, width)
     const frame = page.locator('[data-prts-region="frame"]')
     if (await frame.getAttribute('data-sidebar-collapsed') !== null) {

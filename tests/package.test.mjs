@@ -23,7 +23,7 @@ async function readBytes(path) {
   }
 }
 
-test('declares only the current dsh 0.2.2-rc.2 client contract', async () => {
+test('declares the supported dsh 0.2.2-rc.2 and rc.3 client contracts', async () => {
   const source = await readText('../package.json')
   assert.ok(source, 'package.json should exist')
   const pkg = JSON.parse(source)
@@ -41,7 +41,7 @@ test('declares only the current dsh 0.2.2-rc.2 client contract', async () => {
   assert.equal(pkg.repository.url, 'git+https://github.com/ash-qw/dsh-theme-prts.git')
   assert.deepEqual(pkg.engines, {
     node: '>=20.9.0',
-    dsh: '0.2.2-rc.2',
+    dsh: '0.2.2-rc.2 || 0.2.2-rc.3',
   })
   assert.deepEqual(lock.packages[''].engines, pkg.engines)
   assert.deepEqual(pkg.dsh.client, { platform: 'web', immediately: true })
@@ -75,6 +75,8 @@ test('declares only the current dsh 0.2.2-rc.2 client contract', async () => {
   assert.match(readmeEn, /`0\.2\.2-rc\.1`/)
   assert.match(readmeZh, /`0\.2\.2-rc\.2`/)
   assert.match(readmeEn, /`0\.2\.2-rc\.2`/)
+  assert.match(readmeZh, /`0\.2\.2-rc\.3`/)
+  assert.match(readmeEn, /`0\.2\.2-rc\.3`/)
   assert.match(readmeZh, /`@ash-qw\/dsh-theme-prts@3\.2\.1`/)
   assert.match(readmeEn, /`@ash-qw\/dsh-theme-prts@3\.2\.1`/)
 })
