@@ -37,6 +37,7 @@ test.beforeEach(async ({ page }) => {
 async function openProbe(page, scheme, width) {
   const errors = []
   const writes = []
+  const blockedDraftCreates = []
   page.on('pageerror', error => errors.push(error.message))
   await page.route('**/api/settings/describe', async route => {
     const response = await route.fetch()
@@ -51,8 +52,10 @@ async function openProbe(page, scheme, width) {
     }
     return route.fulfill({ response, json: packet })
   })
-  await page.route('**/api/settings/mutate', route => {
-    writes.push(route.request().url())
+  await page.route(/\/api\/(settings\/mutate|workspace\/(pinSession|unpinSession|archiveSession|unarchiveSession|insertSessionBefore)|session\/(rename|fork|prompt|create)|commands\/execute)(?:\?|$)/, route => {
+    const url = route.request().url()
+    if (new URL(url).pathname === '/api/session/create') blockedDraftCreates.push(url)
+    else writes.push(url)
     return route.abort('blockedbyclient')
   })
   await page.setViewportSize({ width, height: 560 })
@@ -205,7 +208,7 @@ async function openProbe(page, scheme, width) {
     window.__prtsDisposeTeamProbe = () => { root.unmount(); stage.remove() }
   })
   return {
-    errors, writes,
+    errors, writes, blockedDraftCreates,
     stage: page.locator('[data-native-team-probe]'),
     panel: page.locator('[data-subagent-panel]'),
     dispose: () => page.evaluate(() => window.__prtsDisposeTeamProbe?.()),
@@ -226,7 +229,7 @@ async function expectInsideViewport(locator) {
 async function expectTokenColor(locator, token, property = 'color') {
   const colors = await locator.evaluate((node, { token, property }) => {
     const sample = document.createElement('span')
-    sample.style.color = `var(${token})`
+    sample.style.color = getComputedStyle(node).getPropertyValue(token).trim()
     document.body.append(sample)
     const expected = getComputedStyle(sample).color
     sample.remove()
@@ -236,16 +239,43 @@ async function expectTokenColor(locator, token, property = 'color') {
 }
 
 for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
-  test(`native team board and subagent catalog (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
+  test(`native team board and subagent catalog (${scheme}, ${width}) @live-rc0222`, async ({ page }, testInfo) => {
     const probe = await openProbe(page, scheme, width)
     try {
       const trigger = probe.stage.locator('[data-subagent-action] button[aria-haspopup="dialog"]')
       await trigger.click()
       await expect(probe.panel).toBeVisible()
       await expect(probe.panel).toHaveAttribute('data-prts-floating-glass', 'menu')
-      await expect.poll(() => probe.panel.evaluate(node => getComputedStyle(node).backdropFilter)).toContain('blur(')
-      await expect(probe.panel).toHaveCSS('border-radius', '4px')
-      await expect(probe.panel.locator(':scope > [aria-hidden="true"][class*="_material_"]')).toHaveCSS('backdrop-filter', 'none')
+      await expect(probe.panel).toHaveAttribute('role', 'dialog')
+      await expect(probe.panel).not.toHaveAttribute('aria-modal', 'true')
+      await expect(probe.panel).toHaveCSS('padding-top', '29px')
+      await expect(probe.panel).toHaveCSS('padding-left', '30px')
+      await expect(probe.panel).toHaveCSS('border-radius', '2px')
+      await expect(probe.panel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(probe.panel).toHaveCSS('backdrop-filter', 'none')
+      const material = probe.panel.locator(':scope > [aria-hidden="true"][class*="_material_"]')
+      const captions = await material.evaluate(node => ({ header: getComputedStyle(node, '::before').content, stamp: getComputedStyle(node, '::after').content }))
+      expect(captions).toEqual({ header: '"RHODES ISLAND"', stamp: '"TEAM"' })
+      for (const glass of ['soft', 'standard', 'clear', 'off']) {
+        await page.locator('html').evaluate((node, value) => { node.dataset.prtsGlass = value }, glass)
+        if (glass === 'off') {
+          await expect(material).toHaveCSS('backdrop-filter', 'none')
+          await expectTokenColor(material, '--prts-panel', 'backgroundColor')
+        } else {
+          await expect.poll(() => material.evaluate(node => getComputedStyle(node).backdropFilter)).toContain('blur(')
+          const alpha = await material.evaluate(node => {
+            const context = document.createElement('canvas').getContext('2d')
+            context.fillStyle = getComputedStyle(node).backgroundColor
+            context.fillRect(0, 0, 1, 1)
+            return context.getImageData(0, 0, 1, 1).data[3] / 255
+          })
+          const tiers = scheme === 'dark' ? { soft: .6, standard: .46, clear: .34 } : { soft: .66, standard: .52, clear: .4 }
+          expect(alpha).toBeCloseTo(tiers[glass], 2)
+        }
+      }
+      await page.locator('html').evaluate(node => { node.dataset.prtsGlass = 'standard' })
+      await expect(probe.panel.locator('[role="treeitem"][data-prts-floating-item]')).toHaveCount(0)
+      await expectTokenColor(probe.panel.locator('[data-subagent-section-header] [class*="_sectionProgress"]'), '--prts-muted')
       await expectInsideViewport(probe.panel)
       await expect(probe.panel.getByRole('treeitem', { level: 1 })).toHaveCount(5)
       await expect(probe.panel.getByRole('treeitem').filter({ hasText: '外部任务' })).toHaveAttribute('aria-disabled', 'true')
@@ -256,10 +286,14 @@ for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
       await expect(probe.panel.locator('[data-team-task="done"] [data-state="done"]')).toHaveCount(1)
       await expectTokenColor(probe.panel.locator('[data-team-task="pending"] [data-state="warning"]'), '--dsw-alias-state-warn-primary')
       await expectTokenColor(probe.panel.locator('[data-team-task="done"] [data-state="done"]'), '--dsw-alias-state-success-primary')
+      await probe.panel.screenshot({ path: testInfo.outputPath('team-card.png'), animations: 'disabled' })
       await probe.panel.locator('[data-team-task="active"] button').click()
       const details = probe.panel.locator('[data-team-task="active"] [data-team-task-details]')
       await expect(details).toBeVisible()
       expect(await details.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1)
+      const body = probe.panel.locator(':scope > [class*="_menuBody"]')
+      await expect(body).toHaveCSS('overflow-y', 'auto')
+      expect(await body.evaluate(node => node.clientHeight > 0 && node.scrollHeight > node.clientHeight)).toBe(true)
       await expectInsideViewport(probe.panel)
       await probe.panel.getByRole('button', { name: /展开.*正在分析/ }).click()
       await expect(probe.panel.getByRole('treeitem', { level: 2 })).toHaveCount(1)
@@ -272,6 +306,10 @@ for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
       await probe.stage.getByRole('button', { name: /等待继续/ }).press('ArrowDown')
       await expect(probe.panel.locator('[aria-current="true"]')).toContainText('等待继续')
       await expect(probe.panel.locator('[data-subagent-current]')).toHaveCount(1)
+      const current = probe.panel.locator('[role="treeitem"][aria-current="true"]')
+      await current.focus()
+      await expectTokenColor(current, '--prts-yellow', 'outlineColor')
+      expect(await current.evaluate(node => getComputedStyle(node).boxShadow)).not.toBe('none')
       await probe.panel.getByRole('treeitem').filter({ hasText: '已完成记录' }).press('Enter')
       expect(await page.evaluate(() => window.__prtsTeamProbe.opened)).toEqual([
         { parentSessionId: 'probe-root', childSessionId: 'probe-done', mode: 'one-shot' },
@@ -292,6 +330,7 @@ for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
       await expect(trigger).toBeFocused()
       expect(probe.errors).toEqual([])
       expect(probe.writes).toEqual([])
+      expect(probe.blockedDraftCreates.length).toBeLessThanOrEqual(1)
     } finally { await probe.dispose() }
   })
 
@@ -319,6 +358,7 @@ for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
       await expect(command.locator('pre')).toHaveText('隔离命令失败\n保留完整错误详情')
       expect(probe.errors).toEqual([])
       expect(probe.writes).toEqual([])
+      expect(probe.blockedDraftCreates.length).toBeLessThanOrEqual(1)
     } finally { await probe.dispose() }
   })
 
@@ -342,6 +382,7 @@ for (const scheme of ['dark', 'light']) for (const width of [390, 1440]) {
       expect(await page.evaluate(() => window.__prtsTeamProbe.disabled)).toEqual(['probe-root'])
       expect(probe.errors).toEqual([])
       expect(probe.writes).toEqual([])
+      expect(probe.blockedDraftCreates.length).toBeLessThanOrEqual(1)
     } finally { await probe.dispose() }
   })
 }

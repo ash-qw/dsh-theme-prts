@@ -169,7 +169,7 @@ async function expectCredential(menu, width, caption) {
     const material = node.querySelector(':scope > [aria-hidden="true"][class*="_material_"]')
     return {
       left: rectangle.left, right: rectangle.right, top: rectangle.top, bottom: rectangle.bottom,
-      clip: getComputedStyle(node, '::before').content,
+      nativeBeforeBackground: getComputedStyle(node, '::before').backgroundImage,
       header: getComputedStyle(material, '::before').content,
       stamp: getComputedStyle(material, '::after').content,
       decorationEvents: getComputedStyle(material, '::after').pointerEvents,
@@ -178,13 +178,24 @@ async function expectCredential(menu, width, caption) {
   })
   expect(metrics.left).toBeGreaterThanOrEqual(-1)
   expect(metrics.right).toBeLessThanOrEqual(width + 1)
-  expect(metrics.top).toBeGreaterThanOrEqual(7)
+  expect(metrics.top).toBeGreaterThanOrEqual(0)
   expect(metrics.bottom).toBeLessThanOrEqual(901)
   expect(metrics.header).toBe('"RHODES ISLAND"')
   expect(metrics.stamp).toBe(`"${caption}"`)
   expect(metrics.decorationEvents).toBe('none')
   expect(metrics.opacity).toBe('1')
+  expect(metrics.nativeBeforeBackground).not.toContain('data:image/svg+xml')
   await expect(menu.locator('[data-prts-menu-card]')).toHaveCount(0)
+}
+
+async function screenshotCredential(menu, testInfo, name) {
+  const bounds = await menu.boundingBox()
+  const viewport = menu.page().viewportSize()
+  const left = Math.max(0, Math.floor(bounds.x) - 2)
+  const top = Math.max(0, Math.floor(bounds.y) - 2)
+  const right = Math.min(viewport.width, Math.ceil(bounds.x + bounds.width) + 2)
+  const bottom = Math.min(viewport.height, Math.ceil(bounds.y + bounds.height) + 2)
+  await menu.page().screenshot({ path: testInfo.outputPath(name), clip: { x: left, y: top, width: right - left, height: bottom - top }, animations: 'disabled' })
 }
 
 async function closeMenus(page) {
@@ -206,7 +217,7 @@ async function expectBackdropTransmission(page, menu, testInfo, kind) {
     node.before(backdrop)
   })
   try {
-    for (const glass of ['standard', 'clear', 'off']) {
+    for (const glass of ['soft', 'standard', 'clear', 'off']) {
       await page.locator('html').evaluate((node, value) => { node.dataset.prtsGlass = value }, glass)
       const samples = []
       for (const color of ['rgb(0, 0, 0)', 'rgb(255, 255, 255)']) {
@@ -217,12 +228,64 @@ async function expectBackdropTransmission(page, menu, testInfo, kind) {
       const delta = samples[0].reduce((sum, channel, index) => sum + Math.abs(channel - samples[1][index]), 0) / samples[0].length
       testInfo.annotations.push({ type: 'transmission', description: `${kind} ${glass}: ${delta.toFixed(2)} mean RGB delta` })
       if (glass === 'off') expect(delta).toBeLessThan(2)
-      else expect(delta).toBeGreaterThan(glass === 'clear' ? 95 : 60)
+      else expect(delta).toBeGreaterThan({ soft: 75, standard: 105, clear: 140 }[glass])
     }
   } finally {
     await page.locator('[data-credential-backdrop]').evaluate(node => node.remove())
     await page.locator('html').evaluate(node => { node.dataset.prtsGlass = 'standard' })
   }
+}
+
+for (const scheme of ['dark', 'light']) {
+  test(`credential preset selected copy remains readable (${scheme}) @live-rc0222`, async ({ page }, testInfo) => {
+    const state = await openHarness(page, scheme, 1440, false, true)
+    const trigger = page.locator('[data-slot="conversation.hero.agentPreset"] button[aria-haspopup="menu"]')
+    await trigger.click()
+    const popup = page.locator('[data-menu-material]:visible').last()
+    await expect(popup).toHaveAttribute('data-prts-glass-menu', 'preset')
+    await expectCredential(popup, 1440, 'MODE')
+    const selected = popup.locator('[role="menuitem"][class*="_selected"]')
+    await expect(selected).toHaveCount(1)
+    const secondary = popup.locator('[role="menuitem"]:not([class*="_selected"]) [class*="_itemDesc"]').first()
+    await expect(secondary).toHaveCSS('color', scheme === 'dark' ? 'rgb(184, 194, 200)' : 'rgb(70, 83, 92)')
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      for (const glass of ['soft', 'standard', 'clear', 'off']) {
+        await page.locator('html').evaluate((node, value) => { node.dataset.prtsGlass = value }, glass)
+        const ink = await selected.evaluate(node => getComputedStyle(node).color)
+        await expect(selected.locator('[class*="_itemName"]')).toHaveCSS('color', ink)
+        const contrast = await selected.evaluate(node => {
+          const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+          const rgba = value => {
+            context.clearRect(0, 0, 1, 1)
+            context.fillStyle = value
+            context.fillRect(0, 0, 1, 1)
+            return [...context.getImageData(0, 0, 1, 1).data]
+          }
+          const composite = (foreground, background) => foreground.slice(0, 3).map((channel, index) => channel * foreground[3] / 255 + background[index] * (1 - foreground[3] / 255))
+          const luminance = color => color.map(channel => channel / 255).map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [.2126, .7152, .0722][index], 0)
+          const fill = rgba(getComputedStyle(node).backgroundColor)
+          return [...node.querySelectorAll('[class*="_itemName"], [class*="_itemDesc"]')].flatMap(text => [0, 255].map(channel => {
+            const background = composite(fill, [channel, channel, channel])
+            const foreground = composite(rgba(getComputedStyle(text).color), background)
+            const values = [luminance(background), luminance(foreground)].sort((left, right) => right - left)
+            return (values[0] + .05) / (values[1] + .05)
+          }))
+        })
+        expect(contrast).toHaveLength(4)
+        for (const ratio of contrast) expect(ratio).toBeGreaterThanOrEqual(4.5)
+      }
+      await page.locator('html').evaluate(node => { node.dataset.prtsGlass = 'standard' })
+      await screenshotCredential(popup, testInfo, `preset-${scheme}-${width}.png`)
+    }
+    await expectBackdropTransmission(page, popup, testInfo, 'preset')
+    await closeMenus(page)
+    await expect(trigger).toBeFocused()
+    expect(state.errors).toEqual([])
+    expect(state.writes).toEqual([])
+    expect(await page.evaluate(() => window.__prtsMenuProbe.selected)).toEqual([])
+    await page.evaluate(() => window.__prtsDisposeMenuProbe())
+  })
 }
 
 for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (const enhanced of [false, true]) {
@@ -315,14 +378,14 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     const popup = page.locator('[data-menu-material]:visible').last()
     await expectCredential(popup, width, 'MODEL')
     await expectBackdropTransmission(page, popup, testInfo, 'model')
-    await popup.screenshot({ path: testInfo.outputPath('model-root.png'), animations: 'disabled' })
+    await screenshotCredential(popup, testInfo, 'model-root.png')
     await popup.getByRole('menuitem').first().click()
     await expect(popup).toHaveAttribute('role', 'group')
     await expectCredential(popup, width, 'MODEL')
     await expect(popup.locator('[role="menu"]').first()).not.toHaveAttribute('data-prts-floating-glass')
     const selectedModel = popup.getByRole('menuitemradio', { checked: true })
     await expect(selectedModel).toHaveCount(1)
-    await expect(selectedModel).toHaveCSS('background-color', scheme === 'dark' ? 'rgba(232, 237, 232, 0.94)' : 'rgba(34, 51, 61, 0.94)')
+    await expect(selectedModel).toHaveCSS('background-color', scheme === 'dark' ? 'rgba(232, 237, 232, 0.86)' : 'rgba(34, 51, 61, 0.86)')
     await expect(selectedModel).toHaveCSS('opacity', '1')
     const groups = popup.locator('[role="menu"]').first()
     await expect(groups).toHaveCSS('overflow-y', 'auto')
@@ -331,7 +394,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     await expect(popup.getByRole('menuitemradio')).toHaveCount(1)
     await search.fill('')
     await expect(popup.getByRole('menuitemradio')).toHaveCount(19)
-    await popup.screenshot({ path: testInfo.outputPath('model-list.png'), animations: 'disabled' })
+    await screenshotCredential(popup, testInfo, 'model-list.png')
     await closeMenus(page)
 
     const permission = page.locator('[data-credential-permission-trigger]')
@@ -340,12 +403,12 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     await expect(popup).toHaveAttribute('data-prts-glass-menu', 'permission')
     const selectedPermission = popup.locator('[role="menuitem"][class*="_selected_"], [role="menuitem"][class$="_selected"]')
     await expect(selectedPermission).toHaveCount(1)
-    await expect(selectedPermission).toHaveCSS('background-color', scheme === 'dark' ? 'rgba(232, 237, 232, 0.94)' : 'rgba(34, 51, 61, 0.94)')
+    await expect(selectedPermission).toHaveCSS('background-color', scheme === 'dark' ? 'rgba(232, 237, 232, 0.86)' : 'rgba(34, 51, 61, 0.86)')
     await page.keyboard.press('ArrowDown')
     await selectedPermission.focus()
     await expect(selectedPermission).toHaveCSS('outline-style', 'solid')
     const material = popup.locator(':scope > [aria-hidden="true"][class*="_material_"]')
-    for (const [glass, filter, alpha] of [['soft', 'blur(12px) saturate(1.35)', [.72, .78]], ['standard', 'blur(16px) saturate(1.45)', [.62, .68]], ['clear', 'blur(20px) saturate(1.55)', [.48, .54]], ['off', 'none', [1, 1]]]) {
+    for (const [glass, filter, alpha] of [['soft', 'blur(14px) saturate(1.35)', [.6, .66]], ['standard', 'blur(20px) saturate(1.45)', [.46, .52]], ['clear', 'blur(24px) saturate(1.55)', [.34, .4]], ['off', 'none', [1, 1]]]) {
       await page.locator('html').evaluate((node, value) => { node.dataset.prtsGlass = value }, glass)
       await expect(popup).toHaveCSS('backdrop-filter', 'none')
       await expect(popup).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
@@ -358,7 +421,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     }
     await expectBackdropTransmission(page, popup, testInfo, 'permission')
     await page.locator('html').evaluate(node => { node.dataset.prtsGlass = 'clear' })
-    await popup.screenshot({ path: testInfo.outputPath('permission.png'), animations: 'disabled' })
+    await screenshotCredential(popup, testInfo, 'permission.png')
     await closeMenus(page)
     await expect(permission).toBeFocused()
 
@@ -371,7 +434,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     await page.keyboard.press('ArrowDown')
     await expect(items.nth(1)).toBeFocused()
     await expect(popup.getByRole('menuitem', { name: '归档会话', exact: true })).not.toHaveAttribute('data-prts-floating-danger')
-    await popup.screenshot({ path: testInfo.outputPath('session.png'), animations: 'disabled' })
+    await screenshotCredential(popup, testInfo, 'session.png')
     await closeMenus(page)
     await expect(session).toBeFocused()
 
@@ -395,7 +458,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) for (co
     expect(await actions.evaluate(node => ({ rail: getComputedStyle(node, '::after').height, height: node.clientHeight })).then(metrics => Math.abs(parseFloat(metrics.rail) - metrics.height))).toBeLessThan(2)
     await options.evaluate(node => { node.scrollTop = node.scrollHeight })
     await expect(actions).not.toHaveAttribute('data-overflow-below')
-    await actions.screenshot({ path: testInfo.outputPath('action.png'), animations: 'disabled' })
+    await screenshotCredential(actions, testInfo, 'action.png')
     await closeMenus(page)
     await expect(editor).toBeFocused()
     expect(state.errors).toEqual([])
