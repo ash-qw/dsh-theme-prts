@@ -11,6 +11,7 @@ const FLOATING_GLASS_OWNED_ATTRIBUTES = [
 const FLOATING_GLASS_OWNED_SELECTOR = FLOATING_GLASS_OWNED_ATTRIBUTES.map(attribute => `[${attribute}]`).join(', ')
 
 const FLOATING_GLASS_POPUP_SELECTOR = [
+  '[data-menu-material]',
   '[role="menu"]',
   '[role="listbox"]',
   '[role="dialog"][aria-modal="true"]',
@@ -34,6 +35,7 @@ function floatingClassHas(node, fragment) {
 }
 
 function floatingPopupKind(node) {
+  if (node.hasAttribute('data-menu-material')) return 'menu'
   if (node.matches('[role="dialog"]')) return 'dialog'
   if (node.matches('[role="listbox"]')) return 'listbox'
   if (node.matches('[role="menu"]')) return 'menu'

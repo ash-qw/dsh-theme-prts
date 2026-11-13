@@ -50,6 +50,41 @@ test('classifies body portals while leaving embedded application dialogs alone',
   assert.equal(document.querySelector('[data-prts-floating-scrim]'), null)
 })
 
+test('native material shells keep menu treatment without requiring a menu ARIA role', async () => {
+  const dom = new JSDOM([
+    '<!doctype html><html><body>',
+    '<main><div data-menu-material="translucent" role="dialog" data-embedded>内嵌内容</div></main>',
+    '<div data-menu-material="translucent" role="dialog" data-subagent-panel><div role="tree"><div role="treeitem">子智能体</div></div></div>',
+    '<div data-menu-material="translucent" data-roleless><button role="menuitem">操作</button></div>',
+    '<div role="presentation"><div data-menu-material="translucent" role="listbox" data-native-list><div role="option">选项</div></div></div>',
+    '<div role="dialog" data-unrelated>非模态业务内容</div>',
+    '</body></html>',
+  ].join(''), { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const panel = document.querySelector('[data-subagent-panel]')
+  for (const selector of ['[data-subagent-panel]', '[data-roleless]', '[data-native-list]']) {
+    assert.equal(document.querySelector(selector).dataset.prtsFloatingGlass, 'menu')
+  }
+  assert.equal(panel.getAttribute('role'), 'dialog')
+  assert.equal(panel.hasAttribute('aria-modal'), false)
+  assert.equal(panel.querySelector('[role="treeitem"]').hasAttribute('data-prts-floating-item'), false)
+  assert.equal(document.querySelector('[data-embedded]').hasAttribute('data-prts-floating-glass'), false)
+  assert.equal(document.querySelector('[data-unrelated]').hasAttribute('data-prts-floating-glass'), false)
+  assert.equal(document.querySelector('[data-roleless] button').dataset.prtsFloatingItem, '')
+  assert.equal(document.querySelector('[data-native-list] [role="option"]').dataset.prtsFloatingItem, '')
+  panel.remove()
+  await flush(dom.window)
+  assert.equal(panel.hasAttribute('data-prts-floating-glass'), false)
+  document.body.append(panel)
+  await flush(dom.window)
+  assert.equal(panel.dataset.prtsFloatingGlass, 'menu')
+  adapter.dispose()
+  assert.equal(panel.hasAttribute('data-prts-floating-glass'), false)
+  dom.window.close()
+})
+
 test('native wrapped inputs keep their own layout while standalone popup inputs remain themed', async () => {
   const dom = new JSDOM('<body><div role="menu"><span class="_wrap_fixture_1"><input class="_input_fixture_25" role="searchbox"></span><span class="custom-wrap"><input class="_input_fixture_25"></span><input aria-label="Standalone"></div></body>', { pretendToBeVisual: true })
   const { document } = dom.window
