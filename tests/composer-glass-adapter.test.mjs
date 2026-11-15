@@ -298,6 +298,38 @@ test('removing the native composer marker releases signals and control ownership
   assert.equal(document.querySelector('[data-prts-glass-control]'), null)
 })
 
+test('settings launcher portals receive the system category without changing their controls', async testContext => {
+  const dom = new JSDOM(`<body>
+    <main data-prts-region="operation"><div data-composer-card></div></main>
+    <div data-slot="settings.launcher"><span style="anchor-name: --account"><button aria-haspopup="menu" aria-expanded="true">更多</button></span></div>
+    <div id="unrelated" data-menu-material style="position-anchor: --other"></div>
+  </body>`, { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createComposerGlassAdapter({ document, window: dom.window })
+  testContext.after(() => { adapter.dispose(); dom.window.close() })
+  adapter.start()
+  const trigger = document.querySelector('[aria-haspopup]')
+  const popup = document.createElement('div')
+  popup.setAttribute('data-menu-material', '')
+  popup.style.setProperty('position-anchor', '--account')
+  popup.innerHTML = '<div role="menu"><button role="menuitem">设置</button></div>'
+  document.body.append(popup)
+  await Promise.resolve()
+  assert.equal(popup.dataset.prtsGlassMenu, 'system')
+  assert.equal(popup.querySelector('[role="menu"]').hasAttribute('data-prts-glass-menu'), false)
+  assert.equal(trigger.hasAttribute('data-prts-glass-control'), false)
+  assert.equal(trigger.disabled, false)
+  assert.equal(document.getElementById('unrelated').hasAttribute('data-prts-glass-menu'), false)
+  popup.remove()
+  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  assert.equal(popup.hasAttribute('data-prts-glass-menu'), false)
+  document.body.append(popup)
+  await Promise.resolve()
+  assert.equal(popup.dataset.prtsGlassMenu, 'system')
+  adapter.dispose()
+  assert.equal(document.querySelector('[data-prts-glass-menu]'), null)
+})
+
 test('permission portals resolve their exact native CSS anchor without borrowing another composer popup', testContext => {
   const dom = new JSDOM(`<body>
     <div data-composer-card><div data-slot="conversation.input.permission"><span style="anchor-name: --permission"><button id="permission"></button></span></div></div>

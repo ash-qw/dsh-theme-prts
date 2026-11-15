@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createRippleRefractionMap } from './ripple-refraction.mjs'
 import { indexCssSelectors } from './css-selector-index.mjs'
+import { applyMenuLettering } from './menu-lettering.mjs'
 import { createExactEmblemMask, createRhodesHeroMask } from './png-alpha.mjs'
 import { PARTICLE_DENSITY_PROFILES, findOrthogonalLayout } from '../src/client/particle-field-adapter.js'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -47,7 +48,7 @@ function encodeBinaryAlphaMask(alpha, threshold = 40) {
   return Buffer.from(bytes).toString('base64')
 }
 
-const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, rightSidebarCss, backgroundCss, menuCardCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
+const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, rightSidebarCss, backgroundCss, rawMenuCardCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
   readFile(resolve(root, 'src/styles/prts.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/stabilization.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/refinement.css'), 'utf8'),
@@ -63,6 +64,8 @@ const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, f
     readFile(resolve(root, 'src/assets/faction-emblems', file)),
   )),
 ])
+const menuCardCss = applyMenuLettering(rawMenuCardCss)
+
 function compactCss(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, '')

@@ -4,6 +4,7 @@ const COMPOSER_SIGNAL_ATTRIBUTE = 'data-prts-composer-signal'
 const POPUP_SELECTOR = '[data-menu-material], [data-trigger-menu], [role="menu"], [role="listbox"]'
 const TRIGGER_SELECTOR = 'button[aria-haspopup="menu"], button[aria-haspopup="listbox"], [data-slot="conversation.input.permission"] button'
 const PRESET_TRIGGER_SELECTOR = '[data-slot="conversation.hero.agentPreset"] button[aria-haspopup="menu"]'
+const SYSTEM_TRIGGER_SELECTOR = '[data-slot="settings.launcher"] button[aria-haspopup="menu"]'
 const COMPOSER_RELEVANCE_SELECTOR = [
   '[data-composer-card]',
   '[data-slot="conversation.input.overlay"]',
@@ -24,7 +25,7 @@ function localPopup(trigger) {
 }
 
 function anchoredPopup(trigger, popups) {
-  const boundary = trigger.closest('[data-composer-card], [data-slot="conversation.hero.agentPreset"]')
+  const boundary = trigger.closest('[data-composer-card], [data-slot="conversation.hero.agentPreset"], [data-slot="settings.launcher"]')
   for (let anchor = trigger; anchor && anchor !== boundary; anchor = anchor.parentElement) {
     for (const name of anchor.style.getPropertyValue('anchor-name').split(',').map(value => value.trim()).filter(Boolean)) {
       const popup = popups.get(name)
@@ -149,6 +150,9 @@ export function createComposerGlassAdapter({ document, window }) {
     for (const trigger of document.querySelectorAll(PRESET_TRIGGER_SELECTOR)) {
       controls.set(trigger, 'preset')
       if (trigger.getAttribute('aria-expanded') === 'true') markPopup(linkedMenu(document, trigger, popups), 'preset', menus)
+    }
+    for (const trigger of document.querySelectorAll(SYSTEM_TRIGGER_SELECTOR)) {
+      if (trigger.getAttribute('aria-expanded') === 'true') markPopup(linkedMenu(document, trigger, popups), 'system', menus)
     }
     syncMarkers(ownedControls, controls, CONTROL_ATTRIBUTE)
     syncMarkers(ownedMenus, menus, MENU_ATTRIBUTE)

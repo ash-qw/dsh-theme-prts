@@ -72,7 +72,7 @@ function floatingHasCompleteCustomMaterial(window, node) {
 
 const FLOATING_GLASS_ITEM_SELECTOR = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]'
 const FLOATING_GLASS_INPUT_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
-const FLOATING_GLASS_NATIVE_INPUT_SELECTOR = 'span[class*="_wrap_"] > input[class*="_input_"]'
+const FLOATING_GLASS_NATIVE_INPUT_SELECTOR = 'span[class*="_wrap_"] > input[class*="_input_"], input[type="checkbox"], input[type="radio"]'
 const FLOATING_GLASS_DANGER_SELECTOR = '[class*="_danger_"], [class*="_deleteAction"], [data-variant="danger"], [data-danger="true"]'
 const FLOATING_GLASS_CONTENT_SELECTOR = [FLOATING_GLASS_ITEM_SELECTOR, FLOATING_GLASS_INPUT_SELECTOR, FLOATING_GLASS_DANGER_SELECTOR].join(', ')
 const FLOATING_GLASS_PRESERVED_SELECTOR = '[data-prts-preserve-popup-style], [data-prts-floating-preserved]'
@@ -190,7 +190,7 @@ export function createFloatingGlassAdapter({ document, window }) {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['role', 'aria-modal', 'hidden', 'aria-hidden', 'class', 'data-variant', 'data-danger', 'contenteditable', 'style'],
+      attributeFilter: ['role', 'aria-modal', 'hidden', 'aria-hidden', 'class', 'type', 'data-variant', 'data-danger', 'contenteditable', 'style'],
     })
     contentObservers.set(node, contentObserver)
   }

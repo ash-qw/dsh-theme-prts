@@ -111,6 +111,35 @@ test('native wrapped inputs keep their own layout while standalone popup inputs 
   }
 })
 
+test('popup checkboxes and radios retain native geometry while text fields remain themed', async () => {
+  const dom = new JSDOM('<body><div role="dialog" aria-modal="true"><label><input type="checkbox">风险确认</label><input type="radio"><input type="text"></div></body>', { pretendToBeVisual: true })
+  const { document } = dom.window
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  try {
+    adapter.start()
+    const checkbox = document.querySelector('[type="checkbox"]')
+    const radio = document.querySelector('[type="radio"]')
+    const text = document.querySelector('[type="text"]')
+    assert.equal(checkbox.hasAttribute('data-prts-floating-input'), false)
+    assert.equal(radio.hasAttribute('data-prts-floating-input'), false)
+    assert.equal(text.hasAttribute('data-prts-floating-input'), true)
+    text.type = 'checkbox'
+    await flush(dom.window)
+    assert.equal(text.hasAttribute('data-prts-floating-input'), false)
+    text.type = 'text'
+    await flush(dom.window)
+    assert.equal(text.hasAttribute('data-prts-floating-input'), true)
+    assert.equal(checkbox.checked, false)
+    checkbox.click()
+    assert.equal(checkbox.checked, true)
+    adapter.dispose()
+    assert.equal(document.querySelector('[data-prts-floating-input]'), null)
+  } finally {
+    adapter.dispose()
+    dom.window.close()
+  }
+})
+
 for (const slot of ['settings.section', 'settings.plugins.tab']) {
   test(`preserves embedded ${slot} controls while adapting independent nested popups`, async () => {
     const dom = new JSDOM('<body><div role="presentation"><div role="dialog" aria-modal="true"><div data-slot="' + slot + '"></div></div></div></body>', { pretendToBeVisual: true })

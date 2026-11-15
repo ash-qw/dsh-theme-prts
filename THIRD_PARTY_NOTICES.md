@@ -4,6 +4,12 @@ English | [简体中文](THIRD_PARTY_NOTICES.zh-CN.md)
 
 This file records provenance and licensing boundaries only. It does not establish or imply permission to include, publish, or redistribute any third-party material listed below.
 
+## Menu display lettering
+
+- Files: `src/assets/menu-lettering/rail.svg` uses Saira Stencil One Regular from the Google Fonts repository; `captions.svg` uses Orbitron Bold from `theleagueof/orbitron`. `header.svg` uses Montserrat SemiBold from the font authors' `JulietaUla/Montserrat` repository, not a copy of the official website's font. All three assets contain fixed-label vector outlines only.
+- Source copyright, complete SIL Open Font License 1.1 texts, source hashes, and conversion details are retained in `src/assets/menu-lettering/`. These are not official Arknights fonts.
+- Only the required outlined labels are embedded at build time; no full font, font parser, external font request, or system-font dependency is included in the client. Body text and native interactions are unchanged.
+
 ## Code
 
 The JavaScript, CSS, build scripts, tests, and original DSH-specific vector interface work in this package are licensed under the MIT License in `LICENSE`.

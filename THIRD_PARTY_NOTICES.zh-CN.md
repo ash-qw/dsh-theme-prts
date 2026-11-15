@@ -4,6 +4,12 @@
 
 本文件仅记录素材来源和许可边界，不构成、也不暗示本项目已获准收录、发布或再分发下列任何第三方素材。
 
+## 菜单装饰字
+
+- 文件：`src/assets/menu-lettering/rail.svg`、`header.svg` 和 `captions.svg`，依次使用 Google Fonts 仓库中 Saira Stencil One Regular、字体作者 `JulietaUla/Montserrat` 仓库中 Montserrat SemiBold 和 `theleagueof/orbitron` 仓库中 Orbitron Bold 的固定文案矢量轮廓。票头使用 Montserrat 近似官网的宽体几何风格，不复制官网字库。
+- 原字体版权、SIL Open Font License 1.1 许可全文、源文件哈希和转换说明保留在 `src/assets/menu-lettering/`。这些不是明日方舟官方字体。
+- 客户端仅内嵌必要文案轮廓，不包含完整字体或字体解析器，不请求网络字体，也不依赖用户本机字体；不修改正文和原生交互。
+
 ## 代码
 
 本包中的 JavaScript、CSS、构建脚本、测试，以及面向 DSH 独立创作的矢量界面设计，适用 `LICENSE` 中的 MIT 许可证。
