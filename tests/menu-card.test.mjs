@@ -21,6 +21,13 @@ test('credential menus are bundled after the existing shared glass materials', (
   assert.match(build, /\$\{backgroundCss\}\\n\$\{menuCardCss\}/)
 })
 
+test('sidebar panel actions use the stable native slot for their ACTION category', () => {
+  const action = css.match(/&:is\([^{}]*:has\(\[data-slot="sidebar\.panellist\.actions"\]\)\)\s*\{([^}]+)/)?.[1]
+  assert.ok(action)
+  assert.match(action, /--prts-menu-card-caption: "ACTION";/)
+  assert.match(action, /--prts-menu-card-caption-y: -96px;/)
+})
+
 test('credential menus omit the external hanger without replacing native scroll indicators', () => {
   const caption = css.match(/\n  &::before\s*\{([^}]+)/)?.[1]
   assert.ok(caption)

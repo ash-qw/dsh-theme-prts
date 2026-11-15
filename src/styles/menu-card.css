@@ -81,7 +81,7 @@ html[data-dsh-prts] [data-menu-material]:is([data-prts-floating-glass="menu"], [
     --prts-menu-card-caption-y: -144px;
   }
 
-  &:is([data-context-menu], [data-prts-glass-menu="action"]) {
+  &:is([data-context-menu], [data-prts-glass-menu="action"], :has([data-slot="sidebar.panellist.actions"])) {
     --prts-menu-card-caption: "ACTION";
     --prts-menu-card-caption-y: -96px;
   }

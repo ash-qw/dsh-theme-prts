@@ -53,6 +53,27 @@ async function mountMenu(page, scheme, zoom = 1, category = '') {
   return page.locator('[data-menu-material]')
 }
 
+for (const scheme of ['dark', 'light']) {
+  test(`sidebar panel actions classify dynamic native slot content without text or class hashes (${scheme})`, async ({ page }) => {
+    const menu = await mountMenu(page, scheme)
+    const caption = () => menu.evaluate(node => getComputedStyle(node).getPropertyValue('--prts-menu-card-caption').trim())
+    expect(await caption()).toBe('"PRTS"')
+    const mask = await menu.evaluate(node => getComputedStyle(node, '::before').maskImage)
+    await menu.evaluate(node => {
+      const slot = document.createElement('div')
+      slot.setAttribute('data-slot', 'sidebar.panellist.actions')
+      slot.innerHTML = '<button role="menuitem">Browse plugins</button>'
+      node.append(slot)
+    })
+    await expect.poll(caption).toBe('"ACTION"')
+    expect(await menu.evaluate(node => getComputedStyle(node, '::before').maskImage)).toBe(mask)
+    await menu.getByRole('menuitem').evaluate(node => { node.textContent = '浏览更多插件' })
+    expect(await caption()).toBe('"ACTION"')
+    await menu.locator('[data-slot]').evaluate(node => { node.remove() })
+    await expect.poll(caption).toBe('"PRTS"')
+  })
+}
+
 for (const scheme of ['dark', 'light']) for (const density of [1, 1.25, 1.5, 2]) for (const zoom of [.8, 1, 1.25]) {
   test(`credential rail keeps P and R counters open (${scheme}, DPR ${density}, zoom ${zoom})`, async ({ browser }, testInfo) => {
     const context = await browser.newContext({ viewport: { width: 400, height: 320 }, deviceScaleFactor: density })
