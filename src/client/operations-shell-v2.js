@@ -16,7 +16,7 @@ function setText(root, selector, value) {
 function markup(emblem) {
   return `<div data-prts-shell data-plugin="dsh-theme-prts">
     <button type="button" data-prts-rail-launcher aria-label="打开 P.R.T.S. 导航" aria-controls="prts-nav-rail" aria-expanded="false"><span aria-hidden="true">P.R.T.S.</span><i data-prts-rail-gesture-cue aria-hidden="true">⌄<br>⌄</i></button>
-    <nav id="prts-nav-rail" data-prts-nav-rail aria-label="P.R.T.S. 导航">
+    <nav id="prts-nav-rail" data-prts-nav-rail data-window-drag-exclude aria-label="P.R.T.S. 导航">
       <button type="button" data-prts-rail-brand aria-label="P.R.T.S. 终端设置" aria-controls="prts-theme-settings" aria-expanded="false">${emblem || ''}<span>P.R.T.S.</span></button>
       <div data-prts-nav-bottom>
         <div data-prts-connection-indicator data-state="unknown" tabindex="0" role="status" aria-label="Harness 主机连接状态：未知">
