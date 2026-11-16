@@ -251,6 +251,18 @@ html[data-dsh-prts] [data-prts-nav-rail] {
   box-shadow: 4px 0 18px rgba(0, 0, 0, .18);
 }
 
+/* macOS windowed: the settings button owns the rail's top chrome inset, so its
+   hover/click target is a tall strip while the emblem stays put. */
+html[data-dsh-prts][data-platform=darwin]:not([data-fullscreen]) [data-prts-nav-rail] {
+  padding-top: 0;
+}
+
+html[data-dsh-prts][data-platform=darwin]:not([data-fullscreen]) [data-prts-rail-brand] {
+  box-sizing: border-box;
+  height: 96px; /* 32px chrome inset + 64px brand */
+  padding-top: 32px;
+}
+
 html[data-dsh-prts] [data-prts-rail-launcher] {
   display: none;
 }
