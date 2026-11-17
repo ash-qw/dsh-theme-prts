@@ -580,6 +580,7 @@ export function createSessionSummaryPreview({ document, window, sessions, getSes
         const detail = panel.ownerDocument.createElement('section')
         detail.setAttribute('data-prts-summary-reply', '')
         detail.setAttribute('data-prts-reply-detail', '')
+        detail.setAttribute('data-prts-preserve-popup-style', '')
         detail.setAttribute('popover', 'manual')
         detail.setAttribute('role', 'note')
         const heading = panel.ownerDocument.createElement('strong')

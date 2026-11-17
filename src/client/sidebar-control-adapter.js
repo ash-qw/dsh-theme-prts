@@ -580,6 +580,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
 
     const popover = document.createElement('span')
     popover.setAttribute('data-prts-session-summary-popover', state)
+    popover.setAttribute('data-prts-preserve-popup-style', '')
     popover.setAttribute('role', 'menu')
     popover.setAttribute('popover', 'manual')
     popover.setAttribute('aria-label', label)
@@ -597,6 +598,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     popover.append(heading)
     const reply = document.createElement('section')
     reply.setAttribute('data-prts-summary-reply', '')
+    reply.setAttribute('data-prts-preserve-popup-style', '')
     reply.setAttribute('role', 'note')
     reply.setAttribute('popover', 'manual')
     reply.hidden = true
@@ -621,6 +623,9 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       if (typeof popover.showPopover === 'function' && !popover.matches(':popover-open')) popover.showPopover()
       const header = group.closest('[data-prts-session-summary-header]')?.getBoundingClientRect()
       if (!header) return
+      const triggerBounds = trigger.getBoundingClientRect()
+      popover.style.setProperty('--prts-summary-anchor-left', (triggerBounds.left - header.left) + 'px')
+      popover.style.setProperty('--prts-summary-anchor-width', triggerBounds.width + 'px')
       Object.assign(popover.style, {position:'fixed', boxSizing:'border-box', margin:'0', left:header.left+'px',
         width:header.width+'px', right:'auto', bottom:'auto'})
       popover.removeAttribute('data-prts-summary-no-space')
@@ -633,17 +638,19 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       // Measure the final layout, independent of the opening transform animation.
       const place = () => {
         popover.removeAttribute('data-prts-summary-above')
-        const parent = header
+        const belowGap = Math.max(0, header.bottom - triggerBounds.bottom) + 'px'
+        popover.style.setProperty('--prts-summary-trigger-gap', belowGap)
         const rect = popover.getBoundingClientRect()
-        const height = popover.offsetHeight
-        const below = parent.bottom + 6
-        const above = parent.top - 6 - height
-        const candidate = y => ({left: rect.left, right: rect.right, top: y, bottom: y + height})
+        const below = triggerBounds.bottom
+        const candidate = y => ({left: rect.left, right: rect.right, top: y, bottom: y + popover.offsetHeight})
         popover.style.top = below + 'px'
         if (fits(candidate(below))) return true
         popover.setAttribute('data-prts-summary-above', '')
+        popover.style.setProperty('--prts-summary-trigger-gap', Math.max(0, triggerBounds.top - header.top) + 'px')
+        const above = triggerBounds.top - popover.offsetHeight
         if (fits(candidate(above))) { popover.style.top = above + 'px'; return true }
         popover.removeAttribute('data-prts-summary-above')
+        popover.style.setProperty('--prts-summary-trigger-gap', belowGap)
         return false
       }
       if (place()) { trigger.removeAttribute('title'); return }
