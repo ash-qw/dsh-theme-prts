@@ -65,6 +65,11 @@ for (const width of [1440, 390]) {
     const shell = page.locator('[data-shortcut-modal="settings"]')
     await expect(shell).toBeVisible()
     await expect(shell).toHaveAttribute('data-prts-settings-shell', '')
+    await expect(shell.locator('[data-prts-settings-jacket]')).toHaveCount(1)
+    const emblem = shell.locator('[data-prts-settings-emblem] img')
+    await expect(emblem).toHaveJSProperty('complete', true)
+    await expect(emblem).toHaveJSProperty('naturalWidth', 95)
+    await expect(emblem).toHaveJSProperty('naturalHeight', 81)
     await expect(shell.locator('nav button[aria-current]')).toHaveText('通用设置')
     await expect(shell.locator('[data-prts-settings-filetab]')).toHaveCount(0)
     const geometry = await shell.evaluate(node => {
@@ -136,3 +141,41 @@ for (const width of [1440, 390]) {
     expect(errors).toEqual([])
   })
 }
+
+
+test('model settings stay steady without idle page draws @live-rc0222', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(process.env.PRTS_LIVE_URL || 'http://127.0.0.1:3080')
+  await expect(page.locator('html')).toHaveAttribute('data-dsh-prts', '', { timeout: 20_000 })
+  await page.locator('[data-prts-startup]').waitFor({ state: 'hidden' })
+  await page.locator('[data-slot="sidebar.settings"] button').click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  const shell = page.locator('[data-prts-settings-shell]')
+  await shell.locator('nav').getByRole('button', { name: '模型', exact: true }).click()
+  await expect(shell.locator('[data-slot="settings.section"]').getByRole('heading', { name: '模型', exact: true })).toBeVisible()
+  await expect(shell).not.toHaveAttribute('data-prts-settings-turn')
+  await page.waitForTimeout(600)
+  const state = await shell.evaluate(async node => {
+    const animations = []
+    const geometry = new Set()
+    const content = node.querySelector('[data-slot="settings.section"]').parentElement
+    const recordAnimation = event => { if (event.animationName.startsWith('prts-settings-draw-')) animations.push(event.animationName) }
+    node.addEventListener('animationstart', recordAnimation)
+    const timer = setInterval(() => {
+      const section = node.querySelector('[data-slot="settings.section"]').firstElementChild
+      const bounds = section.getBoundingClientRect()
+      geometry.add(JSON.stringify([bounds.x, bounds.y, bounds.width, content.scrollTop]))
+    }, 100)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 15000))
+      return { animations, positions: geometry.size, turn: node.getAttribute('data-prts-settings-turn') }
+    } finally {
+      clearInterval(timer)
+      node.removeEventListener('animationstart', recordAnimation)
+    }
+  })
+  expect(state.animations).toEqual([])
+  expect(state.positions).toBe(1)
+  expect(state.turn).toBeNull()
+  await expect(shell.locator('[data-prts-settings-pagination]')).toHaveText('02 / ' + String(await shell.locator('nav button').count()).padStart(2, '0'))
+})

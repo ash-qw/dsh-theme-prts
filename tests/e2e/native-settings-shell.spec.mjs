@@ -162,16 +162,31 @@ for (const width of [1440, 390]) for (const motion of ['full', 'reduced', 'syste
     const shell = await openShell(page, 'dark', width, 'standard', motion === 'reduced' ? 'reduced' : 'full')
     const close = shell.getByRole('button', { name: '关闭', exact: true })
     const closeBefore = await close.boundingBox()
-    const content = shell.locator('.native-content')
-    await shell.getByRole('button', { name: '模型', exact: true }).click()
-    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'a')
-    const closeAfter = await close.boundingBox()
-    expect(closeAfter.y).toBe(closeBefore.y)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
-    await expect(content).toHaveCSS('animation-name', motion === 'full' ? 'prts-settings-draw-a' : 'none')
-    await shell.getByRole('button', { name: '通用设置', exact: true }).click()
-    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'b')
-    await expect(content).toHaveCSS('animation-name', motion === 'full' ? 'prts-settings-draw-b' : 'none')
+    for (const [label, turn] of [['模型', 'a'], ['通用设置', 'b']]) {
+      const state = await shell.evaluate(async (node, label) => {
+        const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === label)
+        bookmark.click()
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        const close = node.querySelector('[data-slot="settings.close"]').closest('button')
+        const parts = [
+          node.querySelector('[data-prts-settings-depth="0"]'),
+          node.querySelector('[data-prts-settings-jacket]'),
+          close.parentElement,
+          node.querySelector('[data-slot="settings.section"]').parentElement,
+          bookmark,
+        ]
+        return {
+          turn: node.getAttribute('data-prts-settings-turn'),
+          closeY: close.getBoundingClientRect().y,
+          scrollWidth: document.documentElement.scrollWidth,
+          animations: parts.map(part => getComputedStyle(part).animationName),
+        }
+      }, label)
+      expect(state.turn).toBe(turn)
+      expect(state.closeY).toBe(closeBefore.y)
+      expect(state.scrollWidth).toBe(width)
+      expect(state.animations).toEqual(Array(5).fill(motion === 'full' ? 'prts-settings-draw-' + turn : 'none'))
+    }
   })
 }
 
@@ -392,7 +407,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
       const style = getComputedStyle(node, '::before')
       return { border: style.borderTopWidth, inset: style.top, pointerEvents: getComputedStyle(node).pointerEvents }
     })
-    expect(frame).toEqual({ border: '1px', inset: '8px', pointerEvents: 'none' })
+    expect(frame).toEqual({ border: '0px', inset: '0px', pointerEvents: 'none' })
     const selector = shell.getByRole('button', { name: '原生选择器' })
     await expect(selector).toHaveCSS('border-radius', '12px')
     const row = shell.locator('[data-slot="settings.general.item"] > .record_row').first()
@@ -414,5 +429,182 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
     await expect(plugin).not.toHaveAttribute('data-prts-floating-input')
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
     await expectNativeBackdrop(shell)
+  })
+}
+
+
+for (const width of [1440, 390]) {
+  test('file jacket numbering follows native categories and its graphics stay inert (' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, 'dark', width)
+    const frame = shell.locator('[data-prts-settings-jacket]')
+    await expect(frame).toHaveCount(1)
+    await expect(frame).toHaveAttribute('aria-hidden', 'true')
+    await expect(frame).toHaveCSS('pointer-events', 'none')
+    await expect(frame.locator('[id], button, input, svg')).toHaveCount(0)
+    const emblem = frame.locator('[data-prts-settings-emblem] img')
+    await expect(emblem).toHaveJSProperty('complete', true)
+    await expect(emblem).toHaveJSProperty('naturalWidth', 95)
+    await expect(emblem).toHaveJSProperty('naturalHeight', 81)
+    await expect(emblem).toHaveAttribute('src', /^data:image\/png;base64,/)
+    await expect(emblem).toHaveCSS('object-fit', 'contain')
+    await expect(frame.locator('[data-prts-settings-pagination]')).toHaveText('01 / 06')
+    await shell.getByRole('button', { name: '模型', exact: true }).click()
+    await expect(frame.locator('[data-prts-settings-pagination]')).toHaveText('02 / 06')
+    await expect(frame.locator('[data-prts-settings-markers] > :nth-child(2)')).toHaveAttribute('data-prts-settings-active', '')
+    await shell.evaluate(node => node.querySelector('nav > div').prepend(document.createElement('button')))
+    await expect(frame.locator('[data-prts-settings-pagination]')).toHaveText('03 / 07')
+    await expect(frame.locator('[data-prts-settings-markers] > i')).toHaveCount(7)
+    const clearance = await shell.evaluate(node => {
+      const graphic = node.querySelector('[data-prts-settings-jacket]')
+      const footer = graphic.querySelector('[data-prts-settings-footer]').getBoundingClientRect()
+      const content = node.querySelector('[data-slot="settings.section"]').parentElement.getBoundingClientRect()
+      const side = graphic.querySelector('[data-prts-settings-side]').getBoundingClientRect()
+      const bounds = graphic.getBoundingClientRect()
+      const sheet = node.querySelector('[data-prts-settings-depth="0"]').getBoundingClientRect()
+      return { footer: footer.top - content.bottom, right: side.width, viewport: document.documentElement.scrollWidth, height: bounds.height, sheetHeight: sheet.height, clip: getComputedStyle(graphic).clipPath, before: getComputedStyle(graphic, '::before').content }
+    })
+    expect(clearance.footer).toBeGreaterThanOrEqual(7)
+    expect(clearance.right).toBe(width < 768 ? 14 : 19)
+    expect(clearance.viewport).toBe(width)
+    expect(clearance.height).toBe(clearance.sheetHeight)
+    expect(clearance.clip).toBe('none')
+    expect(clearance.before).toBe('none')
+  })
+
+  test('same-page host refreshes never replay page drawing (' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, 'dark', width, 'standard', 'full')
+    await shell.getByRole('button', { name: '模型', exact: true }).click()
+    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'a')
+    await expect(shell).not.toHaveAttribute('data-prts-settings-turn')
+    await shell.evaluate(node => {
+      window.settingsRefreshAnimations = []
+      node.addEventListener('animationstart', event => window.settingsRefreshAnimations.push(event.animationName))
+      node.querySelector('.native-content input').value = 'unsaved input'
+      const content = node.querySelector('.native-content')
+      const filler = document.createElement('span')
+      filler.style.cssText = 'display:block;height:1200px'
+      content.querySelector('[data-slot="settings.section"]').append(filler)
+      content.scrollTop = 300
+      window.settingsRefreshScroll = content.scrollTop
+    })
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await shell.evaluate(node => {
+        const navigation = node.querySelector('nav > div')
+        navigation.replaceWith(navigation.cloneNode(true))
+        const toolbar = node.querySelector('.native-tools')
+        toolbar.replaceWith(toolbar.cloneNode(true))
+        const section = node.querySelector('[data-slot="settings.section"]')
+        section.append(document.createElement('span'))
+      })
+      await page.waitForTimeout(400)
+      await expect(shell).not.toHaveAttribute('data-prts-settings-turn')
+    }
+    const state = await shell.evaluate(node => ({
+      animations: window.settingsRefreshAnimations,
+      value: node.querySelector('.native-content input').value,
+      scroll: node.querySelector('.native-content').scrollTop,
+      initialScroll: window.settingsRefreshScroll,
+      frameCount: node.querySelectorAll('[data-prts-settings-jacket]').length,
+    }))
+    expect(state.animations).toEqual([])
+    expect(state.value).toBe('unsaved input')
+    expect(state.initialScroll).toBe(300)
+    expect(state.scroll).toBe(state.initialScroll)
+    expect(state.frameCount).toBe(1)
+    await shell.evaluate(node => {
+      const content = node.querySelector('.native-content')
+      content.replaceWith(content.cloneNode(true))
+    })
+    await page.waitForTimeout(350)
+    expect(await page.evaluate(() => window.settingsRefreshAnimations)).toEqual([])
+  })
+}
+
+
+for (const width of [1440, 390]) {
+  test('printed frame, toolbar and bookmark draw in lockstep with the front sheet (' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, 'dark', width, 'standard', 'full')
+    const state = await shell.evaluate(async node => {
+      const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === '模型')
+      bookmark.click()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      const parts = [
+        node.querySelector('[data-prts-settings-depth="0"]'),
+        node.querySelector('[data-prts-settings-jacket]'),
+        node.querySelector('[data-slot="settings.close"]').closest('button').parentElement,
+        node.querySelector('[data-slot="settings.section"]').parentElement,
+        bookmark,
+      ]
+      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
+      for (const animation of animations) {
+        animation.pause()
+        animation.currentTime = 90
+      }
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      return {
+        animations: animations.length,
+        parts: parts.map(part => {
+          const style = getComputedStyle(part)
+          return { transform: style.transform, opacity: style.opacity, duration: style.animationDuration, easing: style.animationTimingFunction }
+        }),
+        backing: [...node.querySelectorAll('[data-prts-settings-page]:not([data-prts-settings-depth="0"])')].map(part => getComputedStyle(part).transform),
+        otherBookmarks: [...node.querySelectorAll('nav button:not([aria-current])')].map(part => getComputedStyle(part).transform),
+      }
+    })
+    expect(state.animations).toBe(5)
+    expect(state.parts).toHaveLength(5)
+    for (const part of state.parts) expect(part).toEqual(state.parts[0])
+    expect(state.parts[0].transform).not.toBe('none')
+    expect(state.parts[0].duration).toBe('0.18s')
+    expect(state.parts[0].opacity).toBe('1')
+    expect(state.backing.every(transform => transform === 'none')).toBe(true)
+    expect(state.otherBookmarks.every(transform => transform === 'none')).toBe(true)
+  })
+}
+
+for (const width of [1440, 390]) {
+  test('page decoration stays settled after a delayed draw completes (' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, 'dark', width, 'standard', 'full')
+    await shell.evaluate(async node => {
+      const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === '模型')
+      bookmark.click()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
+      for (const animation of animations) {
+        animation.pause()
+        animation.currentTime = 90
+      }
+    })
+    await page.waitForTimeout(400)
+    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'a')
+    const completion = await shell.evaluate(async node => {
+      const parts = [
+        node.querySelector('[data-prts-settings-depth="0"]'),
+        node.querySelector('[data-prts-settings-jacket]'),
+        node.querySelector('[data-slot="settings.close"]').closest('button').parentElement,
+        node.querySelector('[data-slot="settings.section"]').parentElement,
+        node.querySelector('nav button[aria-current]'),
+      ]
+      const inspect = () => parts.map(part => {
+        const bounds = part.getBoundingClientRect()
+        const style = getComputedStyle(part)
+        return { x: bounds.x, y: bounds.y, transform: style.transform, opacity: style.opacity }
+      })
+      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
+      for (const animation of animations) animation.finish()
+      const finalFrame = inspect()
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      const released = inspect()
+      await new Promise(resolve => setTimeout(resolve, 180))
+      return { finalFrame, released, settled: inspect(), turn: node.getAttribute('data-prts-settings-turn') }
+    })
+    expect(completion.turn).toBeNull()
+    expect(completion.finalFrame).toEqual(completion.released)
+    expect(completion.settled).toEqual(completion.released)
+    for (const part of completion.settled) {
+      expect(part.transform).toBe('matrix(1, 0, 0, 1, 0, 0)')
+      expect(part.opacity).toBe('1')
+    }
   })
 }

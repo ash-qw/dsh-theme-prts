@@ -10,6 +10,7 @@ const FLOATING_GLASS_OWNED_ATTRIBUTES = [
   'data-prts-floating-nested',
   'data-prts-floating-preserved',
 ]
+const NATIVE_SETTINGS_DECORATION_SELECTOR = '[data-prts-settings-page], [data-prts-settings-jacket]'
 const FLOATING_GLASS_OWNED_SELECTOR = FLOATING_GLASS_OWNED_ATTRIBUTES.map(attribute => `[${attribute}]`).join(', ')
 
 const FLOATING_GLASS_POPUP_SELECTOR = [
@@ -79,8 +80,8 @@ const FLOATING_GLASS_DANGER_SELECTOR = '[class*="_danger_"], [class*="_deleteAct
 const FLOATING_GLASS_CONTENT_SELECTOR = [FLOATING_GLASS_ITEM_SELECTOR, FLOATING_GLASS_INPUT_SELECTOR, FLOATING_GLASS_DANGER_SELECTOR].join(', ')
 const FLOATING_GLASS_PRESERVED_SELECTOR = '[data-prts-preserve-popup-style], [data-prts-floating-preserved]'
 
-export function createFloatingGlassAdapter({ document, window }) {
-  const settingsShell = createNativeSettingsShellAdapter({ document })
+export function createFloatingGlassAdapter({ document, window, emblemImage }) {
+  const settingsShell = createNativeSettingsShellAdapter({ document, emblemImage })
   let observer
   let active = false
   const owned = new Set()
@@ -146,7 +147,7 @@ export function createFloatingGlassAdapter({ document, window }) {
   }
 
   function classifyTree(node) {
-    if (node?.nodeType !== 1 || node.closest(FLOATING_GLASS_PRESERVED_SELECTOR)) return
+    if (node?.nodeType !== 1 || node.closest(FLOATING_GLASS_PRESERVED_SELECTOR) || node.closest(NATIVE_SETTINGS_DECORATION_SELECTOR)) return
     if (node.matches(FLOATING_GLASS_POPUP_SELECTOR)) classifyPopup(node)
     for (const popup of node.querySelectorAll(FLOATING_GLASS_POPUP_SELECTOR)) classifyPopup(popup)
     classifyContent(node)
@@ -177,11 +178,12 @@ export function createFloatingGlassAdapter({ document, window }) {
       const settingsUpdates = new Set()
       for (const record of records) {
         const target = record.target.nodeType === 1 ? record.target : record.target.parentElement
+        if (target?.closest(NATIVE_SETTINGS_DECORATION_SELECTOR)) continue
         const shell = target?.closest('[data-shortcut-modal="settings"], [data-prts-settings-shell]')
         if (shell) {
           const navigation = target.closest('nav')
           const nativeChildrenChanged = record.type === 'childList' && [...record.addedNodes, ...record.removedNodes]
-            .some(child => child.nodeType === 1 && !child.hasAttribute('data-prts-settings-page'))
+            .some(child => child.nodeType === 1 && !child.matches(NATIVE_SETTINGS_DECORATION_SELECTOR))
           if (record.type === 'attributes'
             ? target === shell && ['data-shortcut-modal', 'role'].includes(record.attributeName)
               || record.attributeName === 'aria-current' && navigation?.parentElement === shell

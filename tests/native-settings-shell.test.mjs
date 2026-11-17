@@ -16,7 +16,7 @@ function fixture() {
 
 function flush(window) { return new Promise(resolve => window.setTimeout(resolve, 0)) }
 
-test('dossier owns only paper sheets and leaves native headings and controls intact', () => {
+test('dossier decorates its frame and leaves native headings and controls intact', () => {
   const { dom, document, shell } = fixture()
   const original = shell.innerHTML
   const input = shell.querySelector('input')
@@ -85,7 +85,7 @@ test('page draws only on category changes and releases its switching state', () 
   dom.window.close()
 })
 
-test('dossier rebuilds when the host replaces its toolbar and tolerates missing shell parts', () => {
+test('dossier keeps its sheets when the host replaces its toolbar and tolerates missing shell parts', () => {
   const { dom, document, shell } = fixture()
   const adapter = createNativeSettingsShellAdapter({ document })
   adapter.update(shell)
@@ -94,7 +94,7 @@ test('dossier rebuilds when the host replaces its toolbar and tolerates missing 
   replacement.innerHTML = '<button><span data-slot="settings.close">Close</span></button>'
   shell.querySelector('[data-toolbar]').replaceWith(replacement)
   adapter.update(shell)
-  assert.equal(oldPage.isConnected, false)
+  assert.equal(oldPage.isConnected, true)
   assert.equal(shell.querySelectorAll('[data-prts-settings-page]').length, 2)
   assert.equal(shell.querySelector('[data-prts-settings-caption], h2'), null)
   shell.querySelector('nav').remove()
@@ -249,3 +249,131 @@ test('replacing the native section container releases and restores its paper she
   adapter.dispose()
   dom.window.close()
 })
+
+
+test('file jacket uses the original emblem image and tracks native page numbering', () => {
+  const { dom, document, shell } = fixture()
+  const emblemImage = 'data:image/png;base64,b3JpZ2luYWw='
+  const adapter = createNativeSettingsShellAdapter({ document, emblemImage })
+  const controls = shell.querySelector('[data-slot="settings.section"]').innerHTML
+  adapter.update(shell)
+  const frame = shell.querySelector('[data-prts-settings-jacket]')
+  assert.equal(frame.getAttribute('aria-hidden'), 'true')
+  assert.equal(frame.querySelectorAll('[id], title, button, input').length, 0)
+  assert.equal(frame.querySelectorAll('svg').length, 0)
+  const image = frame.querySelector('[data-prts-settings-emblem] img')
+  assert.equal(image.src, emblemImage)
+  assert.equal(image.alt, '')
+  assert.equal(image.draggable, false)
+  assert.equal(image.width, 95)
+  assert.equal(image.height, 81)
+  assert.equal(document.querySelector('[data-prts-rail-brand] svg').id, 'brand')
+  assert.equal(frame.querySelector('[data-prts-settings-pagination]').textContent, '01 / 02')
+  assert.equal(frame.querySelectorAll('[data-prts-settings-active]').length, 1)
+  const buttons = shell.querySelectorAll('nav button')
+  buttons[0].removeAttribute('aria-current')
+  buttons[1].setAttribute('aria-current', 'true')
+  adapter.update(shell)
+  assert.equal(shell.querySelector('[data-prts-settings-jacket]'), frame)
+  assert.equal(frame.querySelector('[data-prts-settings-pagination]').textContent, '02 / 02')
+  assert.equal(frame.querySelector('[data-prts-settings-markers]').lastElementChild.hasAttribute('data-prts-settings-active'), true)
+  const plugin = document.createElement('button')
+  plugin.textContent = 'Plugin'
+  shell.querySelector('nav > div').prepend(plugin)
+  adapter.update(shell)
+  assert.equal(frame.querySelector('[data-prts-settings-pagination]').textContent, '03 / 03')
+  assert.equal(frame.querySelector('[data-prts-settings-markers]').children.length, 3)
+  assert.equal(shell.querySelector('[data-slot="settings.section"]').innerHTML, controls)
+  adapter.dispose()
+  assert.equal(frame.isConnected, false)
+  dom.window.close()
+})
+
+test('native navigation refreshes do not turn the same selected category', async () => {
+  const { dom, document, shell } = fixture()
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const frame = shell.querySelector('[data-prts-settings-jacket]')
+  const input = shell.querySelector('input')
+  for (let cycle = 0; cycle < 3; cycle++) {
+    const navigation = shell.querySelector('nav > div')
+    navigation.replaceWith(navigation.cloneNode(true))
+    await flush(dom.window)
+    assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+    assert.equal(shell.querySelector('[data-prts-settings-jacket]'), frame)
+    assert.equal(shell.querySelector('input'), input)
+  }
+  const buttons = shell.querySelectorAll('nav button')
+  buttons[0].removeAttribute('aria-current')
+  buttons[1].setAttribute('aria-current', 'true')
+  await flush(dom.window)
+  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
+  const navigation = shell.querySelector('nav > div')
+  navigation.replaceWith(navigation.cloneNode(true))
+  await flush(dom.window)
+  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+  adapter.dispose()
+  dom.window.close()
+})
+
+test('page drawing clears its trigger before later native content refreshes', async () => {
+  const { dom, document, shell } = fixture()
+  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
+  adapter.start()
+  const buttons = shell.querySelectorAll('nav button')
+  buttons[0].removeAttribute('aria-current')
+  buttons[1].setAttribute('aria-current', 'true')
+  await flush(dom.window)
+  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
+  await new Promise(resolve => dom.window.setTimeout(resolve, 350))
+  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+  const content = shell.querySelector('[data-slot="settings.section"]').parentElement
+  const replacement = content.cloneNode(true)
+  content.replaceWith(replacement)
+  await flush(dom.window)
+  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+  assert.equal(shell.querySelectorAll('[data-prts-settings-jacket]').length, 1)
+  adapter.dispose()
+  dom.window.close()
+})
+
+
+test('completed page animation immediately releases its trigger', () => {
+  const { dom, document, shell } = fixture()
+  const adapter = createNativeSettingsShellAdapter({ document })
+  adapter.update(shell)
+  const buttons = shell.querySelectorAll('nav button')
+  buttons[0].removeAttribute('aria-current')
+  buttons[1].setAttribute('aria-current', 'true')
+  adapter.update(shell)
+  const event = new dom.window.Event('animationend', { bubbles: true })
+  Object.defineProperty(event, 'animationName', { value: 'prts-settings-draw-a' })
+  shell.querySelector('[data-prts-settings-depth="0"]').dispatchEvent(event)
+  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+  adapter.dispose()
+  dom.window.close()
+})
+
+for (const playState of ['running', 'paused', 'finished', 'idle']) {
+  test('page fallback respects the actual animation state: ' + playState, () => {
+    const { dom, document, shell } = fixture()
+    let fallback
+    dom.window.setTimeout = callback => { fallback = callback; return 1 }
+    dom.window.clearTimeout = () => {}
+    shell.getAnimations = () => [{ animationName: 'prts-settings-draw-a', playState }]
+    const adapter = createNativeSettingsShellAdapter({ document })
+    adapter.update(shell)
+    const buttons = shell.querySelectorAll('nav button')
+    buttons[0].removeAttribute('aria-current')
+    buttons[1].setAttribute('aria-current', 'true')
+    adapter.update(shell)
+    fallback()
+    assert.equal(shell.hasAttribute('data-prts-settings-turn'), ['running', 'paused'].includes(playState))
+    const event = new dom.window.Event('animationend', { bubbles: true })
+    Object.defineProperty(event, 'animationName', { value: 'prts-settings-draw-a' })
+    shell.querySelector('[data-prts-settings-depth="0"]').dispatchEvent(event)
+    assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+    adapter.dispose()
+    dom.window.close()
+  })
+}

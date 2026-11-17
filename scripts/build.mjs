@@ -1,4 +1,5 @@
 import { build as buildVendor } from 'esbuild'
+import sharp from 'sharp'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -106,6 +107,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
 const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
+const settingsEmblem = 'data:image/png;base64,' + (await sharp(factionEmblemBytes[0]).png().toBuffer()).toString('base64')
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
   key: definition.key,
   label: definition.label,
@@ -242,6 +244,7 @@ const client = `window.__ModuleLoader__.load({
     const PRTS_ASSETS = Object.freeze({
       cursor: ${JSON.stringify(cursorAssets)},
       emblem: ${JSON.stringify(emblem)},
+      settingsEmblem: ${JSON.stringify(settingsEmblem)},
       prtsEmblem: ${JSON.stringify(prtsEmblem)},
       emblems: ${JSON.stringify(factionEmblems)},
       emblemMasks: ${JSON.stringify(factionEmblemMasks)},

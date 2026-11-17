@@ -112,7 +112,7 @@ export function applyPrtsPlugin(ctx, environment) {
     getWorkspaces: () => contextService(ctx, 'workspaces'),
     getUiConversation: () => contextService(ctx, 'uiConversation'),
   })
-  const floatingGlass = createFloatingGlassAdapter({ document, window })
+  const floatingGlass = createFloatingGlassAdapter({ document, window, emblemImage: assets.settingsEmblem })
   const adapter = createRc7Adapter({ document })
   const hostGeometry = createHostGeometryAdapter({ document, window })
   const connection = contextService(ctx, 'connection')
