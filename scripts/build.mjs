@@ -159,6 +159,7 @@ const clientModulePaths = [
   'src/client/emblem-tool-preview.js',
   'src/client/host-geometry-adapter.js',
   'src/client/composer-glass-adapter.js',
+  'src/client/native-settings-shell.js',
   'src/client/floating-glass-adapter.js',
   'src/client/assistant-glass-adapter.js',
   'src/client/particle-field-adapter.js',

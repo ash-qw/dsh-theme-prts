@@ -1,3 +1,5 @@
+import { createNativeSettingsShellAdapter } from './native-settings-shell.js'
+
 const FLOATING_GLASS_OWNED_ATTRIBUTES = [
   'data-prts-floating-glass',
   'data-prts-floating-kind',
@@ -78,6 +80,7 @@ const FLOATING_GLASS_CONTENT_SELECTOR = [FLOATING_GLASS_ITEM_SELECTOR, FLOATING_
 const FLOATING_GLASS_PRESERVED_SELECTOR = '[data-prts-preserve-popup-style], [data-prts-floating-preserved]'
 
 export function createFloatingGlassAdapter({ document, window }) {
+  const settingsShell = createNativeSettingsShellAdapter({ document })
   let observer
   let active = false
   const owned = new Set()
@@ -121,6 +124,7 @@ export function createFloatingGlassAdapter({ document, window }) {
     own(node, 'data-prts-floating-kind', kind)
     if (parentPopup) own(node, 'data-prts-floating-nested')
     if (kind === 'dialog') {
+      settingsShell.update(node)
       const scrim = node.parentElement?.matches?.('[role="presentation"]') ? node.parentElement : null
       if (scrim) own(scrim, 'data-prts-floating-scrim')
     }
@@ -150,6 +154,7 @@ export function createFloatingGlassAdapter({ document, window }) {
   }
 
   function releaseTree(node) {
+    if (node?.nodeType === 1) settingsShell.releaseTree(node)
     if (node?.nodeType !== 1) return
     const candidates = [node, ...node.querySelectorAll(`${FLOATING_GLASS_OWNED_SELECTOR}, ${FLOATING_GLASS_POPUP_SELECTOR}`)]
     for (const candidate of candidates) {
@@ -169,7 +174,20 @@ export function createFloatingGlassAdapter({ document, window }) {
     if (!Observer || contentObservers.has(node)) return
     const contentObserver = new Observer(records => {
       if (!active || node.parentElement !== document.body) return
+      const settingsUpdates = new Set()
       for (const record of records) {
+        const target = record.target.nodeType === 1 ? record.target : record.target.parentElement
+        const shell = target?.closest('[data-shortcut-modal="settings"], [data-prts-settings-shell]')
+        if (shell) {
+          const navigation = target.closest('nav')
+          const nativeChildrenChanged = record.type === 'childList' && [...record.addedNodes, ...record.removedNodes]
+            .some(child => child.nodeType === 1 && !child.hasAttribute('data-prts-settings-page'))
+          if (record.type === 'attributes'
+            ? target === shell && ['data-shortcut-modal', 'role'].includes(record.attributeName)
+              || record.attributeName === 'aria-current' && navigation?.parentElement === shell
+            : nativeChildrenChanged && (target === shell || target.parentElement === shell
+              || target.parentElement === navigation && navigation?.parentElement === shell)) settingsUpdates.add(shell)
+        }
         if (record.type === 'attributes') {
           const target = record.target
           if (record.attributeName === 'style') {
@@ -185,17 +203,19 @@ export function createFloatingGlassAdapter({ document, window }) {
           for (const added of record.addedNodes) classifyTree(added)
         }
       }
+      for (const shell of settingsUpdates) if (node.contains(shell)) settingsShell.update(shell)
     })
     contentObserver.observe(node, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['role', 'aria-modal', 'hidden', 'aria-hidden', 'class', 'type', 'data-variant', 'data-danger', 'contenteditable', 'style'],
+      attributeFilter: ['role', 'aria-modal', 'hidden', 'aria-hidden', 'class', 'type', 'data-variant', 'data-danger', 'contenteditable', 'style', 'aria-current', 'data-shortcut-modal'],
     })
     contentObservers.set(node, contentObserver)
   }
 
   function clear() {
+    settingsShell.dispose()
     for (const node of owned) {
       for (const attribute of FLOATING_GLASS_OWNED_ATTRIBUTES) node.removeAttribute(attribute)
     }

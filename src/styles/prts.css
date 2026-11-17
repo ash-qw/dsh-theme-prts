@@ -1680,7 +1680,7 @@ html[data-dsh-prts] :is(
   color: var(--prts-red) !important;
 }
 
-html[data-dsh-prts] [data-prts-floating-scrim] {
+html[data-dsh-prts] [data-prts-floating-scrim]:not(:has(> [data-shortcut-modal="settings"][role="dialog"])) {
   background: rgba(3, 5, 6, .62) !important;
 }
 

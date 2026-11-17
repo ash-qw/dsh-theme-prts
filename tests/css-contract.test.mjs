@@ -58,7 +58,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 302_500, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 302.5 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 315_500, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 315.5 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials and the responsive native settings dossier shell, colored paper bookmarks and reduced-motion-aware page drawing)')
 })
 
 test('restored card focus stays idle without hiding focused menu buttons or touching native focus', () => {
@@ -507,4 +507,13 @@ test('uses explicit running and code-block owners instead of broad descendant in
 test('inherits text selection from the theme root without styling every descendant highlight', () => {
   assert.match(css, /html\[data-dsh-prts\]::selection\s*\{[^}]*background:\s*var\(--prts-yellow\);[^}]*color:\s*var\(--prts-yellow-ink\)/s)
   assert.doesNotMatch(css, /html\[data-dsh-prts\]\s+::selection/)
+})
+
+test('native settings preserve host scrims and use complete rectangular paper sheets', async () => {
+  const refinement = await readFile(new URL('../src/styles/refinement.css', import.meta.url), 'utf8')
+  const settings = refinement.slice(refinement.indexOf('html[data-dsh-prts] [data-prts-settings-shell][data-shortcut-modal="settings"][role="dialog"] {'))
+  assert.ok(css.includes('[data-prts-floating-scrim]:not(:has(> [data-shortcut-modal="settings"][role="dialog"]))'))
+  assert.doesNotMatch(css, /html\[data-dsh-prts\] \[data-prts-floating-scrim\]\s*\{/)
+  assert.doesNotMatch(settings, /clip-path:|data-prts-floating-scrim|settings\.general\.item|prts-record|counter-increment|\[class\*="_section"\]/)
+  assert.match(settings, /inset: 8px; border: 1px solid/)
 })
