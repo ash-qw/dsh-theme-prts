@@ -36,6 +36,23 @@ backdrop-filter: blur(var(--prts-right-sidebar-blur, 8px)) saturate(1.15);
 }
 html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] [data-prts-ambient-layer],
 html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] [data-prts-ambient-layer] { display: none !important; }
+html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full], [data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="operation"] [data-conversation-composer-overlay]:has([data-trajectory-scroll]) {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  & :is(:has(> [data-trajectory-scroll]), [data-trajectory-scroll] > table) { background: transparent; }
+  & > :first-child, & > section > :first-child { background: color-mix(in srgb, var(--prts-panel) 72%, transparent); }
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: transparent;
+    -webkit-backdrop-filter: var(--prts-page-filter, blur(8px));
+    backdrop-filter: var(--prts-page-filter, blur(8px));
+  }
+}
 [data-prts-background-settings] { display: grid; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--prts-line); }
 [data-prts-background-settings] header { display: grid; gap: 6px; }
 [data-prts-background-settings] small, [data-prts-background-status] { color: var(--prts-muted); font-size: 12px; line-height: 1.6; }

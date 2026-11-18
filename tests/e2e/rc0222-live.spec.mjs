@@ -246,3 +246,50 @@ for (const width of [1440, 390]) {
     expect(errors).toEqual([])
   })
 }
+
+test('supported 0.2.2 trajectory view exposes wallpaper without replacing native controls @live-rc0222', async ({ page }) => {
+  const errors = await openHarness(page)
+  await page.locator('[data-prts-session-row]').last().click()
+  await page.getByRole('tab', { name: '轨迹', exact: true }).click()
+  const trajectory = page.locator('[data-conversation-composer-overlay]:has([data-trajectory-scroll])')
+  await expect(trajectory).toBeVisible()
+  const search = trajectory.locator('input').first()
+  await search.evaluate(node => { window.trajectorySearchForRegression = node })
+  const originalSearch = await search.inputValue()
+  try {
+    for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const collapse = page.getByRole('button', { name: '收起侧边栏', exact: true })
+      if (width < 768 && await collapse.isVisible()) await collapse.click()
+      for (const mode of ['full', 'split']) {
+        await page.locator('html').evaluate((node, { scheme, mode }) => {
+          node.dataset.prtsScheme = scheme
+          node.dataset.prtsBackgroundMode = mode
+          for (const slot of ['full', 'conversation']) {
+            node.setAttribute('data-prts-background-' + slot, '')
+            node.style.setProperty('--prts-background-' + slot, 'linear-gradient(90deg, #632c47, #1f5368)')
+          }
+        }, { scheme, mode })
+        await expect(trajectory).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(trajectory.locator('[data-trajectory-scroll]').locator('..')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(trajectory.locator('[data-trajectory-scroll] > table')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        const material = await trajectory.evaluate(node => ({
+          content: getComputedStyle(node, '::before').content,
+          blur: getComputedStyle(node, '::before').backdropFilter,
+          pointerEvents: getComputedStyle(node, '::before').pointerEvents,
+          contentBlur: getComputedStyle(node).backdropFilter,
+        }))
+        expect(material).toEqual({ content: '""', blur: 'blur(8px)', pointerEvents: 'none', contentBlur: 'none' })
+        await expect(search).toHaveValue(originalSearch)
+        expect(await search.evaluate(node => node === window.trajectorySearchForRegression)).toBe(true)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+      }
+      await page.locator('html').evaluate(node => { node.dataset.prtsBackgroundMode = 'off' })
+      await expect(trajectory).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      expect(await trajectory.evaluate(node => getComputedStyle(node, '::before').content)).toBe('none')
+    }
+  } finally {
+    await page.getByRole('tab', { name: '对话', exact: true }).click()
+  }
+  expect(errors).toEqual([])
+})
