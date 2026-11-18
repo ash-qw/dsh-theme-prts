@@ -19,7 +19,7 @@ async function expectNativeBackdrop(shell) {
   expect(surfaces.themed).toEqual(surfaces.native)
 }
 
-test.use({ locale: 'zh-CN', storageState: process.env.PRTS_RC022_STATE || undefined })
+test.use({ locale: 'zh-CN', storageState: process.env.PRTS_RC022_STATE || undefined, launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })
 test.beforeEach(() => {
   test.skip(!process.env.PRTS_RC022_STATE, 'Requires authenticated local DSH storage state')
   test.setTimeout(60_000)
@@ -29,6 +29,8 @@ async function expectPastedBookmark(shell, width) {
   await expect(shell).not.toHaveAttribute('data-prts-settings-flipping')
   const geometry = await shell.evaluate(node => {
     const bounds = node.getBoundingClientRect()
+    const content = node.querySelector('[data-slot="settings.section"]').parentElement
+    const edge = node.querySelector('[data-prts-settings-jacket] > [data-prts-settings-side]').getBoundingClientRect()
     const front = getComputedStyle(node.querySelector('[data-prts-settings-depth="0"]'))
     const current = node.querySelector('nav button[aria-current="true"], nav button[aria-current="page"]')
     const tab = current.getBoundingClientRect()
@@ -37,6 +39,9 @@ async function expectPastedBookmark(shell, width) {
     const pageTop = bounds.top + parseFloat(front.top)
     const point = horizontal ? { x: tab.left + tab.width / 2, y: pageTop + 7 } : { x: pageLeft + 14, y: tab.top + tab.height / 2 }
     return {
+      scrollbarClearance: edge.left - content.getBoundingClientRect().right,
+      scrollbarColor: getComputedStyle(content).scrollbarColor,
+      scrollbarGutter: getComputedStyle(content).scrollbarGutter,
       overlap: horizontal ? tab.bottom - pageTop : tab.right - pageLeft,
       ringCount: node.querySelectorAll('[data-prts-settings-binding]').length,
       sheetHeights: [...node.querySelectorAll('[data-prts-settings-page]')].map(sheet => sheet.getBoundingClientRect().height),
@@ -46,6 +51,9 @@ async function expectPastedBookmark(shell, width) {
       backingDepth: Math.max(...[...node.querySelectorAll('[data-prts-settings-page]')].map(sheet => sheet.getBoundingClientRect().bottom)) - bounds.bottom,
     }
   })
+  expect(geometry.scrollbarClearance).toBeCloseTo(4, 1)
+  expect(geometry.scrollbarColor).toContain('rgba(0, 0, 0, 0)')
+  expect(geometry.scrollbarGutter).toBe('stable')
   expect(geometry.overlap).toBeGreaterThanOrEqual(width < 768 ? 13 : 20)
   expect(geometry.hit).toBe(true)
   expect(geometry.ringCount).toBe(0)

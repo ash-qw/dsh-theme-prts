@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })
+
 async function expectNativeBackdrop(shell) {
   const surfaces = await shell.evaluate(node => {
     const overlay = node.parentElement
@@ -217,12 +219,12 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 768, 600, 390
     if (width >= 768) {
       expect(navBounds.width).toBe(width <= 1100 ? 92 : 96)
       expect(navBounds.width / bounds.width).toBeLessThan(.14)
-      expect(contentBounds.width / bounds.width).toBeGreaterThan(.85)
+      expect((contentBounds.width + 23) / bounds.width).toBeGreaterThan(.85)
       expect(navBounds.y).toBe(bounds.y)
       expect(contentBounds.x).toBeGreaterThanOrEqual(navBounds.x + navBounds.width)
     } else {
       expect(contentBounds.y).toBeGreaterThanOrEqual(navBounds.y + navBounds.height)
-      expect(contentBounds.width).toBe(width - 24)
+      expect(contentBounds.width).toBe(width - 24 - 18)
       expect(navBounds.y).toBe(bounds.y)
       expect(navBounds.height).toBe(56)
     }
@@ -267,6 +269,51 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 768, 600, 390
     await expect(shell).toHaveCount(0)
   })
 }
+
+test.describe('native scrollbar geometry', () => {
+  for (const scheme of ['dark', 'light']) for (const width of [1440, 900, 768, 390]) {
+    test('settings scrollbar stays inside the paper and clear of the printed edge (' + scheme + ', ' + width + ')', async ({ page }) => {
+      const shell = await openShell(page, scheme, width)
+      const content = shell.locator('.native-content')
+      const inspect = () => content.evaluate(node => {
+        const shell = node.closest('[data-prts-settings-shell]')
+        const edge = shell.querySelector('[data-prts-settings-jacket] > [data-prts-settings-side]').getBoundingClientRect()
+        const footer = shell.querySelector('[data-prts-settings-footer]').getBoundingClientRect()
+        const bounds = node.getBoundingClientRect()
+        const style = getComputedStyle(node)
+        const form = node.querySelector('.native-form').getBoundingClientRect()
+        return {
+          clearance: edge.left - bounds.right,
+          aboveFooter: bounds.bottom <= footer.top,
+          gutter: style.scrollbarGutter, color: style.scrollbarColor, width: style.scrollbarWidth,
+          overflow: node.scrollHeight > node.clientHeight,
+          horizontalOverflow: node.scrollWidth > node.clientWidth,
+          formLeft: form.left, formRight: form.right,
+          expectedFormRight: shell.getBoundingClientRect().right - (innerWidth > 1100 ? 32 : 24) - (node.offsetWidth - node.clientWidth),
+        }
+      })
+      const long = await inspect()
+      expect(long.clearance).toBeCloseTo(4, 1)
+      expect(long.aboveFooter).toBe(true)
+      expect(long.gutter).toBe('stable')
+      expect(long.width).toBe('thin')
+      expect(long.color).toContain('rgba(0, 0, 0, 0)')
+      expect(long.overflow).toBe(true)
+      expect(long.horizontalOverflow).toBe(false)
+      expect(long.formRight).toBeCloseTo(long.expectedFormRight, 1)
+      await content.hover()
+      await page.mouse.wheel(0, 360)
+      await expect.poll(() => content.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
+      await shell.locator('.native-form > div').evaluate(node => { node.style.height = '1px' })
+      const short = await inspect()
+      expect(short.overflow).toBe(false)
+      expect(short.formLeft).toBe(long.formLeft)
+      expect(short.formRight).toBe(long.formRight)
+      expect(short.clearance).toBeCloseTo(4, 1)
+      await expectNativeBackdrop(shell)
+    })
+  }
+})
 
 for (const mode of ['off', 'reduced-transparency']) {
   test(`native settings shell respects ${mode} without changing other dialogs`, async ({ page }) => {
