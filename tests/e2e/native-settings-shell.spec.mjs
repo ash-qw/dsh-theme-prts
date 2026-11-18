@@ -107,7 +107,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
     const inspect = () => shell.evaluate(node => {
       const bounds = node.getBoundingClientRect()
       const pages = [...node.querySelectorAll('[data-prts-settings-page]')].sort((first, second) => Number(first.dataset.prtsSettingsDepth) - Number(second.dataset.prtsSettingsDepth))
-      const front = getComputedStyle(pages[0])
+      const front = getComputedStyle(node.querySelector('[data-prts-settings-depth="0"]'))
       const current = node.querySelector('nav button[aria-current]')
       const other = [...node.querySelectorAll('nav button')].find(button => button !== current)
       const currentBounds = current.getBoundingClientRect()
@@ -127,12 +127,12 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
         currentHit: hit(currentBounds) === current,
         otherHit: hit(otherBounds) === other,
         contentClearance: horizontal ? contentBounds.top + parseFloat(contentStyle.paddingTop) - currentBounds.bottom : contentBounds.left + parseFloat(contentStyle.paddingLeft) - currentBounds.right,
-        sheets: pages.map(sheet => ({ index: Number(sheet.dataset.prtsSettingsPage), depth: Number(sheet.dataset.prtsSettingsDepth), bottom: sheet.getBoundingClientRect().bottom, z: Number(getComputedStyle(sheet).zIndex), clipPath: getComputedStyle(sheet).clipPath })),
+        sheets: pages.map(sheet => ({ index: Number(sheet.dataset.prtsSettingsPage), depth: Number(sheet.dataset.prtsSettingsDepth), height: sheet.getBoundingClientRect().height, bottom: sheet.getBoundingClientRect().bottom, z: Number(getComputedStyle(sheet).zIndex), clipPath: getComputedStyle(sheet).clipPath })),
         tabs: [...node.querySelectorAll('nav button')].map(button => ({ left: button.getBoundingClientRect().left, rotate: getComputedStyle(button).rotate, band: getComputedStyle(button, '::after').content })),
         otherZ: Number(getComputedStyle(other).zIndex), frontZ: Number(front.zIndex), currentZ: Number(getComputedStyle(current).zIndex),
       }
     })
-    for (const label of ['通用设置', '模型']) {
+    for (const label of ['通用设置', '模型', 'MCP 连接器']) {
       await shell.getByRole('button', { name: label, exact: true }).click()
       const geometry = await inspect()
       expect(geometry.overlap).toBeGreaterThanOrEqual(width < 768 ? 13 : 20)
@@ -140,12 +140,16 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
       expect(geometry.otherHit).toBe(false)
       expect(geometry.contentClearance).toBeGreaterThanOrEqual(6)
       expect(geometry.sheets.map(sheet => sheet.depth)).toEqual([0, 1, 2, 3, 4, 5])
+      expect(geometry.sheets.every(sheet => sheet.height === geometry.sheets[0].height)).toBe(true)
+      expect(geometry.sheets[0].height).toBeGreaterThan(600)
       expect(geometry.sheets.every(sheet => sheet.clipPath === 'none')).toBe(true)
-      expect(geometry.sheets.map(sheet => sheet.index)).toEqual(label === '模型' ? [2, 1, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6])
+      const selectedIndex = label === '通用设置' ? 1 : label === '模型' ? 2 : 6
+      expect(geometry.sheets.map(sheet => sheet.index)).toEqual([selectedIndex, ...[1, 2, 3, 4, 5, 6].filter(index => index !== selectedIndex)])
       for (let index = 1; index < geometry.sheets.length; index++) {
         expect(geometry.sheets[index].bottom).toBeGreaterThan(geometry.sheets[index - 1].bottom + 2)
         expect(geometry.sheets[index].z).toBeLessThan(geometry.sheets[index - 1].z)
       }
+      expect(geometry.sheets.at(-1).bottom - geometry.sheets[0].bottom).toBeCloseTo(width < 768 ? 20 * .6667 : 20, 1)
       expect(geometry.tabs.every(tab => tab.rotate === 'none' && tab.band === 'none')).toBe(true)
       if (width >= 768) expect(new Set(geometry.tabs.map(tab => tab.left)).size).toBe(1)
       expect(geometry.otherZ).toBeLessThan(geometry.frontZ)
@@ -157,36 +161,38 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) for (const motion of ['full', 'reduced', 'system-reduced']) {
-  test('paper page draws on each selection and respects ' + motion + ' at ' + width, async ({ page }) => {
+  test('category changes are immediate without page motion (' + width + ', ' + motion + ')', async ({ page }) => {
     if (motion === 'system-reduced') await page.emulateMedia({ reducedMotion: 'reduce' })
     const shell = await openShell(page, 'dark', width, 'standard', motion === 'reduced' ? 'reduced' : 'full')
-    const close = shell.getByRole('button', { name: '关闭', exact: true })
-    const closeBefore = await close.boundingBox()
-    for (const [label, turn] of [['模型', 'a'], ['通用设置', 'b']]) {
-      const state = await shell.evaluate(async (node, label) => {
-        const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === label)
-        bookmark.click()
-        await new Promise(resolve => requestAnimationFrame(resolve))
-        const close = node.querySelector('[data-slot="settings.close"]').closest('button')
-        const parts = [
-          node.querySelector('[data-prts-settings-depth="0"]'),
-          node.querySelector('[data-prts-settings-jacket]'),
-          close.parentElement,
-          node.querySelector('[data-slot="settings.section"]').parentElement,
-          bookmark,
-        ]
-        return {
-          turn: node.getAttribute('data-prts-settings-turn'),
-          closeY: close.getBoundingClientRect().y,
-          scrollWidth: document.documentElement.scrollWidth,
-          animations: parts.map(part => getComputedStyle(part).animationName),
-        }
-      }, label)
-      expect(state.turn).toBe(turn)
-      expect(state.closeY).toBe(closeBefore.y)
-      expect(state.scrollWidth).toBe(width)
-      expect(state.animations).toEqual(Array(5).fill(motion === 'full' ? 'prts-settings-draw-' + turn : 'none'))
+    await page.evaluate(() => {
+      window.settingsCaptures = 0
+      document.startViewTransition = () => { window.settingsCaptures++; throw Error('must not capture') }
+    })
+    for (const label of ['MCP 连接器', '模型', '通用设置']) {
+      await shell.getByRole('button', { name: label, exact: true }).click()
+      await expect(shell.locator('nav button[aria-current]')).toHaveText(label)
+      const state = await shell.evaluate(async node => {
+        const parts = [node.querySelector('[data-prts-settings-depth="0"]'), node.querySelector('[data-prts-settings-jacket]'), node.querySelector('.native-tools'), node.querySelector('.native-content'), node.querySelector('nav button[aria-current]')]
+        const inspect = () => parts.map(part => ({ bounds: part.getBoundingClientRect().toJSON(), transform: getComputedStyle(part).transform, animation: getComputedStyle(part).animationName }))
+        const before = inspect()
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        return { before, after: inspect(), captures: window.settingsCaptures, bindings: node.querySelectorAll('[data-prts-settings-binding]').length }
+      })
+      expect(state.captures).toBe(0)
+      expect(state.before).toEqual(state.after)
+      expect(state.after.every(part => part.animation === 'none' && part.transform === 'none')).toBe(true)
+      expect(state.bindings).toBe(0)
+      await expect(shell).not.toHaveAttribute('data-prts-settings-turn')
+      await expect(shell).not.toHaveAttribute('data-prts-settings-flipping')
+      await expect(page.locator('html')).not.toHaveAttribute('data-prts-settings-flip')
+      await expect(shell.locator('[data-prts-settings-packet], [data-prts-settings-packet-edges]')).toHaveCount(0)
     }
+    await shell.evaluate(node => {
+      for (const index of [5, 1, 0]) node.querySelectorAll('nav button')[index].click()
+    })
+    await expect(shell.locator('[data-prts-settings-depth="0"]')).toHaveAttribute('data-prts-settings-page', '1')
+    await expect(shell.locator('nav button[aria-current]')).toHaveText('通用设置')
+    expect(await page.evaluate(() => window.settingsCaptures)).toBe(0)
   })
 }
 
@@ -224,6 +230,7 @@ for (const scheme of ['dark', 'light']) for (const width of [1440, 768, 600, 390
     await expect(shell).toHaveAttribute('data-prts-settings-shell', '')
     await expect(shell.locator('nav button[aria-current]')).toHaveText('通用设置')
     await expect(shell.locator('[data-prts-settings-filetab]')).toHaveCount(0)
+    await expect(shell.locator('[data-prts-settings-side] b')).toHaveCount(0)
     await expect(shell.locator('[data-prts-settings-caption]')).toHaveCount(0)
     await expect(shell).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     const unmodified = await shell.evaluate(node => {
@@ -338,6 +345,80 @@ for (const width of [1440, 390]) {
       .sort((first, second) => Number(first.dataset.prtsSettingsDepth) - Number(second.dataset.prtsSettingsDepth))
       .map(sheet => Number(sheet.dataset.prtsSettingsPage)))
     expect(order).toEqual([1, 2, 3, 4, 5, 6])
+  })
+}
+
+for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
+  test('third-party categories keep scrollable bookmarks and native page ownership (' + scheme + ', ' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, scheme, width)
+    const input = shell.getByRole('textbox', { name: '原生输入' })
+    await input.fill('第三方设置草稿')
+    await shell.evaluate(node => {
+      const navigation = node.querySelector('nav > div')
+      for (let index = 0; index < 12; index++) {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.dataset.pluginSettings = String(index)
+        const label = document.createElement('span')
+        label.className = 'native-nav-label'
+        label.textContent = index === 11 ? '第三方插件设置 / Third-party plugin settings with a long category name' : '插件 ' + (index + 1)
+        button.append(label)
+        button.addEventListener('click', () => {
+          node.querySelector('nav button[aria-current]')?.removeAttribute('aria-current')
+          button.setAttribute('aria-current', 'page')
+        })
+        navigation.append(button)
+      }
+      window.pluginSettingsInput = node.querySelector('.native-form input')
+    })
+    await expect(shell.locator('[data-prts-settings-page]')).toHaveCount(18)
+    await expect(shell.locator('[data-prts-settings-pagination]')).toHaveText('01 / 18')
+    const tabs = shell.locator('nav > div')
+    const overflow = await tabs.evaluate(node => ({ horizontal: node.scrollWidth > node.clientWidth, vertical: node.scrollHeight > node.clientHeight }))
+    expect(width < 768 ? overflow.horizontal : overflow.vertical).toBe(true)
+    const plugin = shell.locator('nav button[data-plugin-settings="11"]')
+    await plugin.click()
+    await expect(plugin).toHaveAttribute('aria-current', 'page')
+    await expect(plugin).toHaveAccessibleName('第三方插件设置 / Third-party plugin settings with a long category name')
+    await expect(shell.locator('[data-prts-settings-depth="0"]')).toHaveAttribute('data-prts-settings-page', '18')
+    await expect(shell.locator('[data-prts-settings-pagination]')).toHaveText('18 / 18')
+    const geometry = await plugin.evaluate(button => {
+      const bounds = button.getBoundingClientRect()
+      const node = button.closest('[data-prts-settings-shell]')
+      const sheets = [...node.querySelectorAll('[data-prts-settings-page]')]
+      const label = button.firstElementChild
+      return {
+        hit: document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)?.closest('button') === button,
+        outsideViewport: bounds.left < 0 || bounds.right > innerWidth || bounds.top < 0 || bounds.bottom > innerHeight,
+        clippedLabel: label.scrollWidth > label.clientWidth + 1 || label.scrollHeight > label.clientHeight + 1,
+        labelOverflow: getComputedStyle(label).overflowX, labelTextOverflow: getComputedStyle(label).textOverflow,
+        pageHeights: sheets.map(sheet => sheet.getBoundingClientRect().height),
+        maxOffset: Math.max(...sheets.map(sheet => parseFloat(sheet.style.getPropertyValue('--prts-settings-page-offset')))),
+        color: getComputedStyle(button).getPropertyValue('--prts-bookmark').trim(),
+        pageColor: getComputedStyle(node.querySelector('[data-prts-settings-depth="0"]')).getPropertyValue('--prts-bookmark').trim(),
+        documentWidth: document.documentElement.scrollWidth,
+      }
+    })
+    expect(geometry.hit).toBe(true)
+    expect(geometry.outsideViewport).toBe(false)
+    if (width < 768) {
+      expect(geometry.labelOverflow).toBe('hidden')
+      expect(geometry.labelTextOverflow).toBe('ellipsis')
+    } else expect(geometry.clippedLabel).toBe(false)
+    expect(new Set(geometry.pageHeights).size).toBe(1)
+    expect(geometry.maxOffset).toBeLessThanOrEqual(24)
+    expect(geometry.color).toBe(geometry.pageColor)
+    expect(geometry.documentWidth).toBe(width)
+    await expect(input).toHaveValue('第三方设置草稿')
+    expect(await input.evaluate(node => node === window.pluginSettingsInput)).toBe(true)
+    await plugin.evaluate(button => button.parentElement.prepend(button))
+    await expect(shell.locator('[data-prts-settings-depth="0"]')).toHaveAttribute('data-prts-settings-page', '1')
+    await expect(shell.locator('[data-prts-settings-pagination]')).toHaveText('01 / 18')
+    await shell.locator('nav button[data-plugin-settings="0"]').evaluate(button => button.remove())
+    await expect(shell.locator('[data-prts-settings-page]')).toHaveCount(17)
+    await expect(shell.locator('[data-prts-settings-pagination]')).toHaveText('01 / 17')
+    await expect(input).toHaveValue('第三方设置草稿')
+    await expect(shell.locator('[data-prts-settings-caption], [data-prts-settings-binding]')).toHaveCount(0)
   })
 }
 
@@ -471,10 +552,9 @@ for (const width of [1440, 390]) {
     expect(clearance.before).toBe('none')
   })
 
-  test('same-page host refreshes never replay page drawing (' + width + ')', async ({ page }) => {
+  test('same-page host refreshes keep the shell static (' + width + ')', async ({ page }) => {
     const shell = await openShell(page, 'dark', width, 'standard', 'full')
     await shell.getByRole('button', { name: '模型', exact: true }).click()
-    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'a')
     await expect(shell).not.toHaveAttribute('data-prts-settings-turn')
     await shell.evaluate(node => {
       window.settingsRefreshAnimations = []
@@ -521,90 +601,39 @@ for (const width of [1440, 390]) {
 }
 
 
-for (const width of [1440, 390]) {
-  test('printed frame, toolbar and bookmark draw in lockstep with the front sheet (' + width + ')', async ({ page }) => {
-    const shell = await openShell(page, 'dark', width, 'standard', 'full')
-    const state = await shell.evaluate(async node => {
-      const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === '模型')
-      bookmark.click()
-      await new Promise(resolve => requestAnimationFrame(resolve))
-      const parts = [
-        node.querySelector('[data-prts-settings-depth="0"]'),
-        node.querySelector('[data-prts-settings-jacket]'),
-        node.querySelector('[data-slot="settings.close"]').closest('button').parentElement,
-        node.querySelector('[data-slot="settings.section"]').parentElement,
-        bookmark,
-      ]
-      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
-      for (const animation of animations) {
-        animation.pause()
-        animation.currentTime = 90
-      }
-      await new Promise(resolve => requestAnimationFrame(resolve))
+for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
+  test('colored index tabs share the jacket print language without moving their labels (' + scheme + ', ' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, scheme, width)
+    const tabs = shell.locator('nav button')
+    const appearance = await tabs.evaluateAll(nodes => nodes.map(node => {
+      const style = getComputedStyle(node)
+      const print = getComputedStyle(node, '::before')
       return {
-        animations: animations.length,
-        parts: parts.map(part => {
-          const style = getComputedStyle(part)
-          return { transform: style.transform, opacity: style.opacity, duration: style.animationDuration, easing: style.animationTimingFunction }
-        }),
-        backing: [...node.querySelectorAll('[data-prts-settings-page]:not([data-prts-settings-depth="0"])')].map(part => getComputedStyle(part).transform),
-        otherBookmarks: [...node.querySelectorAll('nav button:not([aria-current])')].map(part => getComputedStyle(part).transform),
+        current: node.hasAttribute('aria-current'),
+        color: style.backgroundColor,
+        radius: style.borderTopLeftRadius,
+        shadow: style.boxShadow,
+        print: { content: print.content, events: print.pointerEvents, color: print.borderTopColor, line: print.borderTopStyle, width: parseFloat(print.width), height: parseFloat(print.height) },
       }
-    })
-    expect(state.animations).toBe(5)
-    expect(state.parts).toHaveLength(5)
-    for (const part of state.parts) expect(part).toEqual(state.parts[0])
-    expect(state.parts[0].transform).not.toBe('none')
-    expect(state.parts[0].duration).toBe('0.18s')
-    expect(state.parts[0].opacity).toBe('1')
-    expect(state.backing.every(transform => transform === 'none')).toBe(true)
-    expect(state.otherBookmarks.every(transform => transform === 'none')).toBe(true)
-  })
-}
-
-for (const width of [1440, 390]) {
-  test('page decoration stays settled after a delayed draw completes (' + width + ')', async ({ page }) => {
-    const shell = await openShell(page, 'dark', width, 'standard', 'full')
-    await shell.evaluate(async node => {
-      const bookmark = [...node.querySelectorAll('nav button')].find(button => button.textContent.trim() === '模型')
-      bookmark.click()
-      await new Promise(resolve => requestAnimationFrame(resolve))
-      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
-      for (const animation of animations) {
-        animation.pause()
-        animation.currentTime = 90
-      }
-    })
-    await page.waitForTimeout(400)
-    await expect(shell).toHaveAttribute('data-prts-settings-turn', 'a')
-    const completion = await shell.evaluate(async node => {
-      const parts = [
-        node.querySelector('[data-prts-settings-depth="0"]'),
-        node.querySelector('[data-prts-settings-jacket]'),
-        node.querySelector('[data-slot="settings.close"]').closest('button').parentElement,
-        node.querySelector('[data-slot="settings.section"]').parentElement,
-        node.querySelector('nav button[aria-current]'),
-      ]
-      const inspect = () => parts.map(part => {
-        const bounds = part.getBoundingClientRect()
-        const style = getComputedStyle(part)
-        return { x: bounds.x, y: bounds.y, transform: style.transform, opacity: style.opacity }
-      })
-      const animations = node.getAnimations({ subtree: true }).filter(animation => animation.animationName === 'prts-settings-draw-a')
-      for (const animation of animations) animation.finish()
-      const finalFrame = inspect()
-      await new Promise(resolve => requestAnimationFrame(resolve))
-      await new Promise(resolve => requestAnimationFrame(resolve))
-      const released = inspect()
-      await new Promise(resolve => setTimeout(resolve, 180))
-      return { finalFrame, released, settled: inspect(), turn: node.getAttribute('data-prts-settings-turn') }
-    })
-    expect(completion.turn).toBeNull()
-    expect(completion.finalFrame).toEqual(completion.released)
-    expect(completion.settled).toEqual(completion.released)
-    for (const part of completion.settled) {
-      expect(part.transform).toBe('matrix(1, 0, 0, 1, 0, 0)')
-      expect(part.opacity).toBe('1')
+    }))
+    expect(new Set(appearance.map(tab => tab.color)).size).toBe(6)
+    for (const tab of appearance) {
+      expect(tab.radius).toBe('1px')
+      expect(tab.shadow).toContain('0px 0px')
+      expect(tab.print.content).toBe('""')
+      expect(tab.print.events).toBe('none')
+      expect(tab.print.line).toBe('solid')
+      expect(width < 768 ? tab.print.width > tab.print.height : tab.print.height > tab.print.width).toBe(true)
     }
+    expect(appearance[0].print.color).not.toBe(appearance[1].print.color)
+    const model = tabs.nth(1)
+    const original = await model.boundingBox()
+    await model.hover()
+    expect(await model.boundingBox()).toEqual(original)
+    await model.click()
+    await expect(model).toHaveAttribute('aria-current', 'true')
+    await expect(shell.locator('[data-prts-settings-depth="0"]')).toHaveAttribute('data-prts-settings-page', '2')
+    expect(await model.evaluate(node => getComputedStyle(node, '::before').borderTopColor)).toBe(appearance[0].print.color)
+    await expect(model).toHaveAccessibleName('模型')
   })
 }

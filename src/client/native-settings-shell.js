@@ -19,7 +19,7 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
     const frame = document.createElement('span')
     frame.setAttribute('data-prts-settings-jacket', '')
     frame.setAttribute('aria-hidden', 'true')
-    frame.innerHTML = '<span data-prts-settings-cap></span><span data-prts-settings-identity><span data-prts-settings-emblem></span><span data-prts-settings-wordmark>RHODES<br>ISLAND<small>PHARMACEUTICALS</small></span></span><span data-prts-settings-keyline></span><span data-prts-settings-spine></span><span data-prts-settings-spine-dot></span><span data-prts-settings-spine-pattern></span><span data-prts-settings-side><b>R.I.</b><span>RHODES ISLAND</span><i></i><small>P.R.T.S.</small></span><span data-prts-settings-footer><span data-prts-settings-markers></span><span data-prts-settings-pagination></span></span><span data-prts-settings-clip="top"></span><span data-prts-settings-clip="bottom"></span>'
+    frame.innerHTML = '<span data-prts-settings-cap></span><span data-prts-settings-identity><span data-prts-settings-emblem></span><span data-prts-settings-wordmark>RHODES<br>ISLAND<small>PHARMACEUTICALS</small></span></span><span data-prts-settings-keyline></span><span data-prts-settings-spine></span><span data-prts-settings-spine-dot></span><span data-prts-settings-spine-pattern></span><span data-prts-settings-side><span>RHODES ISLAND</span><i></i><small>P.R.T.S.</small></span><span data-prts-settings-footer><span data-prts-settings-markers></span><span data-prts-settings-pagination></span></span>'
     const holder = frame.querySelector('[data-prts-settings-emblem]')
     if (emblemImage) {
       const image = document.createElement('img')
@@ -33,12 +33,6 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
     return frame
   }
 
-  function finishTurn(shell, entry) {
-    document.defaultView.clearTimeout(entry.turnTimer)
-    entry.turnTimer = null
-    shell.removeAttribute('data-prts-settings-turn')
-  }
-
   function releasePage(button, item) {
     item.page.remove()
     restoreStyle(button, '--prts-settings-page-z', item.style)
@@ -47,13 +41,10 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
   function release(shell) {
     const entry = shells.get(shell)
     if (!entry) return
-    shell.removeEventListener('animationend', entry.onTurnEnd)
     for (const [button, item] of entry.pages) releasePage(button, item)
-    finishTurn(shell, entry)
     entry.frame.remove()
     restoreStyle(shell, '--prts-settings-front-z', entry.style)
     shell.removeAttribute('data-prts-settings-shell')
-    shell.removeAttribute('data-prts-settings-turn')
     shells.delete(shell)
   }
 
@@ -69,25 +60,23 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
       let entry = shells.get(shell)
       if (!entry) {
         const frame = createFrame()
-        entry = { frame, markers: frame.querySelector('[data-prts-settings-markers]'), pagination: frame.querySelector('[data-prts-settings-pagination]'), pages: new Map(), style: saveStyle(shell, '--prts-settings-front-z'), selected: null, selectedLabel: '', turn: '', turnTimer: null }
-        entry.onTurnEnd = event => {
-          if (event.animationName === 'prts-settings-draw-' + entry.turn && event.target.parentElement === shell) finishTurn(shell, entry)
-        }
-        shell.addEventListener('animationend', entry.onTurnEnd)
+        entry = { frame, markers: frame.querySelector('[data-prts-settings-markers]'), pagination: frame.querySelector('[data-prts-settings-pagination]'), pages: new Map(), style: saveStyle(shell, '--prts-settings-front-z') }
         shell.append(frame)
         shells.set(shell, entry)
         shell.setAttribute('data-prts-settings-shell', '')
       }
       const categories = [...navigation.querySelectorAll(':scope > div > button')]
       const selected = categories.find(button => ['true', 'page'].includes(button.getAttribute('aria-current')))
-      const ordered = selected ? [selected, ...categories.filter(button => button !== selected)] : categories
+      const selectedIndex = Math.max(0, categories.indexOf(selected))
       for (const [button, item] of entry.pages) {
         if (categories.includes(button)) continue
         releasePage(button, item)
         entry.pages.delete(button)
       }
       setStyle(shell, '--prts-settings-front-z', String(categories.length * 2 + 2))
+      const ordered = selected ? [selected, ...categories.filter(button => button !== selected)] : categories
       for (const [depth, button] of ordered.entries()) {
+        const categoryIndex = categories.indexOf(button)
         let item = entry.pages.get(button)
         if (!item) {
           const page = document.createElement('span')
@@ -97,7 +86,6 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
           entry.pages.set(button, item)
           shell.append(page)
         }
-        const categoryIndex = categories.indexOf(button)
         const pageIndex = String(categoryIndex + 1)
         const colorIndex = String(categoryIndex % 6 + 1)
         if (item.page.getAttribute('data-prts-settings-color') !== colorIndex) item.page.setAttribute('data-prts-settings-color', colorIndex)
@@ -110,30 +98,11 @@ export function createNativeSettingsShellAdapter({ document, emblemImage }) {
       }
       while (entry.markers.children.length > categories.length) entry.markers.lastElementChild.remove()
       while (entry.markers.children.length < categories.length) entry.markers.append(document.createElement('i'))
-      const selectedIndex = categories.indexOf(selected)
       for (const [index, marker] of [...entry.markers.children].entries()) {
         if (marker.hasAttribute('data-prts-settings-active') !== (index === selectedIndex)) marker.toggleAttribute('data-prts-settings-active', index === selectedIndex)
       }
       const pagination = String(selectedIndex + 1).padStart(2, '0') + ' / ' + String(categories.length).padStart(2, '0')
       if (entry.pagination.textContent !== pagination) entry.pagination.textContent = pagination
-      if (selected) {
-        const label = selected.textContent.trim()
-        const sameCategory = entry.selected === selected || !categories.includes(entry.selected) && entry.selectedLabel === label
-        if (entry.selected && sameCategory && entry.selected !== selected) finishTurn(shell, entry)
-        if (entry.selected && !sameCategory) {
-          entry.turn = entry.turn === 'a' ? 'b' : 'a'
-          finishTurn(shell, entry)
-          shell.setAttribute('data-prts-settings-turn', entry.turn)
-          entry.turnTimer = document.defaultView.setTimeout(() => {
-            entry.turnTimer = null
-            const drawing = shell.getAnimations?.({ subtree: true }).some(animation =>
-              animation.animationName === 'prts-settings-draw-' + entry.turn && ['running', 'paused'].includes(animation.playState))
-            if (!drawing) finishTurn(shell, entry)
-          }, 320)
-        }
-        entry.selected = selected
-        entry.selectedLabel = label
-      }
     },
     releaseTree(node) {
       for (const shell of shells.keys()) if (shell === node || node.contains(shell)) release(shell)

@@ -26,6 +26,7 @@ test.beforeEach(() => {
 })
 
 async function expectPastedBookmark(shell, width) {
+  await expect(shell).not.toHaveAttribute('data-prts-settings-flipping')
   const geometry = await shell.evaluate(node => {
     const bounds = node.getBoundingClientRect()
     const front = getComputedStyle(node.querySelector('[data-prts-settings-depth="0"]'))
@@ -37,6 +38,8 @@ async function expectPastedBookmark(shell, width) {
     const point = horizontal ? { x: tab.left + tab.width / 2, y: pageTop + 7 } : { x: pageLeft + 14, y: tab.top + tab.height / 2 }
     return {
       overlap: horizontal ? tab.bottom - pageTop : tab.right - pageLeft,
+      ringCount: node.querySelectorAll('[data-prts-settings-binding]').length,
+      sheetHeights: [...node.querySelectorAll('[data-prts-settings-page]')].map(sheet => sheet.getBoundingClientRect().height),
       rectangular: [...node.querySelectorAll('[data-prts-settings-page]')].every(sheet => getComputedStyle(sheet).clipPath === 'none'),
       hit: document.elementFromPoint(point.x, point.y)?.closest('nav button') === current,
       pageCount: node.querySelectorAll('[data-prts-settings-page]').length, categoryCount: node.querySelectorAll('nav button').length,
@@ -45,9 +48,13 @@ async function expectPastedBookmark(shell, width) {
   })
   expect(geometry.overlap).toBeGreaterThanOrEqual(width < 768 ? 13 : 20)
   expect(geometry.hit).toBe(true)
+  expect(geometry.ringCount).toBe(0)
+  expect(new Set(geometry.sheetHeights).size).toBe(1)
+  expect(geometry.sheetHeights[0]).toBeGreaterThan(600)
   expect(geometry.rectangular).toBe(true)
   expect(geometry.pageCount).toBe(geometry.categoryCount)
   expect(geometry.backingDepth).toBeGreaterThan(0)
+  return geometry.backingDepth
 }
 
 for (const width of [1440, 390]) {
@@ -117,7 +124,7 @@ for (const width of [1440, 390]) {
     expect(controls.markupUnchanged).toBe(true)
     expect(controls.identitiesUnchanged).toBe(true)
     await expectNativeBackdrop(shell)
-    await expectPastedBookmark(shell, width)
+    const backingDepth = await expectPastedBookmark(shell, width)
     const navigation = shell.locator(':scope > nav')
     if (width >= 768) {
       const labels = await navigation.locator('button > span:not([aria-hidden="true"])').evaluateAll(nodes => nodes.map(node => ({ width: node.clientWidth, height: node.clientHeight, scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight })))
@@ -131,7 +138,9 @@ for (const width of [1440, 390]) {
     await expect(navigation.getByRole('button', { name: '模型', exact: true })).toHaveAttribute('aria-current', 'true')
     await expect(shell.locator('nav button[aria-current]')).toHaveText('模型')
     await expect(shell.locator('[data-slot="settings.section"]').getByRole('heading', { name: '模型', exact: true })).toHaveCount(1)
-    await expectPastedBookmark(shell, width)
+    expect(await expectPastedBookmark(shell, width)).toBeCloseTo(backingDepth, 1)
+    await navigation.getByRole('button').last().click()
+    expect(await expectPastedBookmark(shell, width)).toBeCloseTo(backingDepth, 1)
     await expect(shell.locator('[data-prts-settings-filetab]')).toHaveCount(0)
     await navigation.getByRole('button', { name: '通用设置', exact: true }).click()
     await expect(navigation.getByRole('button', { name: '通用设置', exact: true })).toHaveAttribute('aria-current', 'true')
@@ -159,7 +168,7 @@ test('model settings stay steady without idle page draws @live-rc0222', async ({
     const animations = []
     const geometry = new Set()
     const content = node.querySelector('[data-slot="settings.section"]').parentElement
-    const recordAnimation = event => { if (event.animationName.startsWith('prts-settings-draw-')) animations.push(event.animationName) }
+    const recordAnimation = event => { if (event.animationName.startsWith('prts-settings-')) animations.push(event.animationName) }
     node.addEventListener('animationstart', recordAnimation)
     const timer = setInterval(() => {
       const section = node.querySelector('[data-slot="settings.section"]').firstElementChild

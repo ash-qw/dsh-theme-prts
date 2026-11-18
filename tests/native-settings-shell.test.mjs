@@ -27,6 +27,8 @@ test('dossier decorates its frame and leaves native headings and controls intact
   assert.equal(shell.querySelector('[data-prts-settings-page]').getAttribute('aria-hidden'), 'true')
   assert.equal(shell.querySelector('[data-prts-settings-caption], [data-prts-settings-filetab], h2'), null)
   assert.equal(shell.querySelector('[data-prts-settings-watermark]'), null)
+  assert.equal(shell.querySelector('[data-prts-settings-side] b'), null)
+  assert.equal(shell.querySelector('[data-prts-settings-side] > span').textContent, 'RHODES ISLAND')
   assert.equal(document.querySelector('[data-prts-rail-brand] svg').id, 'brand')
   assert.equal(shell.querySelector('input'), input)
   assert.equal(input.value, 'unchanged')
@@ -58,30 +60,6 @@ test('native category order and labels change without creating a duplicate headi
   assert.equal(shell.querySelectorAll('[data-prts-settings-page]').length, 3)
   assert.equal(shell.querySelector('[data-prts-settings-caption], h2'), null)
   adapter.dispose()
-  dom.window.close()
-})
-
-test('page draws only on category changes and releases its switching state', () => {
-  const { dom, document, shell } = fixture()
-  const adapter = createNativeSettingsShellAdapter({ document })
-  adapter.update(shell)
-  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
-  const buttons = shell.querySelectorAll('nav button')
-  buttons[0].removeAttribute('aria-current')
-  buttons[1].setAttribute('aria-current', 'true')
-  adapter.update(shell)
-  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
-  buttons[1].textContent = 'Models'
-  adapter.update(shell)
-  adapter.update(shell)
-  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
-  buttons[1].removeAttribute('aria-current')
-  adapter.update(shell)
-  buttons[0].setAttribute('aria-current', 'page')
-  adapter.update(shell)
-  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'b')
-  adapter.dispose()
-  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
   dom.window.close()
 })
 
@@ -181,6 +159,31 @@ test('each native category owns an ordered sheet and removed categories restore 
   assert.equal(buttons[0].hasAttribute('style'), false)
   assert.equal(shell.hasAttribute('style'), false)
   assert.equal(pages().length, 0)
+  dom.window.close()
+})
+
+test('every category selection retains the complete ordered stack without top rings', () => {
+  const { dom, document, shell } = fixture()
+  const navigation = shell.querySelector('nav > div')
+  for (let index = 0; index < 4; index++) navigation.append(document.createElement('button'))
+  const buttons = [...navigation.children]
+  const adapter = createNativeSettingsShellAdapter({ document })
+  adapter.update(shell)
+  const originalPages = [...shell.querySelectorAll('[data-prts-settings-page]')]
+  for (const selectedIndex of [5, 2, 0, 3, 1, 4]) {
+    buttons.forEach((button, index) => button.toggleAttribute('aria-current', index === selectedIndex))
+    buttons[selectedIndex].setAttribute('aria-current', 'page')
+    adapter.update(shell)
+    const pages = [...shell.querySelectorAll('[data-prts-settings-page]')]
+    assert.deepEqual(pages, originalPages)
+    const ordered = [...pages].sort((first, second) => Number(first.dataset.prtsSettingsDepth) - Number(second.dataset.prtsSettingsDepth))
+    assert.deepEqual(ordered.map(page => Number(page.dataset.prtsSettingsDepth)), [0, 1, 2, 3, 4, 5])
+    assert.deepEqual(ordered.map(page => Number(page.dataset.prtsSettingsPage)), [selectedIndex + 1, ...buttons.map((_, index) => index + 1).filter(index => index !== selectedIndex + 1)])
+    assert.deepEqual(ordered.map(page => page.style.getPropertyValue('--prts-settings-page-offset')), ['0px', '4px', '8px', '12px', '16px', '20px'])
+    assert.equal(shell.querySelector('[data-prts-settings-binding], [data-prts-settings-page][data-prts-settings-side]'), null)
+    for (const page of pages) assert.equal(page.dataset.prtsSettingsColor, page.dataset.prtsSettingsPage)
+  }
+  adapter.dispose()
   dom.window.close()
 })
 
@@ -307,7 +310,7 @@ test('native navigation refreshes do not turn the same selected category', async
   buttons[0].removeAttribute('aria-current')
   buttons[1].setAttribute('aria-current', 'true')
   await flush(dom.window)
-  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
+  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
   const navigation = shell.querySelector('nav > div')
   navigation.replaceWith(navigation.cloneNode(true))
   await flush(dom.window)
@@ -316,63 +319,38 @@ test('native navigation refreshes do not turn the same selected category', async
   dom.window.close()
 })
 
-test('page drawing clears its trigger before later native content refreshes', async () => {
-  const { dom, document, shell } = fixture()
-  const adapter = createFloatingGlassAdapter({ document, window: dom.window })
-  adapter.start()
-  const buttons = shell.querySelectorAll('nav button')
-  buttons[0].removeAttribute('aria-current')
-  buttons[1].setAttribute('aria-current', 'true')
-  await flush(dom.window)
-  assert.equal(shell.getAttribute('data-prts-settings-turn'), 'a')
-  await new Promise(resolve => dom.window.setTimeout(resolve, 350))
-  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
-  const content = shell.querySelector('[data-slot="settings.section"]').parentElement
-  const replacement = content.cloneNode(true)
-  content.replaceWith(replacement)
-  await flush(dom.window)
-  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
-  assert.equal(shell.querySelectorAll('[data-prts-settings-jacket]').length, 1)
-  adapter.dispose()
-  dom.window.close()
-})
-
-
-test('completed page animation immediately releases its trigger', () => {
-  const { dom, document, shell } = fixture()
-  const adapter = createNativeSettingsShellAdapter({ document })
-  adapter.update(shell)
-  const buttons = shell.querySelectorAll('nav button')
-  buttons[0].removeAttribute('aria-current')
-  buttons[1].setAttribute('aria-current', 'true')
-  adapter.update(shell)
-  const event = new dom.window.Event('animationend', { bubbles: true })
-  Object.defineProperty(event, 'animationName', { value: 'prts-settings-draw-a' })
-  shell.querySelector('[data-prts-settings-depth="0"]').dispatchEvent(event)
-  assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
-  adapter.dispose()
-  dom.window.close()
-})
-
-for (const playState of ['running', 'paused', 'finished', 'idle']) {
-  test('page fallback respects the actual animation state: ' + playState, () => {
+for (const motion of ['full', 'reduced', 'unsupported']) {
+  test('category clicks stay native without snapshots, layout reads or animation timers: ' + motion, () => {
     const { dom, document, shell } = fixture()
-    let fallback
-    dom.window.setTimeout = callback => { fallback = callback; return 1 }
-    dom.window.clearTimeout = () => {}
-    shell.getAnimations = () => [{ animationName: 'prts-settings-draw-a', playState }]
+    document.documentElement.setAttribute('data-prts-motion', motion === 'reduced' ? 'reduced' : 'full')
+    if (motion !== 'unsupported') document.startViewTransition = () => { throw Error('must not capture') }
     const adapter = createNativeSettingsShellAdapter({ document })
     adapter.update(shell)
-    const buttons = shell.querySelectorAll('nav button')
-    buttons[0].removeAttribute('aria-current')
-    buttons[1].setAttribute('aria-current', 'true')
-    adapter.update(shell)
-    fallback()
-    assert.equal(shell.hasAttribute('data-prts-settings-turn'), ['running', 'paused'].includes(playState))
-    const event = new dom.window.Event('animationend', { bubbles: true })
-    Object.defineProperty(event, 'animationName', { value: 'prts-settings-draw-a' })
-    shell.querySelector('[data-prts-settings-depth="0"]').dispatchEvent(event)
-    assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+    const original = shell.querySelector('[data-slot="settings.section"]')
+    const input = original.querySelector('input')
+    const buttons = [...shell.querySelectorAll('nav button')]
+    let clicks = 0
+    for (const button of buttons) button.addEventListener('click', event => {
+      assert.equal(event.defaultPrevented, false)
+      clicks++
+      for (const category of buttons) category.removeAttribute('aria-current')
+      button.setAttribute('aria-current', 'true')
+    })
+    dom.window.setTimeout = () => { throw Error('must not schedule an animation timer') }
+    dom.window.requestAnimationFrame = () => { throw Error('must not schedule a frame') }
+    shell.getBoundingClientRect = () => { throw Error('must not read layout') }
+    for (const index of [1, 0, 1]) {
+      buttons[index].click()
+      adapter.update(shell)
+      assert.equal(shell.querySelector('[data-prts-settings-depth="0"]').getAttribute('data-prts-settings-page'), String(index + 1))
+      assert.equal(shell.hasAttribute('data-prts-settings-turn'), false)
+      assert.equal(shell.hasAttribute('data-prts-settings-flipping'), false)
+      assert.equal(document.documentElement.hasAttribute('data-prts-settings-flip'), false)
+      assert.equal(shell.querySelector('[data-prts-settings-packet], [data-prts-settings-packet-edges]'), null)
+      assert.equal(shell.querySelector('[data-slot="settings.section"]'), original)
+      assert.equal(original.querySelector('input'), input)
+    }
+    assert.equal(clicks, 3)
     adapter.dispose()
     dom.window.close()
   })

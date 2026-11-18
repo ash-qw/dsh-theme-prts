@@ -58,7 +58,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 322_000, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 322 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials and the responsive native settings dossier shell, colored paper bookmarks, reduced-motion-aware page drawing and the static Rhodes Island file-jacket frame)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 323_500, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 323.5 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials and the responsive native settings dossier shell, colored paper bookmarks, reduced-motion-aware page drawing and the static Rhodes Island file-jacket frame)')
 })
 
 test('restored card focus stays idle without hiding focused menu buttons or touching native focus', () => {
@@ -519,6 +519,8 @@ test('native settings preserve host scrims and use complete rectangular paper sh
   assert.match(settings, /data-prts-settings-jacket/)
   assert.match(settings, /data-prts-settings-side/)
   assert.match(settings, /data-prts-settings-pagination/)
+  assert.doesNotMatch(settings, /data-prts-settings-binding|data-prts-settings-side="back"/)
+  assert.doesNotMatch(settings, /prts-settings-(?:draw|lift|flip|reverse|front-in|front-out)|::view-transition/)
   assert.match(settings, /margin-bottom: 25px/)
   assert.match(settings, /pointer-events: none/)
 })
