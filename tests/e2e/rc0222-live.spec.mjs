@@ -47,7 +47,7 @@ for (const scheme of ['dark', 'light']) {
       expect(bounds.height).toBeGreaterThanOrEqual(36)
       expect(bounds.x).toBeGreaterThanOrEqual(0)
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
-      if (await page.evaluate(() => window.__DSH_BOOT__.release.version) === '0.2.2-rc.3') {
+      if (['0.2.2-rc.3', '0.2.2-rc.5'].includes(await page.evaluate(() => window.__DSH_BOOT__.release.version))) {
         const slot = sidebar.locator('[data-slot="sidebar.session.action"]')
         await expect(slot).toHaveCSS('display', 'contents')
         await expect(slot.getByRole('button', { name: '新建会话', exact: true })).toBeVisible()
@@ -62,6 +62,9 @@ for (const scheme of ['dark', 'light']) {
   for (const width of [1440, 390]) {
     test(`supported 0.2.2 right sidebar search retains theme materials (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
       const errors = await openHarness(page, width)
+      const openSidebar = page.getByRole('button', { name: '打开侧边栏', exact: true })
+      if (await openSidebar.isVisible()) await openSidebar.click()
+      await page.locator('[data-prts-session-row]').last().click()
       const expand = page.getByRole('button', { name: '打开右侧边栏', exact: true })
       if (await expand.isVisible()) await expand.click()
       const navigator = page.locator('[data-files-page] [data-files-navigator]:visible').first()
