@@ -17,6 +17,8 @@ export function createCursorAdapter({ document, window, assets }) {
   const documentTextSelector = '[data-textpreview-body], [data-textpreview-plain], [data-document-markdown], [data-code-preview]'
   const controlSelector = 'a[href], button, summary, input, textarea, select, [contenteditable], [role="button"], [role="toolbar"], [role="tab"]'
   const interactiveSelector = 'a[href], button, summary, input, textarea, select, label, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="tab"], [role="treeitem"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="checkbox"], [role="radio"], [role="switch"], [role="slider"], [role="spinbutton"], [data-prts-workspace-row], [data-prts-session-row], .dsh-partner-sidebar-row'
+  const regionProbe = createTextRegionProbe({ document, window, onChange: refreshTextHit,
+    excludedSelector: `${documentTextSelector}, [data-prts-theme-settings], [data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering], ${interactiveSelector}, [contenteditable], [role="toolbar"], [data-text-interaction-exclude], [data-code-block-banner], [inert], [aria-disabled="true"], :disabled, [hidden], [data-image-preview], [data-prts-region-stage], [data-prts-cursor-feedback], svg, canvas, iframe, img, video, audio` })
   let feedbackHost, feedbackRoot, refractionFilter
   const ripples = new Set()
   const artwork = createRippleArtwork()
@@ -146,10 +148,11 @@ export function createCursorAdapter({ document, window, assets }) {
   }
   function findTextHit(event) {
     if (event.pointerType !== 'mouse') return
-    lastPoint = { clientX: event.clientX, clientY: event.clientY, pointerType: 'mouse' }
+    lastPoint = { clientX: event.clientX, clientY: event.clientY, pointerType: 'mouse', pointerId: event.pointerId, buttons: event.buttons }
     const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement
     const {content} = prepareTextHit(target)
-    if (!content) return
+    if (!content) return regionProbe.find(target, event)
+    regionProbe.clear()
     // Caret APIs return the nearest insertion point even over empty space.
     // Check its adjacent character rectangles before treating it as a text hit.
     const caret = document.caretPositionFromPoint?.(event.clientX, event.clientY)
@@ -170,9 +173,11 @@ export function createCursorAdapter({ document, window, assets }) {
       }
     }
   }
-  function refreshTextHit() {
+  function refreshTextHit(invalidateCache = true) {
+    if (invalidateCache) regionProbe.invalidate()
     if (!lastPoint) return
-    updateTextHit({ ...lastPoint, target: document.elementFromPoint(lastPoint.clientX, lastPoint.clientY) })
+    if (pendingMove) pendingMove.refreshTarget = true
+    else move({ ...lastPoint, refreshTarget: true })
   }
   let resizeTarget
   let resizeOriginal
@@ -332,6 +337,7 @@ export function createCursorAdapter({ document, window, assets }) {
     releaseHand()
   }
   function applyMove(event) {
+    if (event.refreshTarget) event.target = document.elementFromPoint(event.clientX, event.clientY)
     updateResize(event)
     updateTextHit(event)
     if (handCursor) followHand(event.target?.nodeType === 1 ? event.target : event.target?.parentElement)
@@ -348,11 +354,11 @@ export function createCursorAdapter({ document, window, assets }) {
     if (pointerId !== undefined && event.pointerId === pointerId && !(event.buttons & 1)) reset()
     if (!window.requestAnimationFrame) { applyMove(event); return }
     pendingMove = { target:event.target, pointerType:event.pointerType, pointerId:event.pointerId,
-      buttons:event.buttons, clientX:event.clientX, clientY:event.clientY }
+      buttons:event.buttons, clientX:event.clientX, clientY:event.clientY, refreshTarget:event.refreshTarget }
     if (moveFrame === undefined) moveFrame = window.requestAnimationFrame(() => {
       const latest = pendingMove
       clearPendingMove()
-      if (latest?.target?.isConnected) applyMove(latest)
+      if (latest && (latest.refreshTarget || latest.target?.isConnected)) applyMove(latest)
     })
   }
   function resetInteraction() {
@@ -361,6 +367,7 @@ export function createCursorAdapter({ document, window, assets }) {
     reset()
     clearResize()
     clearTextHit()
+    regionProbe.clear()
     lastPoint = undefined
   }
   function leave(event) { if (!event.relatedTarget) resetInteraction() }
@@ -406,6 +413,89 @@ export function createCursorAdapter({ document, window, assets }) {
     },
     dispose,
   }
+}
+
+function createTextRegionProbe({ document, window, excludedSelector, onChange }) {
+  let cache, observed, observer, resizeObserver, range
+  let cooldownUntil = 0, nextProbeAt = 0, retryTimer
+  const contains = (rect, point) => rect.width > 0 && rect.height > 0
+    && point.clientX >= rect.left && point.clientX < rect.right && point.clientY >= rect.top && point.clientY < rect.bottom
+  function invalidate() { cache = undefined }
+  function cancelRetry() {
+    if (retryTimer !== undefined) window.clearTimeout(retryTimer)
+    retryTimer = undefined
+  }
+  function retryAt(time) {
+    if (retryTimer !== undefined) return
+    retryTimer = window.setTimeout(() => { retryTimer = undefined; onChange(false) }, time - window.performance.now())
+  }
+  function clear() {
+    cancelRetry()
+    invalidate()
+    observer?.disconnect()
+    resizeObserver?.disconnect()
+    observed = range = undefined
+  }
+  function watch(target) {
+    if (observed === target) return
+    clear()
+    observed = target
+    if (window.MutationObserver) {
+      observer ||= new window.MutationObserver(onChange)
+      observer.observe(target, { subtree: true, childList: true, characterData: true, attributes: true,
+        attributeFilter: ['class', 'style', 'hidden', 'open', 'disabled', 'aria-disabled', 'role', 'contenteditable', 'inert', 'data-text-interaction-exclude'] })
+    }
+    if (window.ResizeObserver) {
+      resizeObserver ||= new window.ResizeObserver(onChange)
+      resizeObserver.observe(target)
+    }
+  }
+  function find(target, point) {
+    if (!target || target === document.body || target === document.documentElement
+      || !Number.isFinite(point.clientX) || !Number.isFinite(point.clientY) || target.closest(excludedSelector)) { clear(); return }
+    const style = window.getComputedStyle(target)
+    const themedText = style.cursor.includes('data:image/png') && /,\s*text$/.test(style.cursor)
+    if (style.userSelect === 'none' || style.visibility !== 'visible' && style.visibility !== ''
+      || themedText && !target.closest('[data-prts-text-hit]')
+      || !/^(auto|default|text)$/.test(style.cursor) && !(style.cursor.includes('data:image/png') && /,\s*(default|text)$/.test(style.cursor))) { clear(); return }
+    watch(target)
+    if (!target.childNodes.length || target.childNodes.length === 1 && target.firstChild.nodeType === 3
+      && target.firstChild.length <= 2048 && !target.firstChild.data.trim()) { cancelRetry(); return }
+    const now = window.performance.now()
+    const box = target.getBoundingClientRect()
+    if (cache && (cache.target !== target || !cache.node.isConnected || !target.contains(cache.node)
+      || now - cache.time > 160 || ['x', 'y', 'width', 'height'].some(key => cache.box[key] !== box[key]))) invalidate()
+    if (cache?.rects.some(rect => contains(rect, point))) { cancelRetry(); return target }
+    if (cache && target.childNodes.length === 1 && target.firstChild === cache.node
+      && cache.start === 0 && cache.end === cache.node.length) { cancelRetry(); return }
+    const due = Math.max(cooldownUntil, nextProbeAt)
+    if (now < due) { retryAt(due); return }
+    cancelRetry()
+    nextProbeAt = now + 32
+    const started = window.performance.now()
+    try {
+      const caret = document.caretPositionFromPoint?.(point.clientX, point.clientY)
+      const fallback = caret ? undefined : document.caretRangeFromPoint?.(point.clientX, point.clientY)
+      const node = caret?.offsetNode ?? fallback?.startContainer
+      const offset = caret?.offset ?? fallback?.startOffset
+      if (node?.nodeType !== 3 || !Number.isInteger(offset) || !target.contains(node)
+        || !node.data.slice(Math.max(0, offset - 1024), offset + 1024).trim() || node.parentElement.closest(excludedSelector)) return
+      if (node.parentElement !== target && window.getComputedStyle(node.parentElement).userSelect === 'none') return
+      if (cache?.node !== node || offset < cache.start || offset > cache.end) {
+        const start = Math.max(0, offset - 1024), end = Math.min(node.length, start + 2048)
+        range ||= document.createRange()
+        range.setStart(node, start)
+        range.setEnd(node, end)
+        const rectangles = range.getClientRects()
+        if (rectangles.length > 128) { cooldownUntil = now + 250; return }
+        const rects = Array.from(rectangles, rect => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height }))
+        cache = { target, node, start, end, box, rects, time: now }
+      }
+      if (cache.rects.some(rect => contains(rect, point))) return target
+    } catch { invalidate() }
+    finally { if (window.performance.now() - started > 8) cooldownUntil = window.performance.now() + 250 }
+  }
+  return { find, invalidate, clear }
 }
 
 function createRippleArtwork() {

@@ -90,10 +90,10 @@ for (const scheme of ['dark', 'light']) for (const style of ['native', 'deck-cha
       window.chatProfile = { caretCalls: 0, characterMeasurements: 0, textHitMutations: 0 }
       for (const name of ['caretPositionFromPoint', 'caretRangeFromPoint']) {
         const original = document[name]?.bind(document)
-        if (original) document[name] = (...args) => { window.chatProfile.caretCalls++; return original(...args) }
+        if (original) document[name] = (...args) => { if (document.querySelector('main').contains(document.elementFromPoint(args[0], args[1]))) window.chatProfile.caretCalls++; return original(...args) }
       }
       const original = Range.prototype.getClientRects
-      Range.prototype.getClientRects = function (...args) { window.chatProfile.characterMeasurements++; return original.apply(this, args) }
+      Range.prototype.getClientRects = function (...args) { if (document.querySelector('main').contains(this.commonAncestorContainer)) window.chatProfile.characterMeasurements++; return original.apply(this, args) }
       const observer = new MutationObserver(records => { window.chatProfile.textHitMutations += records.length })
       observer.observe(document.querySelector('main'), { attributes: true, subtree: true, attributeFilter: ['data-prts-text-hit'] })
     })

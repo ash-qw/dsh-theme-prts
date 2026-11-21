@@ -12,7 +12,7 @@ async function enableCursor(page) {
     window.previewCaretCalls = 0
     for (const name of ['caretPositionFromPoint', 'caretRangeFromPoint']) {
       const original = document[name]?.bind(document)
-      if (original) document[name] = (...args) => { window.previewCaretCalls++; return original(...args) }
+      if (original) document[name] = (...args) => { if (document.elementFromPoint(args[0], args[1])?.closest('[data-textpreview-body]')) window.previewCaretCalls++; return original(...args) }
     }
   })
 }
@@ -88,12 +88,12 @@ for (const scheme of ['dark', 'light']) {
         await page.mouse.move(line.x + 5, line.y + line.height / 2)
         await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
       }
-      const controls = [['#path', 'default'], ['#filename', 'default'], ['#outside', 'default'], ['#image-preview', 'default'], ['#unselectable', 'default'], ['#native', 'grab'], ['#link', 'pointer'], ['#reload', 'pointer'], ['#copy', 'pointer'], ['#disabled', 'not-allowed'], ['#search', 'text']]
+      const controls = [['#path', 'text'], ['#filename', 'text'], ['#outside', 'default'], ['#image-preview', 'default'], ['#unselectable', 'default'], ['#native', 'grab'], ['#link', 'pointer'], ['#reload', 'pointer'], ['#copy', 'pointer'], ['#disabled', 'not-allowed'], ['#search', 'text']]
       if (renderer === 'markdown') controls.push(['#markdown-language', 'default'], ['#markdown-copy', 'pointer'])
       for (const [selector, cursor] of controls) {
         await hoverCharacter('#text')
         await page.locator(selector).hover()
-        await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
+        await expect(page.locator('[data-textpreview-body] [data-prts-text-hit]')).toHaveCount(0)
         await expect(page.locator(selector)).toHaveCSS('cursor', new RegExp(`${cursor}$`))
       }
       await page.locator('[data-textpreview-body]').evaluate(element => { element.scrollTop = 0 })
