@@ -149,10 +149,9 @@ test('preview fitting stays inside the sidebar body and keeps wrapped text layou
   await page.evaluate(() => { document.documentElement.dataset.prtsCursor = 'prts' })
   expect(await measure()).toEqual(before)
   expect(await page.locator('aside').textContent()).toBe(source)
-  for (const selector of ['#chat', '#standalone']) {
-    await expect(page.locator(selector)).toHaveCSS('width', '500px')
-  }
-  await expect(page.locator('#chat')).toHaveCSS('cursor', /default$/)
+  await expect(page.locator('#standalone')).toHaveCSS('width', '500px')
+  expect(await page.locator('#chat').evaluate(element => element.getBoundingClientRect().width)).toBeLessThan(400)
+  await expect(page.locator('#chat')).toHaveCSS('cursor', /text$/)
   await expect(page.locator('#standalone')).toHaveCSS('cursor', /text$/)
   await expect(page.locator('#empty')).toHaveCSS('cursor', /default$/)
   await expect(page.locator('td')).toHaveCSS('cursor', /text$/)

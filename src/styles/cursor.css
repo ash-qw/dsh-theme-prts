@@ -8,6 +8,27 @@
     --prts-link-cursor: var(--prts-rest-link-cursor);
     cursor: var(--prts-hand-cursor), default;
   }
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]) :where([data-text-interaction-source], [data-markdown], [data-slot*="markdown" i], [class*="markdown" i]):not(:where(a[href], button, summary, [role="button"], [role="toolbar"], [role="tab"], [data-text-interaction-exclude], [data-code-block-banner]), :where(a[href], button, summary, [role="button"], [role="toolbar"], [role="tab"], [data-text-interaction-exclude], [data-code-block-banner]) *) {
+    cursor: var(--prts-hand-cursor), default;
+    &:not(:has(p, h1, h2, h3, h4, h5, h6, div, pre, blockquote, ul, ol, table, dl)):not([data-message-bubble], [class$="_bubble"]),
+    & :where(p, h1, h2, h3, h4, h5, h6, li, dt, dd, pre .line):not(:where(a[href], button, summary, [role="button"], [role="toolbar"], [role="tab"], [data-text-interaction-exclude], [data-code-block-banner]) *) {
+      inline-size: fit-content;
+      max-inline-size: 100%;
+      cursor: var(--prts-text-cursor), text;
+    }
+    & :where(code, th, td):not(:where(a[href], button, summary, [role="button"], [role="toolbar"], [role="tab"], [data-text-interaction-exclude], [data-code-block-banner]) *) {
+      cursor: var(--prts-text-cursor), text;
+    }
+    & :where(ul, ol, blockquote, pre, code:has(> .line), .line:empty, p:empty) {
+      cursor: var(--prts-hand-cursor), default;
+    }
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-message-role="user"], [data-submission-echo], [data-pending-steering]) :where([data-message-bubble], [class$="_bubble"]):not(:where(a[href], button, summary, [role="button"], [role="toolbar"], [role="tab"], [data-text-interaction-exclude], [data-code-block-banner]) *) {
+    cursor: var(--prts-text-cursor), text;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]) :is([data-text-interaction-exclude], [data-code-block-banner], [role="toolbar"]) {
+    cursor: var(--prts-hand-cursor), default;
+  }
   html[data-dsh-prts][data-prts-cursor="prts"] :where([data-textpreview-plain], [data-document-markdown], [data-code-preview] [data-code-block-content]) {
     cursor: var(--prts-text-cursor), text;
   }

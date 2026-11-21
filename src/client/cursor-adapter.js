@@ -15,7 +15,6 @@ export function createCursorAdapter({ document, window, assets }) {
   let lastPoint
   const heroTextSelector = '[data-phase="hero"] [class$="_titleGroup"]'
   const documentTextSelector = '[data-textpreview-body], [data-textpreview-plain], [data-document-markdown], [data-code-preview]'
-  const contentSelector = '[data-markdown], [data-slot*="markdown" i], [class*="markdown" i], :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-submission-echo], [data-pending-steering]) :is([data-message-bubble], [class$="_bubble"])'
   const controlSelector = 'a[href], button, summary, input, textarea, select, [contenteditable], [role="button"], [role="toolbar"], [role="tab"]'
   const interactiveSelector = 'a[href], button, summary, input, textarea, select, label, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="tab"], [role="treeitem"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="checkbox"], [role="radio"], [role="switch"], [role="slider"], [role="spinbutton"], [data-prts-workspace-row], [data-prts-session-row], .dsh-partner-sidebar-row'
   let feedbackHost, feedbackRoot, refractionFilter
@@ -139,8 +138,8 @@ export function createCursorAdapter({ document, window, assets }) {
   }
   function prepareTextHit(target) {
     if (target?.closest?.(documentTextSelector)) return {target}
-    const content = target?.closest?.(`${contentSelector}, ${heroTextSelector}`)
-    if (!content || (!content.matches(heroTextSelector) && !content.closest('[data-chat-flow-kind], [data-message-role], [data-submission-echo], [data-pending-steering]')) || target.closest(controlSelector)) return {target}
+    const content = target?.closest?.(heroTextSelector)
+    if (!content || target.closest(controlSelector)) return {target}
     const style = window.getComputedStyle(target)
     if (style.userSelect === 'none' || !style.cursor.includes('data:image/png')) return {target}
     return {target,content}

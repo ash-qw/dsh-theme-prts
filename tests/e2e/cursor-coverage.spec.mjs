@@ -112,15 +112,18 @@ test('conversation output uses text cursors while links and copy controls retain
     expect(actual).toContain('data:image/png')
     expect(actual).toMatch(/, text$/)
   }
-  const blank = await page.locator('#prose').boundingBox()
-  await page.mouse.move(blank.x + blank.width - 5, blank.y + blank.height / 2)
-  expect(await page.locator('#prose').evaluate(e => getComputedStyle(e).cursor)).toMatch(/, default$/)
+  const blank = await page.locator('#prose').evaluate(element => {
+    const row = element.getBoundingClientRect(), parent = element.parentElement.getBoundingClientRect()
+    return { x: parent.right - 5, y: row.y + row.height / 2 }
+  })
+  await page.mouse.move(blank.x, blank.y)
+  expect(await page.evaluate(({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)).cursor, blank)).toMatch(/, default$/)
   const textPoint = await page.locator('#prose').evaluate(e => {
     const range = document.createRange(); range.setStart(e.firstChild, 0); range.setEnd(e.firstChild, 1)
     const rect = range.getBoundingClientRect(); return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
   })
   await page.mouse.move(textPoint.x, textPoint.y)
-  expect(await page.locator('#prose').evaluate(e => e.hasAttribute('data-prts-text-hit'))).toBe(true)
+  expect(await page.locator('#prose').evaluate(e => e.hasAttribute('data-prts-text-hit'))).toBe(false)
   const repeatedHitMutations = await page.locator('#prose').evaluate((e, point) => {
     const observer = new MutationObserver(() => {})
     observer.observe(e, { attributes: true, attributeFilter: ['data-prts-text-hit'] })
@@ -150,11 +153,11 @@ test('conversation output uses text cursors while links and copy controls retain
   expect(await page.locator('#prose').evaluate(e => getComputedStyle(e).cursor)).toBe('auto')
 })
 
-test('text hit testing handles zoom, wrapped text, native controls, scrolling and lifecycle cleanup', async ({ page }) => {
+test('CSS conversation cursors handle zoom, wrapped text, controls and scrolling while hero hit testing stays precise', async ({ page }) => {
   await page.setContent(`<html data-dsh-prts data-prts-cursor="prts"><body>
     <article data-chat-flow-kind="assistant-step"><div data-markdown style="width:320px">
       <p id="wrapped">中文测试 English words <strong>加粗文本</strong> ${'换行测试 content '.repeat(12)}</p>
-      <p id="native" style="cursor:grab">Native grab</p><p id="unselectable" style="user-select:none">No selection</p>
+      <p id="native" style="cursor:grab">Native grab</p><p id="unselectable" data-text-interaction-exclude style="user-select:none">No selection</p>
       <a href="#" id="link">Link</a><button id="button">Copy</button><input id="input">
       <div id="scroller" style="height:40px;overflow:auto"><p id="scroll-text">Scrollable text</p><div style="height:300px"></div></div>
     </div></article><div class="host_userRow" data-submission-echo><div class="host_bubble" id="echo-text">临时消息文字</div></div><div data-pending-steering><div class="host_bubble" id="pending-text">待发送插话</div></div><div data-chat-flow-kind="steering"><div class="host_bubble" id="steering-text">正式插话</div></div><div data-chat-flow-kind="user"><div data-message-bubble data-text-interaction-source class="_bubble_1sgyj_1 extra" id="semantic-user-text">新版用户正文</div></div><div data-phase="hero"><span class="host_titleGroup"><span id="hero-title">探索未至之境</span></span></div><div id="outside" style="height:60px">Outside</div>
@@ -171,15 +174,19 @@ test('text hit testing handles zoom, wrapped text, native controls, scrolling an
     }, offset)
     await page.mouse.move(point.x, point.y)
   }
-  for (const selector of ['#echo-text', '#pending-text', '#steering-text', '#semantic-user-text', '#hero-title']) {
+  for (const selector of ['#echo-text', '#pending-text', '#steering-text', '#semantic-user-text']) {
     await hoverCharacter(selector)
-    await expect(page.locator(selector)).toHaveAttribute('data-prts-text-hit', '')
+    await expect(page.locator(selector)).toHaveCSS('cursor', /, text$/)
+    await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
   }
+  await hoverCharacter('#hero-title')
+  await expect(page.locator('#hero-title')).toHaveAttribute('data-prts-text-hit', '')
   for (const zoom of [0.8, 1, 1.25]) {
     await page.locator('article').evaluate((e, zoom) => { e.style.zoom = zoom }, zoom)
     for (const [selector, offset] of [['#wrapped', 0], ['#wrapped', 8], ['strong', 0]]) {
       await hoverCharacter(selector, offset)
-      await expect(page.locator(selector)).toHaveAttribute('data-prts-text-hit', '')
+      await expect(page.locator(selector)).toHaveCSS('cursor', /, text$/)
+      await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
     }
     const box = await page.locator('#wrapped').boundingBox()
     await page.mouse.move(box.x + box.width + 5, box.y + 5)
@@ -193,13 +200,13 @@ test('text hit testing handles zoom, wrapped text, native controls, scrolling an
     expect(await page.locator(selector).evaluate(e => getComputedStyle(e).cursor)).toMatch(new RegExp(`${cursor}$`))
   }
   await hoverCharacter('#scroll-text')
-  await expect(page.locator('#scroll-text')).toHaveAttribute('data-prts-text-hit', '')
+  await expect(page.locator('#scroll-text')).toHaveCSS('cursor', /, text$/)
   await page.locator('#scroller').evaluate(e => { e.scrollTop = 100 })
   await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
   // Exercise Chromium's older caret API as well as caretPositionFromPoint.
   await page.evaluate(() => { document.caretPositionFromPoint = undefined })
-  await hoverCharacter('#wrapped')
-  await expect(page.locator('#wrapped')).toHaveAttribute('data-prts-text-hit', '')
+  await hoverCharacter('#hero-title')
+  await expect(page.locator('#hero-title')).toHaveAttribute('data-prts-text-hit', '')
   await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'mouse' })))
   await expect(page.locator('[data-prts-text-hit]')).toHaveCount(0)
   await hoverCharacter('strong')

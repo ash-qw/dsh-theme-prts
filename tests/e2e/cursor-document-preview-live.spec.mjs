@@ -8,9 +8,9 @@ const baseClient = candidateClient ? await readFile(process.env.PRTS_CURSOR_BASE
 test.use({ locale: 'zh-CN', reducedMotion: 'no-preference', storageState: process.env.PRTS_RC022_STATE || undefined })
 
 for (const scheme of ['dark', 'light']) {
-  test(`native code previews use the theme text cursor (${scheme}) @live`, async ({ page }) => {
+  test(`native previews and conversation bodies use CSS text cursors (${scheme}) @live`, async ({ page }) => {
     test.skip(!process.env.PRTS_RC022_STATE, 'Requires authenticated local DSH storage state')
-    test.setTimeout(90_000)
+    test.setTimeout(120_000)
     const errors = [], writes = []
     let candidateReplacements = 0
     page.on('pageerror', error => errors.push(error.message))
@@ -217,6 +217,90 @@ for (const scheme of ['dark', 'light']) {
     expect(profile.frameGaps.length).toBeGreaterThan(20)
     expect(Math.max(...profile.frameGaps)).toBeLessThan(1000)
     expect(await page.evaluate(() => window.previewCaretCalls)).toBe(0)
+    await page.evaluate(() => {
+      document.querySelector('#prts-code-cursor-probe').style.display = 'none'
+      const require = window.__prtsCursorRequire
+      const React = require('react'), primitives = require('@deepseek-ai/dsh-client-ui-primitives')
+      const stage = document.createElement('div')
+      stage.id = 'prts-chat-cursor-probe'
+      stage.style.cssText = 'position:fixed;top:90px;left:220px;width:740px;height:650px;overflow:auto;z-index:101;background:var(--prts-panel)'
+      document.body.append(stage)
+      const root = require('react-dom').createRoot(stage)
+      const labels = { code: { copyLabel: 'Copy', copiedLabel: 'Copied', toolbarLabels: { codeLabel: 'Code', wrapLabel: 'Wrap', unwrapLabel: 'Unwrap' } }, footnotes: 'Footnotes' }
+      window.__prtsRenderChat = (text, streaming) => root.render(React.createElement(React.Fragment, null,
+        React.createElement('article', { 'data-chat-flow-kind': 'assistant-step' },
+          React.createElement('header', { id: 'chat-chrome' }, 'Assistant header'),
+          React.createElement(primitives.MarkdownText, { text, streaming, labels, textInteractionSource: true })),
+        React.createElement('article', { 'data-chat-flow-kind': 'user' },
+          React.createElement(primitives.UserMessageBubble, { 'data-message-bubble': '', id: 'chat-user' }, 'User message')),
+        React.createElement('div', { 'data-submission-echo': '' },
+          React.createElement(primitives.UserMessageBubble, { 'data-message-bubble': '', id: 'chat-echo' }, 'Pending user message'))))
+      const profile = window.chatNativeProfile = { active: false, characterMeasurements: 0, textHitMutations: 0 }
+      const original = Range.prototype.getClientRects
+      Range.prototype.getClientRects = function (...args) {
+        const owner = this.commonAncestorContainer.nodeType === 1 ? this.commonAncestorContainer : this.commonAncestorContainer.parentElement
+        if (profile.active && stage.contains(owner)) profile.characterMeasurements++
+        return original.apply(this, args)
+      }
+      const observer = new MutationObserver(records => { profile.textHitMutations += records.length })
+      observer.observe(stage, { attributes: true, subtree: true, attributeFilter: ['data-prts-text-hit'] })
+    })
+    const chat = page.locator('#prts-chat-cursor-probe')
+    const chatText = '# Heading\n\nResponse with **emphasis** and [link](https://example.com).\n\n> Quoted text\n\n- List item\n\n```json\n{ "value": 42 }\n```\n\nStreaming tail'
+    for (const style of ['native', 'deck-chat']) {
+      await page.locator('html').evaluate((element, style) => { element.dataset.prtsConversationStyle = style }, style)
+      await page.evaluate(text => window.__prtsRenderChat(text, true), chatText)
+      await expect(chat.locator('pre')).toContainText('value')
+      for (const selector of ['p', 'h1', 'li', 'pre code .line', '#chat-user', '#chat-echo']) {
+        await expect(chat.locator(selector).first()).toHaveCSS('cursor', /data:image\/png.*,[\s]*text$/)
+      }
+      const layout = await chat.evaluate(element => {
+        const measure = () => {
+          const text = [], walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+          while (walker.nextNode()) {
+            if (!walker.currentNode.textContent.trim()) continue
+            const range = document.createRange()
+            range.selectNodeContents(walker.currentNode)
+            text.push([...range.getClientRects()].map(rect => [rect.x, rect.y, rect.width, rect.height]))
+          }
+          const shells = [...element.querySelectorAll('blockquote, table, pre, [data-message-bubble]')].map(node => {
+            const box = node.getBoundingClientRect()
+            return [box.x, box.y, box.width, box.height]
+          })
+          return { text, shells }
+        }
+        document.documentElement.dataset.prtsCursor = 'system'
+        const before = measure()
+        document.documentElement.dataset.prtsCursor = 'prts'
+        return { before, after: measure() }
+      })
+      expect(layout.after).toEqual(layout.before)
+      await page.evaluate(() => { window.chatNativeProfile.active = true })
+      await chat.locator('p').first().hover()
+      const tail = await chat.locator('p').first().evaluate(element => {
+        const row = element.getBoundingClientRect(), parent = element.parentElement.getBoundingClientRect()
+        return { x: parent.right - 5, y: row.y + row.height / 2 }
+      })
+      await page.mouse.move(tail.x, tail.y)
+      expect(await page.evaluate(({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)).cursor, tail)).toMatch(/default$/)
+      for (const control of [chat.locator('a').first(), chat.locator('button').first()]) {
+        await expect(control).toBeVisible()
+        await control.hover()
+        await expect(control).toHaveCSS('cursor', /pointer$/)
+      }
+      await expect(chat.locator('#chat-chrome')).toHaveCSS('cursor', /default$/)
+      for (let index = 0; index < 6; index++) {
+        const text = chatText + ' more text'.repeat(index + 1)
+        await page.evaluate(({ text, streaming }) => window.__prtsRenderChat(text, streaming), { text, streaming: index !== 5 })
+        await expect(chat.locator('p').last()).toContainText(text.split('\n').at(-1))
+        await expect(chat.locator('p').last()).toHaveCSS('cursor', /text$/)
+      }
+      await chat.evaluate(element => { element.scrollTop = 100 })
+      await expect(chat.locator('[data-prts-text-hit]')).toHaveCount(0)
+      expect(await page.evaluate(() => ({ ...window.chatNativeProfile, caretCalls: window.previewCaretCalls })))
+        .toEqual({ active: true, characterMeasurements: 0, textHitMutations: 0, caretCalls: 0 })
+      await page.evaluate(() => { window.chatNativeProfile.active = false })
+    }
     expect(errors).toEqual([])
     expect(writes).toEqual([])
   })

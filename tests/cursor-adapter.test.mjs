@@ -105,6 +105,55 @@ test('file preview movement and scrolling never enter character hit testing, eve
   }
 })
 
+test('conversation bodies never query caret positions or create character ranges', () => {
+  for (const markup of [
+    '<article data-chat-flow-kind="assistant-step"><div data-markdown>Response</div></article>',
+    '<article data-message-role="assistant"><div class="markdown-body">Legacy response</div></article>',
+    '<article data-chat-flow-kind="user"><div data-message-bubble>User message</div></article>',
+    '<div data-submission-echo><div class="host_bubble">Echo</div></div>',
+    '<div data-pending-steering><div data-text-interaction-source>Pending</div></div>',
+    '<article data-chat-flow-kind="steering"><div data-message-bubble>Steering</div></article>',
+  ]) {
+    const state = setup()
+    const holder = state.document.createElement('div')
+    holder.innerHTML = markup
+    state.document.body.append(holder)
+    const target = holder.firstElementChild.firstElementChild
+    target.style.cursor = 'url(data:image/png;base64,AA),text'
+    const unexpected = () => assert.fail('conversation text must not perform character hit testing')
+    state.document.caretPositionFromPoint = unexpected
+    state.document.caretRangeFromPoint = unexpected
+    state.document.createRange = unexpected
+    state.document.elementFromPoint = () => target
+    for (let index = 0; index < 32; index++) {
+      state.fire('pointermove', { clientX: index, clientY: 10 }, target)
+      state.fire('scroll', {}, target)
+      state.fire('resize', {}, state.window)
+    }
+    state.fire('pointerdown', {}, target)
+    state.fire('pointerup', {}, target)
+    assert.equal(state.document.querySelectorAll('[data-prts-text-hit]').length, 0)
+    assert.equal(state.frame(), '')
+    assert.equal(state.timers.size, 0)
+    state.adapter.dispose()
+    state.dom.window.close()
+  }
+})
+
+test('hero title keeps its existing precise text hit testing', () => {
+  const state = setup()
+  state.document.body.insertAdjacentHTML('beforeend', '<div data-phase="hero"><span class="host_titleGroup"><span id="title" style="cursor:url(data:image/png;base64,AA),default">Title</span></span></div>')
+  const target = state.document.querySelector('#title')
+  state.document.caretPositionFromPoint = () => ({ offsetNode: target.firstChild, offset: 0 })
+  state.document.createRange = () => ({ setStart() {}, setEnd() {}, getClientRects: () => [{ width: 10, left: 0, right: 10, top: 0, bottom: 20 }] })
+  state.fire('pointermove', { clientX: 5, clientY: 10 }, target)
+  assert.equal(target.hasAttribute('data-prts-text-hit'), true)
+  state.fire('pointermove', { clientX: 15, clientY: 10 }, target)
+  assert.equal(target.hasAttribute('data-prts-text-hit'), false)
+  state.adapter.dispose()
+  state.dom.window.close()
+})
+
 test('focus changes inside the page do not cancel a new gesture, but window blur does', () => {
   const s = setup()
   s.fire('pointerdown')
