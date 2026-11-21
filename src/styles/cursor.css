@@ -8,6 +8,27 @@
     --prts-link-cursor: var(--prts-rest-link-cursor);
     cursor: var(--prts-hand-cursor), default;
   }
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-textpreview-plain], [data-document-markdown], [data-code-preview] [data-code-block-content]) {
+    cursor: var(--prts-text-cursor), text;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] [data-textpreview-body] :where([data-textpreview-plain], [data-document-markdown], [data-code-preview] [data-code-block-content]) {
+    cursor: var(--prts-hand-cursor), default;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] [data-textpreview-body] :where([data-textpreview-line], [data-code-block-content] .line, [data-document-markdown] :is(p, h1, h2, h3, h4, h5, h6, li, dt, dd), [data-document-frontmatter] pre) {
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    cursor: var(--prts-text-cursor), text;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] [data-textpreview-body] :where([data-document-markdown] :is(code, th, td)) {
+    cursor: var(--prts-text-cursor), text;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] [data-textpreview-body] :where(code:has(> .line), .line:empty, [data-textpreview-line]:empty) {
+    cursor: var(--prts-hand-cursor), default;
+  }
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-textpreview-plain], [data-document-markdown], [data-code-preview]) :is([data-text-interaction-exclude], [data-code-block-banner], [role="toolbar"]),
+  html[data-dsh-prts][data-prts-cursor="prts"] :where([data-code-preview] .line, [data-textpreview-plain] [data-textpreview-line])::before {
+    cursor: var(--prts-hand-cursor), default;
+  }
   html[data-dsh-prts][data-prts-cursor="prts"] :is(button, a[href], summary, [role="button"], [role="tab"], [role="treeitem"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [data-prts-workspace-row], [data-prts-session-row], .dsh-partner-sidebar-row, select, input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], input[type="color"], input[type="range"]) {
     cursor: var(--prts-link-cursor), pointer;
   }

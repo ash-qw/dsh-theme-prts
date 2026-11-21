@@ -1,0 +1,243 @@
+html[data-dsh-prts] {
+  --prts-reply-surface: rgb(23 30 35 / .74);
+  --prts-reply-filter: blur(16px) saturate(110%);
+  --prts-reply-edge: color-mix(in srgb, var(--prts-ink) 48%, transparent);
+  --prts-reply-ink: var(--prts-ink);
+  --prts-reply-muted: color-mix(in srgb, var(--prts-muted) 16%, var(--prts-ink));
+  --prts-reply-line: color-mix(in srgb, var(--prts-line) 65%, transparent);
+  --prts-reply-caption: "PRTS / QUESTION ARCHIVE";
+}
+
+html[data-dsh-prts]:lang(zh) {
+  --prts-reply-caption: "PRTS / 问答档案";
+}
+
+html[data-dsh-prts][data-prts-scheme="light"] {
+  --prts-reply-surface: rgb(235 241 243 / .76);
+}
+
+html[data-dsh-prts][data-prts-glass="soft"] {
+  --prts-reply-surface: rgb(23 30 35 / .84);
+  --prts-reply-filter: blur(12px) saturate(110%);
+}
+
+html[data-dsh-prts][data-prts-glass="soft"][data-prts-scheme="light"] {
+  --prts-reply-surface: rgb(235 241 243 / .86);
+}
+
+html[data-dsh-prts][data-prts-glass="clear"] {
+  --prts-reply-surface: rgb(23 30 35 / .68);
+  --prts-reply-filter: blur(20px) saturate(110%);
+}
+
+html[data-dsh-prts][data-prts-glass="clear"][data-prts-scheme="light"] {
+  --prts-reply-surface: rgb(235 241 243 / .68);
+}
+
+html[data-dsh-prts][data-prts-glass="off"] {
+  --prts-reply-surface: var(--prts-panel-raised);
+  --prts-reply-filter: none;
+}
+
+html[data-dsh-prts] [data-question-reply][data-reply-outcome] {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 22px 0 8px;
+  padding: 0 16px 0 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--prts-reply-surface);
+  color: var(--prts-reply-ink);
+  backdrop-filter: var(--prts-reply-filter);
+  -webkit-backdrop-filter: var(--prts-reply-filter);
+  overflow-wrap: anywhere;
+
+  &::before {
+    content: var(--prts-reply-caption) / "";
+    position: absolute;
+    top: -18px;
+    left: 11px;
+    height: 17px;
+    max-width: calc(100% - 28px);
+    box-sizing: border-box;
+    padding: 0 18px 0 10px;
+    display: flex;
+    align-items: center;
+    background: color-mix(in srgb, var(--prts-yellow) 82%, var(--prts-panel));
+    color: var(--prts-yellow-ink);
+    font: 500 10px/1 var(--prts-body);
+    letter-spacing: .8px;
+    white-space: nowrap;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      conic-gradient(from 90deg at 1px 1px, transparent 90deg, var(--prts-reply-edge) 0) top left,
+      conic-gradient(from 180deg at calc(100% - 1px) 1px, transparent 90deg, var(--prts-reply-edge) 0) top right,
+      conic-gradient(from 270deg at calc(100% - 1px) calc(100% - 1px), transparent 90deg, var(--prts-reply-edge) 0) bottom right,
+      conic-gradient(at 1px calc(100% - 1px), transparent 90deg, var(--prts-reply-edge) 0) bottom left;
+    background-size: 14px 14px;
+    background-repeat: no-repeat;
+    pointer-events: none;
+  }
+
+  & > [class*="_bubbleWidth"] {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  & > [class*="_bubbleWidth"] > [class*="_bubble"] {
+    max-width: none;
+    padding: 2px 0 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--prts-reply-ink) !important;
+    clip-path: none !important;
+    box-shadow: none !important;
+    white-space: normal;
+    word-break: normal;
+    font: 400 13px/1.6 var(--prts-body);
+
+    & > :is(dl, p) {
+      margin: 0;
+      min-width: 0;
+    }
+
+    & > p {
+      padding: 8px 0;
+      white-space: pre-wrap;
+    }
+
+    & > dl {
+      counter-reset: prts-reply-item;
+
+      &::after {
+        content: counter(prts-reply-item, decimal-leading-zero) " / Q&A" / "";
+        position: absolute;
+        bottom: -21px;
+        left: 0;
+        color: var(--prts-reply-muted);
+        font: 10px/1.5 var(--prts-mono);
+        pointer-events: none;
+      }
+
+      & > div {
+        position: relative;
+        counter-increment: prts-reply-item;
+        margin: 0;
+        padding: 8px 0 8px 22px;
+
+        & + div { border-top: 1px solid var(--prts-reply-line); }
+
+        & > dt {
+          display: block;
+          color: var(--prts-reply-muted);
+          font: 400 12px/1.6 var(--prts-body);
+
+          &::before {
+            content: counter(prts-reply-item, decimal-leading-zero) / "";
+            position: absolute;
+            top: 9px;
+            left: 0;
+            color: var(--prts-reply-muted);
+            font: 10px/1.7 var(--prts-mono);
+            opacity: .8;
+            pointer-events: none;
+          }
+
+          & > span:first-child:not(:last-child) { margin-right: 8px; color: var(--prts-reply-ink); font-weight: 500; }
+        }
+
+        & > dd {
+          position: relative;
+          margin: 3px 0 0;
+          padding-left: 15px;
+          color: var(--prts-reply-ink);
+          font: 500 13px/1.6 var(--prts-body);
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+
+          &::before {
+            content: "↳" / "";
+            position: absolute;
+            left: 0;
+            color: color-mix(in srgb, var(--prts-yellow) 55%, var(--prts-reply-muted));
+            font: 12px/1.9 var(--prts-mono);
+            pointer-events: none;
+          }
+        }
+      }
+    }
+  }
+
+  & > [class*="_actions"] {
+    height: auto;
+    min-height: 26px;
+    padding: 0;
+    gap: 10px;
+    border-top: 1px solid var(--prts-reply-line);
+    color: var(--prts-reply-muted);
+    justify-content: flex-end;
+    font-size: 11px;
+
+    & > [class*="_time"] { padding: 0; font: 10px/1.5 var(--prts-mono); }
+
+    & button {
+      padding: 5px !important;
+      width: 24px !important;
+      height: 24px !important;
+      border: 0 !important;
+      border-radius: 2px !important;
+      background: transparent !important;
+      color: inherit !important;
+      box-shadow: none !important;
+
+      &:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--prts-reply-muted) 15%, transparent) !important; }
+      &:focus-visible { outline: 1px solid var(--prts-yellow); outline-offset: 2px; }
+      & svg { width: 14px; height: 14px; }
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  html[data-dsh-prts] [data-question-reply][data-reply-outcome] {
+    padding-right: 12px;
+    padding-left: 14px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-dsh-prts] [data-question-reply][data-reply-outcome] {
+    --prts-reply-surface: var(--prts-panel-raised);
+    --prts-reply-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  html[data-dsh-prts] [data-question-reply][data-reply-outcome] {
+    --prts-reply-surface: var(--prts-panel-raised);
+    --prts-reply-filter: none;
+    --prts-reply-muted: var(--prts-ink);
+    --prts-reply-line: var(--prts-ink);
+    --prts-reply-edge: var(--prts-ink);
+  }
+}
+
+@media (forced-colors: active) {
+  html[data-dsh-prts] [data-question-reply][data-reply-outcome] { border-color: CanvasText; }
+}

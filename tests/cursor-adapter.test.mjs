@@ -78,6 +78,33 @@ test('text cursor remains static through clicks, selection, exit and disposal', 
   s.dom.window.close()
 })
 
+test('file preview movement and scrolling never enter character hit testing, even inside a conversation', () => {
+  for (const marker of ['data-textpreview-body', 'data-textpreview-plain', 'data-document-markdown', 'data-code-preview']) {
+    const state = setup()
+    state.document.body.insertAdjacentHTML('beforeend', `<article data-chat-flow-kind="assistant-step"><div ${marker}><div data-markdown><p id="preview-text" style="cursor:url(data:image/png;base64,AA),text">Source text</p></div></div></article>`)
+    const target = state.document.querySelector('#preview-text')
+    let caretQueries = 0, characterRanges = 0
+    const createRange = state.document.createRange.bind(state.document)
+    state.document.caretPositionFromPoint = () => { caretQueries++ }
+    state.document.caretRangeFromPoint = () => { caretQueries++ }
+    state.document.createRange = () => { characterRanges++; return createRange() }
+    state.document.elementFromPoint = () => target
+    for (let index = 0; index < 32; index++) {
+      state.fire('pointermove', { clientX: index, clientY: 10 }, target)
+      state.fire('scroll', {}, target)
+    }
+    state.fire('pointerdown', {}, target)
+    state.fire('pointerup', {}, target)
+    assert.equal(state.document.querySelectorAll('[data-prts-text-hit]').length, 0)
+    assert.equal(caretQueries, 0)
+    assert.equal(characterRanges, 0)
+    assert.equal(state.frame(), '')
+    assert.equal(state.timers.size, 0)
+    state.adapter.dispose()
+    state.dom.window.close()
+  }
+})
+
 test('focus changes inside the page do not cancel a new gesture, but window blur does', () => {
   const s = setup()
   s.fire('pointerdown')

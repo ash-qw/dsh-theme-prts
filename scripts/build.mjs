@@ -49,7 +49,7 @@ function encodeBinaryAlphaMask(alpha, threshold = 40) {
   return Buffer.from(bytes).toString('base64')
 }
 
-const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, rightSidebarCss, backgroundCss, rawMenuCardCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
+const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, facilityVectorCss, startupSequenceCss, rightSidebarCss, backgroundCss, rawMenuCardCss, questionRecordCss, emblem, prtsEmblemBytes, factionEmblemBytes] = await Promise.all([
   readFile(resolve(root, 'src/styles/prts.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/stabilization.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/refinement.css'), 'utf8'),
@@ -59,6 +59,7 @@ const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, f
   readFile(resolve(root, 'src/styles/right-sidebar.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/custom-background.css'), 'utf8'),
   readFile(resolve(root, 'src/styles/menu-card.css'), 'utf8'),
+  readFile(resolve(root, 'src/styles/question-record.css'), 'utf8'),
   readFile(resolve(root, 'src/assets/rhodes-dsh.svg'), 'utf8'),
   readFile(resolve(root, 'src/assets/prts-original-avatar.png')),
   Promise.all(factionEmblemDefinitions.map(({ file }) =>
@@ -105,7 +106,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
-const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
+const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${questionRecordCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const settingsEmblem = 'data:image/png;base64,' + (await sharp(factionEmblemBytes[0]).png().toBuffer()).toString('base64')
 const factionEmblems = factionEmblemDefinitions.map(definition => ({

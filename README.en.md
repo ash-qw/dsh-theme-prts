@@ -15,6 +15,8 @@ The theme is disabled by default.
 
 The Baker conversation theme is inspired by the messenger in Arknights: Endfield. Select Baker under Appearance, then click either avatar to upload, crop, or restore its default. Original images and crop positions are stored on the server and shared within the same DSH instance, allowing later re-cropping. Drag to reposition and use the slider, mouse wheel, or trackpad to zoom. Changes apply after confirmation. Animated images use the first frame; each upload is limited to 5 MB.
 
+Recorded answers to AI questions use a shared archive card with an index tab, open corner brackets, and numbered question–answer pairs. Classic and Baker conversations share the same card, without a user avatar or user-bubble materials. The compact translucent card follows the global day/night palette and glass mode while preserving complete native questions and answers, copy, multiple selections, custom answers, and skipped questions.
+
 ## Compatibility
 
 - **Theme `4.2.1` declares support for DeepSeek Harness `0.2.2-rc.2`, `0.2.2-rc.3`, and `0.2.2-rc.5`.** `engines.dsh` enumerates these three exact versions, excluding `rc.4`, other candidates, and the final release. Check your host version before upgrading. See the [incremental adaptation record](docs/compatibility-audit-2026-11-19.md) for `rc.5` scope and local verification.
@@ -49,6 +51,8 @@ The theme is published publicly on npm and requires no GitHub login or access to
 - no runtime network requests, analytics, or telemetry.
 
 Cursor artwork comes from [crowninggg/prts-cursor v1.1.4](https://github.com/crowninggg/prts-cursor/releases/tag/v1.1.4), extracted and adapted for web cursors. See [third-party notices](THIRD_PARTY_NOTICES.md#prts-hand-and-text-cursors) for provenance, adaptations, and licensing boundaries.
+
+Right-sidebar file previews use renderer structure rather than an extension allowlist, including Python, JSON, and other source files supported by the host. CSS narrows the I-beam area to plain-text lines, code lines, and Markdown paragraphs; space to the right of short lines and outside the text uses the default cursor. Indentation, literal spaces, and some trailing space on wrapped paragraphs can still show the I-beam: this is not glyph-level detection. Previews do not run character-position hit testing, insert text nodes, or rewrite the host DOM. Buttons, links, and explicit drag surfaces retain their own cursors, and non-text previews such as images are excluded. Existing conversation-text detection remains unchanged.
 
 ## Usage and settings
 
