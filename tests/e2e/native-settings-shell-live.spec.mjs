@@ -160,6 +160,68 @@ for (const width of [1440, 390]) {
 }
 
 
+for (const scheme of ['dark', 'light']) for (const width of [1440, 1000, 390]) {
+  test(`installed bookmark labels stay fixed when selected (${scheme}, ${width}) @live-rc0222`, async ({ page }) => {
+    const errors = [], writes = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.setViewportSize({ width, height: 900 })
+    await page.route('**/api/settings/describe', async route => {
+      const response = await route.fetch(), packet = await response.json()
+      packet.result.value.writable = false
+      for (const namespace of packet.result.value.namespaces) {
+        if (namespace.ns === 'theme-prts') namespace.value = { ...namespace.value, enabled: true, preferencesInitialized: true,
+          bootAnimation: false, motion: 'reduced' }
+        if (namespace.ns === 'ui-theme') namespace.value = { ...namespace.value, preference: scheme }
+      }
+      await route.fulfill({ response, json: packet })
+    })
+    await page.route(/\/api\/(settings\/mutate|session\/(create|prompt)|commands\/execute)(?:\?|$)/, route => {
+      if (!route.request().url().includes('/session/create')) writes.push('host write')
+      return route.abort('blockedbyclient')
+    })
+    await page.goto(process.env.PRTS_LIVE_URL || 'http://127.0.0.1:3080')
+    await expect(page.locator('html')).toHaveAttribute('data-prts-scheme', scheme, { timeout: 20_000 })
+    await page.locator('[data-prts-startup]').waitFor({ state: 'hidden' })
+    const expand = page.getByRole('button', { name: '打开侧边栏', exact: true })
+    if (await expand.isVisible()) await expand.click()
+    await page.locator('[data-slot="sidebar.settings"] button').click()
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    const shell = page.locator('[data-prts-settings-shell]')
+    await expect(shell).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    const bookmarks = shell.locator('nav button')
+    const inspect = () => bookmarks.evaluateAll(buttons => buttons.map(button => {
+      const label = button.querySelector(':scope > span:not([aria-hidden="true"])')
+      const bounds = button.getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(label)
+      return {
+        text: label.textContent,
+        font: getComputedStyle(label).font,
+        width: bounds.width,
+        height: window.innerWidth >= 768 ? bounds.height : null,
+        lines: [...range.getClientRects()].map(rect => ({
+          x: Math.round((rect.x - bounds.x) * 100) / 100,
+          y: Math.round((rect.y - bounds.y) * 100) / 100,
+          width: rect.width,
+          height: rect.height,
+        })),
+      }
+    }))
+    const before = await inspect()
+    await expect(bookmarks.filter({ hasText: 'Agent 预设' })).toHaveCount(1)
+    expect(before.every(bookmark => bookmark.text.trim())).toBe(true)
+    for (const label of ['Agent 预设', ...before.map(bookmark => bookmark.text).filter(text => text !== 'Agent 预设')]) {
+      const bookmark = shell.locator('nav').getByRole('button', { name: label, exact: true })
+      await bookmark.click()
+      await expect(bookmark).toHaveAttribute('aria-current', 'true')
+      expect(await inspect()).toEqual(before)
+    }
+    expect(errors).toEqual([])
+    expect(writes).toEqual([])
+  })
+}
+
 test('model settings stay steady without idle page draws @live-rc0222', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(process.env.PRTS_LIVE_URL || 'http://127.0.0.1:3080')

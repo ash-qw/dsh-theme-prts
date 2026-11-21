@@ -836,7 +836,6 @@ html[data-dsh-prts] [data-prts-settings-shell][data-shortcut-modal="settings"][r
         &:is([aria-current="true"], [aria-current="page"]) {
           --prts-bookmark-print: #182024;
           background: color-mix(in srgb, var(--prts-bookmark) 94%, white);
-          font-weight: 650;
           box-shadow: -2px 3px 0 #0b101433, inset 0 0 0 1px #18202466;
         }
         &:focus-visible { outline: 2px solid #182024; outline-offset: -4px; }

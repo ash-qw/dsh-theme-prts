@@ -100,6 +100,46 @@ test('paper bookmarks remain neatly aligned and accept native category changes',
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440)
 })
 
+for (const scheme of ['dark', 'light']) for (const width of [1440, 1000, 390]) {
+  test('bookmark labels keep their typography and line layout when selected (' + scheme + ', ' + width + ')', async ({ page }) => {
+    const shell = await openShell(page, scheme, width)
+    await page.evaluate(() => document.fonts.ready)
+    const bookmarks = shell.locator('nav button')
+    const inspect = () => bookmarks.evaluateAll(buttons => buttons.map(button => {
+      const label = button.querySelector('.native-nav-label')
+      const style = getComputedStyle(label)
+      const bounds = button.getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(label)
+      return {
+        text: label.textContent,
+        font: style.font,
+        spacing: style.letterSpacing,
+        width: bounds.width,
+        height: window.innerWidth >= 768 ? bounds.height : null,
+        lines: [...range.getClientRects()].map(rect => ({
+          x: Math.round((rect.x - bounds.x) * 100) / 100,
+          y: Math.round((rect.y - bounds.y) * 100) / 100,
+          width: rect.width,
+          height: rect.height,
+        })),
+      }
+    }))
+    const before = await inspect()
+    for (const label of ['Agent 预设', 'MCP 连接器', '模型', '内置插件', '插件市场', '通用设置']) {
+      const bookmark = bookmarks.filter({ hasText: label })
+      await bookmark.click()
+      await expect(bookmark).toHaveAttribute('aria-current', 'true')
+      expect(await inspect()).toEqual(before)
+    }
+    await bookmarks.nth(3).evaluate(button => {
+      button.closest('nav').querySelector('[aria-current]')?.removeAttribute('aria-current')
+      button.setAttribute('aria-current', 'page')
+    })
+    expect(await inspect()).toEqual(before)
+  })
+}
+
 for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
   test('current bookmark adheres to the top sheet while other tabs stay tucked below (' + scheme + ', ' + width + ')', async ({ page }) => {
     const shell = await openShell(page, scheme, width)
