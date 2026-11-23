@@ -189,3 +189,53 @@ for (const foldedReplies of ['all', 'final']) {
     }
   })
 }
+
+for (const scheme of ['dark', 'light']) for (const width of [1440, 390]) {
+  test(`Baker starts a new avatar group for each execution request (${scheme}, ${width})`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.addInitScript(scheme => localStorage.setItem('dsh.ui.prts.v1', JSON.stringify({
+      version: 12, enabled: true, bootAnimation: false, conversationStyle: 'deck-chat', scheme,
+    })), scheme)
+    await page.goto('/tests/fixtures/rc2-harness.html')
+    await expect(page.locator('html')).toHaveAttribute('data-prts-conversation-style', 'deck-chat')
+    await page.evaluate(() => {
+      const sample = document.createElement('section')
+      sample.id = 'request-avatar-turns'
+      const reply = (id, text = id) => `<div id="${id}" data-chat-flow-kind="assistant-step"><div class="request_body"><p>${text}</p></div></div>`
+      const request = id => `<section id="${id}" data-turn-trigger><button aria-expanded="false"><span><svg viewBox="0 0 16 16"><path d="M3 2h10v12H3z"/></svg></span><span>收到执行请求</span><time>10:00</time><svg viewBox="0 0 12 12"><path d="m3 4 3 3 3-3"/></svg></button></section>`
+      sample.innerHTML = `<div data-chat-flow-kind="user">用户消息</div>${reply('before-request')}${reply('before-request-final')}${request('request-one')}${reply('request-one-first', '')}${reply('request-one-final')}${request('request-two')}${reply('request-two-first')}${reply('request-two-final')}`
+      for (const card of sample.querySelectorAll('[data-turn-trigger]')) card.firstElementChild.onclick = () => {
+        const button = card.firstElementChild
+        const open = button.getAttribute('aria-expanded') === 'true'
+        button.setAttribute('aria-expanded', String(!open))
+        if (open) card.lastElementChild.remove()
+        else card.insertAdjacentHTML('beforeend', '<div><p>这条通知触发了本轮回复。</p><div><pre data-context-text>执行请求正文</pre></div></div>')
+      }
+      document.querySelector('[data-conversation-scroll]').prepend(sample)
+    })
+    const shown = () => page.locator('#request-avatar-turns [data-chat-flow-kind="assistant-step"]').evaluateAll(rows => rows.filter(row => getComputedStyle(row, '::before').content !== 'none').map(row => row.id))
+    await expect.poll(shown).toEqual(['before-request', 'request-one-final', 'request-two-first'])
+    await page.locator('#request-one-first p').evaluate(node => node.textContent = '执行请求后的第一条回复')
+    const expected = ['before-request', 'request-one-first', 'request-two-first']
+    await expect.poll(shown).toEqual(expected)
+    await page.evaluate(() => {
+      const operation = document.querySelector('[data-prts-region="operation"]')
+      const query = operation.querySelectorAll
+      window.requestAvatarScans = 0
+      operation.querySelectorAll = function(selector) {
+        if (selector.includes('[data-chat-flow-kind="user"]') && selector.includes('[data-chat-flow-kind="assistant-step"]')) window.requestAvatarScans++
+        return query.call(this, selector)
+      }
+    })
+    const button = page.locator('#request-one > button')
+    await button.click()
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#request-one')).not.toHaveAttribute('data-prts-mission-transition', '')
+    await expect.poll(shown).toEqual(expected)
+    await button.click()
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('#request-one [data-prts-mission-exit]')).toHaveCount(0)
+    await expect.poll(shown).toEqual(expected)
+    expect(await page.evaluate(() => window.requestAvatarScans)).toBe(0)
+  })
+}

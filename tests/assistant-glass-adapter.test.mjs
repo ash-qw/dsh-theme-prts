@@ -435,6 +435,47 @@ test('hidden input boundaries do not split a turn but visible steering starts a 
   dom.window.close()
 })
 
+for (const marker of ['data-turn-trigger', 'data-chat-flow-kind="turn-trigger"']) {
+  test(`execution requests start avatar groups and update when mounted, hidden or reclassified (${marker})`, async () => {
+    const dom = domWith(`<div data-conversation-scroll>${avatarReply('previous-first')}${avatarReply('previous-final')}<section id="request" ${marker}><button aria-expanded="false">收到执行请求</button></section>${avatarReply('request-first')}${avatarReply('request-final')}<section ${marker}></section>${avatarReply('second-first')}${avatarReply('second-final')}</div>`)
+    const { document } = dom.window
+    const adapter = createAssistantGlassAdapter({ document, window: dom.window })
+    adapter.start()
+    const expected = ['previous-first', 'request-first', 'second-first']
+    assert.deepEqual(visibleAvatarIds(document), expected)
+    const boundary = document.getElementById('request')
+    const scans = trackAvatarScans(document)
+    boundary.firstElementChild.setAttribute('aria-expanded', 'true')
+    boundary.insertAdjacentHTML('beforeend', '<div><p>请求正文</p></div>')
+    await flush(dom.window)
+    boundary.lastElementChild.remove()
+    await flush(dom.window)
+    assert.equal(scans(), 0, 'request disclosure must not regroup avatars')
+    boundary.setAttribute('hidden', '')
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), ['previous-first', 'second-first'])
+    boundary.removeAttribute('hidden')
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), expected)
+    const attribute = marker.startsWith('data-turn-trigger') ? 'data-turn-trigger' : 'data-chat-flow-kind'
+    boundary.removeAttribute(attribute)
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), ['previous-first', 'second-first'])
+    boundary.setAttribute(attribute, attribute === 'data-turn-trigger' ? '' : 'turn-trigger')
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), expected)
+    boundary.remove()
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), ['previous-first', 'second-first'])
+    document.getElementById('request-first').before(boundary)
+    await flush(dom.window)
+    assert.deepEqual(visibleAvatarIds(document), expected)
+    adapter.dispose()
+    assert.equal(document.querySelectorAll('[data-prts-avatar-hidden]').length, 0)
+    dom.window.close()
+  })
+}
+
 test('avatar groups remain independent across simultaneous conversation scroll scopes', async () => {
   const dom = domWith(`<div data-conversation-scroll>${avatarReply('left-first')}${avatarReply('left-final')}<div data-chat-flow-kind="user"></div>${avatarReply('left-next')}</div><div data-conversation-scroll>${avatarReply('right-first')}${avatarReply('right-final')}</div>`)
   const {document} = dom.window
