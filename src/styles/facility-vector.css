@@ -556,11 +556,13 @@ html[data-dsh-prts][data-prts-scheme="light"][data-prts-session-glow="on"] [data
 }
 
 html[data-dsh-prts]:not([data-prts-session-flow="off"]) [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-lifeline] {
-  opacity: .98;
+  opacity: var(--prts-touch-lifeline-opacity, .98);
 }
 
-html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):hover [data-prts-session-lifeline] {
-  opacity: 0;
+@media (hover: hover) and (pointer: fine) {
+  html[data-dsh-prts] [data-prts-session-row]:not([data-prts-session-touch]):is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])):hover [data-prts-session-lifeline] {
+    opacity: 0;
+  }
 }
 
 html[data-dsh-prts][data-prts-session-flow="off"] [data-prts-session-row] [data-prts-session-lifeline] {
@@ -579,9 +581,11 @@ html[data-dsh-prts][data-prts-motion="reduced"] [data-prts-session-lifeline-laye
   transition-duration: 0s;
 }
 
-html[data-dsh-prts] [data-prts-session-row]:hover [data-prts-facility-texture="pickup"] [data-prts-session-pickup] {
-  opacity: .58;
-  transform: translate3d(0, 0, 0);
+@media (hover: hover) and (pointer: fine) {
+  html[data-dsh-prts] [data-prts-session-row]:not([data-prts-session-touch]):hover [data-prts-facility-texture="pickup"] [data-prts-session-pickup] {
+    opacity: .58;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 html[data-dsh-prts] [data-prts-session-pickup-baseline] {
@@ -613,13 +617,28 @@ html[data-dsh-prts] [data-prts-session-pickup-bar]:nth-of-type(9) { --prts-picku
 html[data-dsh-prts] [data-prts-session-pickup-bar]:nth-of-type(10) { --prts-pickup-duration: 1520ms; --prts-pickup-delay: -.4s; }
 html[data-dsh-prts] [data-prts-session-pickup-bar]:nth-of-type(11) { --prts-pickup-duration: 560ms; --prts-pickup-delay: -.3s; }
 
-@media (prefers-reduced-motion: no-preference) {
-  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover[data-prts-pickup-ready] [data-prts-session-pickup-indicator] {
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:not([data-prts-session-touch]):hover[data-prts-pickup-ready] [data-prts-session-pickup-indicator] {
     animation: prts-session-record-indicator 1.1s ease-in-out infinite;
   }
 
-  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:hover[data-prts-pickup-ready] [data-prts-session-pickup-bar] {
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:not([data-prts-session-touch]):hover[data-prts-pickup-ready] [data-prts-session-pickup-bar] {
     animation: prts-session-pickup-sample var(--prts-pickup-duration) ease-in-out var(--prts-pickup-delay) infinite;
+  }
+}
+
+html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-pickup] {
+  opacity: var(--prts-touch-pickup-opacity, 0);
+  transform: translate3d(var(--prts-touch-pickup-offset, 5px), 0, 0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-pickup-bar] {
+    animation: var(--prts-touch-pickup-animation, none) var(--prts-pickup-duration) ease-in-out var(--prts-pickup-delay) infinite;
+  }
+
+  html[data-dsh-prts]:not([data-prts-motion="reduced"]) [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) [data-prts-session-pickup-indicator] {
+    animation: var(--prts-touch-indicator-animation, none);
   }
 }
 
@@ -679,7 +698,42 @@ html[data-dsh-prts] [data-prts-facility-spine] [data-prts-facility-layer="outlin
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"] > [data-prts-facility-spine],
 html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) > [data-prts-facility-spine] {
-  transform: scaleX(1);
+  transform: scaleX(var(--prts-row-spine-active, 1));
+}
+
+/* Touch selection keeps the title and action targets in their resting positions. */
+html[data-dsh-prts] [data-prts-session-row][data-prts-session-touch] {
+  --prts-row-spine-travel: 0px;
+  --prts-row-spine-active: var(--prts-spine-rest);
+  --prts-row-button-animation: none;
+  --prts-touch-lifeline-opacity: 0;
+  --prts-touch-pickup-opacity: .58;
+  --prts-touch-pickup-offset: 0px;
+  --prts-touch-pickup-visibility: visible;
+  --prts-touch-pickup-animation: prts-session-pickup-sample;
+  --prts-touch-indicator-animation: prts-session-record-indicator 1.1s ease-in-out infinite;
+}
+
+html[data-dsh-prts] [data-prts-session-row][data-prts-session-touch] > [data-prts-session-actions] {
+  display: inline-flex;
+}
+
+@media (hover: none), (pointer: coarse) {
+  html[data-dsh-prts] [data-prts-session-row] {
+    --prts-row-spine-travel: 0px;
+    --prts-row-spine-active: var(--prts-spine-rest);
+    --prts-row-button-animation: none;
+    --prts-touch-lifeline-opacity: 0;
+    --prts-touch-pickup-opacity: .58;
+    --prts-touch-pickup-offset: 0px;
+    --prts-touch-pickup-visibility: visible;
+    --prts-touch-pickup-animation: prts-session-pickup-sample;
+    --prts-touch-indicator-animation: prts-session-record-indicator 1.1s ease-in-out infinite;
+  }
+
+  html[data-dsh-prts] [data-prts-session-row] > [data-prts-session-actions] {
+    display: inline-flex;
+  }
 }
 
 /* Expansion is state feedback: do not trail the newly visible session rows.
@@ -932,6 +986,9 @@ html[data-dsh-prts] [data-prts-tool-record] p { display:-webkit-box;-webkit-box-
 
 /* Show the baseline immediately; only start the pickup after a deliberate hover. */
 html[data-dsh-prts] [data-prts-session-row]:not([data-prts-pickup-ready]) :is([data-prts-session-pickup-bar],[data-prts-session-pickup-indicator]) { visibility:hidden; }
+html[data-dsh-prts] [data-prts-session-row]:not([data-prts-pickup-ready]):is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"])) :is([data-prts-session-pickup-bar], [data-prts-session-pickup-indicator]) {
+  visibility: var(--prts-touch-pickup-visibility, hidden);
+}
 
 html[data-dsh-prts] [data-prts-reply-entry][data-prts-reply-complete] { cursor:text; }
 

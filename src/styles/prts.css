@@ -934,7 +934,7 @@ html[data-dsh-prts] [data-prts-workspace-row]::before {
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"],
 html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) {
-  --prts-row-shift: var(--prts-spine-travel);
+  --prts-row-shift: var(--prts-row-spine-travel, var(--prts-spine-travel));
 }
 
 html[data-dsh-prts] [data-prts-workspace-row]::before,
@@ -952,7 +952,7 @@ html[data-dsh-prts] [data-prts-session-row]::before {
 
 html[data-dsh-prts] [data-prts-workspace-row][aria-expanded="true"]::before,
 html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open])::before {
-  transform: scaleX(1);
+  transform: scaleX(var(--prts-row-spine-active, 1));
 }
 
 html[data-dsh-prts] [data-prts-session-row]:is([data-prts-selection-target="true"], [aria-selected="true"]:not([data-prts-selection-target="false"]))::before {
@@ -1093,7 +1093,7 @@ html[data-dsh-prts] [data-prts-session-actions] button:is(:hover, :focus-visible
 
 @media (prefers-reduced-motion: no-preference) {
   html[data-dsh-prts] :is([data-prts-workspace-row], [data-prts-session-row]):is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) :is([data-prts-workspace-actions], [data-prts-session-actions]) button {
-    animation: prts-facility-button-dock 520ms both;
+    animation: var(--prts-row-button-animation, prts-facility-button-dock 520ms both);
   }
 
   html[data-dsh-prts] [data-prts-workspace-row]:is(:hover, :focus-visible:not([data-dsh-automatic-focus]), :has(:focus-visible), [data-prts-row-menu-open]) [data-prts-workspace-menu] {

@@ -15,6 +15,7 @@ const OWNED_ATTRIBUTES = [
   'data-prts-workspace-menu',
   'data-prts-workspace-create',
   'data-prts-session-row',
+  'data-prts-session-touch',
   'data-prts-session-actions',
   'data-prts-session-quick-actions',
   'data-prts-session-menu-anchor',
@@ -921,6 +922,11 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
     pickupRow = undefined
   }
   function pickupOver(event) {
+    const touch = sessionPointerInput(event)
+    if (touch) {
+      clearPickup()
+      return
+    }
     const row = event.target.closest?.('[data-prts-session-row]')
     if (row === pickupRow) return
     clearPickup()
@@ -933,6 +939,15 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
   }
   function pickupOut(event) {
     if (pickupRow && !pickupRow.contains(event.relatedTarget)) clearPickup()
+  }
+  function sessionPointerInput(event) {
+    const row = event.target.closest?.('[data-prts-session-row]')
+    const touch = event.pointerType === 'touch' || event.pointerType === 'pen'
+    if (row && event.pointerType) row.toggleAttribute('data-prts-session-touch', touch)
+    return touch
+  }
+  function pickupDown(event) {
+    if (sessionPointerInput(event)) clearPickup()
   }
 
   function queueScan() {
@@ -1102,6 +1117,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       pickupRoot = observationRoot
       pickupRoot.addEventListener('pointerover', pickupOver)
       pickupRoot.addEventListener('pointerout', pickupOut)
+      pickupRoot.addEventListener('pointerdown', pickupDown, true)
       observer = new window.MutationObserver(mutations => {
         syncContextMenuSource()
         const relevant = mutations.filter(mutation => {
@@ -1154,6 +1170,7 @@ export function createSidebarControlAdapter({ document, window, sessions, worksp
       clearPickup()
       pickupRoot?.removeEventListener('pointerover', pickupOver)
       pickupRoot?.removeEventListener('pointerout', pickupOut)
+      pickupRoot?.removeEventListener('pointerdown', pickupDown, true)
       pickupRoot = undefined
       adapterActive = false
       stopContextMenu()

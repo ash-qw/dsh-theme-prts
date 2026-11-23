@@ -112,6 +112,7 @@ export function createSessionLifelineAnimator({ document, window }) {
   const cancelFrame = window?.cancelAnimationFrame?.bind(window)
     ?? window?.clearTimeout?.bind(window)
   const reducedMotion = window?.matchMedia?.('(prefers-reduced-motion: reduce)')
+  const touchPointer = window?.matchMedia?.('(hover: none), (pointer: coarse)')
   const MotionObserver = window?.MutationObserver
 
   let frame
@@ -138,6 +139,8 @@ export function createSessionLifelineAnimator({ document, window }) {
     return Boolean(
       row?.isConnected
       && lifeline?.isConnected
+      && !touchPointer?.matches
+      && !row.hasAttribute('data-prts-session-touch')
       && !row.hasAttribute('data-prts-row-menu-open')
       && (row.hasAttribute('data-prts-selection-target') ? row.getAttribute('data-prts-selection-target') === 'true' : row.getAttribute('aria-selected') === 'true')
       && document?.visibilityState !== 'hidden'
@@ -206,8 +209,9 @@ export function createSessionLifelineAnimator({ document, window }) {
     }
   }
 
-  function onPointerEnter() {
-    hovered = true
+  function onPointerEnter(event) {
+    hovered = !touchPointer?.matches && !row?.hasAttribute('data-prts-session-touch')
+      && event?.pointerType !== 'touch' && event?.pointerType !== 'pen'
     syncMotion()
   }
 
@@ -249,7 +253,7 @@ export function createSessionLifelineAnimator({ document, window }) {
       row = nextRow
       lifeline = nextLifeline
       filaments = filamentNodes(lifeline)
-      hovered = Boolean(row?.matches?.(':hover'))
+      hovered = !touchPointer?.matches && !row?.hasAttribute('data-prts-session-touch') && Boolean(row?.matches?.(':hover'))
       flowTime = STATIC_TIME
       strength = hovered ? 0 : 1
       row?.addEventListener?.('pointerenter', onPointerEnter)
