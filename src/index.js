@@ -12,6 +12,7 @@ import { backgroundTools } from './server/background-tools.js'
 import { avatarTools } from './server/avatar-tools.js'
 import { emblemTools } from './server/tools.js'
 import { registerEmblemApi } from './server/api.js'
+import { registerMobileBoot } from './server/mobile-boot.js'
 export const PACKAGE_ID = '@ash-qw/dsh-theme-prts'
 export const THEME_PLUGIN_ID = 'dsh-theme-prts'
 export const inject = ['tools', 'attachments', 'connection', 'webServer']
@@ -62,7 +63,7 @@ export async function apply(ctx, config = {}) {
   syncTools()
   // Host volatile fields are updated before this notification; they expose get(), not subscribe().
   const stopConfig=ctx.on('app-boot/config-reload',syncTools)
-  const disposers=[registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars),registerBackgroundApi(ctx,backgrounds)]
+  const disposers=[registerMobileBoot(ctx.webServer,config),registerEmblemApi(ctx,service),registerAvatarApi(ctx,avatars),registerBackgroundApi(ctx,backgrounds)]
   ctx.effect(()=>async()=>{
     stopConfig();disposeStatus()
     for(const dispose of toolDisposers.splice(0).reverse())dispose()

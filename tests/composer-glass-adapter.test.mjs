@@ -78,7 +78,7 @@ test('releases the signal owned by a composer after that composer is replaced', 
   const nextComposer = document.createElement('div')
   nextComposer.setAttribute('data-composer-card', '')
   oldComposer.replaceWith(nextComposer)
-  await new Promise(resolve => dom.window.setTimeout(resolve, 24))
+  await new Promise(resolve => dom.window.requestAnimationFrame(() => dom.window.requestAnimationFrame(resolve)))
 
   assert.equal(oldComposer.querySelector('[data-prts-composer-signal]'), null)
   assert.ok(nextComposer.querySelector('[data-prts-composer-signal]'))

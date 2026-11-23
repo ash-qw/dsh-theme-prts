@@ -31,8 +31,9 @@ export function createBackgroundLayout({window,document}) {
     for(const slot of ['full','conversation','sidebar']){
       const entry=state[slot]
       const node=slot==='sidebar'?sessions:slot==='conversation'?(hostFrame||operation):operation
-      const width=slot==='full'?window.innerWidth:(node?.clientWidth||0)+(slot==='sidebar'?railWidth:0)
-      const height=slot==='full'?window.innerHeight:node?.clientHeight||0
+      const viewport=slot==='full'||slot==='conversation'&&window.matchMedia?.('(pointer: coarse)')?.matches
+      const width=viewport?window.innerWidth:(node?.clientWidth||0)+(slot==='sidebar'?railWidth:0)
+      const height=viewport?window.innerHeight:node?.clientHeight||0
       const active=entry?.region && width>0 && height>0
       if(active){
         const p=backgroundPlacement(entry.width,entry.height,width,height,entry.region)

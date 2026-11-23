@@ -1,7 +1,11 @@
 /* Viewport-aligned wallpaper. */
-html[data-dsh-prts] { --prts-background-wash: color-mix(in srgb, var(--prts-canvas) var(--prts-background-shade, 45%), transparent); }
-html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="frame"], [data-prts-nav-rail]) {
-background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-full) var(--prts-protected-full-x, 50%) var(--prts-protected-full-y, 50%) / cover fixed;
+html[data-dsh-prts] {
+--prts-background-wash: color-mix(in srgb, var(--prts-canvas) var(--prts-background-shade, 45%), transparent);
+/* Keep alpha wallpaper compositing independent of Safari's solid page tint. */
+--prts-background-base: linear-gradient(var(--prts-canvas), var(--prts-canvas));
+}
+html[data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is(body, [data-prts-region="frame"], [data-prts-nav-rail]) {
+background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-full) var(--prts-protected-full-x, 50%) var(--prts-protected-full-y, 50%) / cover fixed, var(--prts-background-base) var(--prts-browser-chrome-color, var(--prts-canvas));
 }
 html[data-dsh-prts][data-dsh-prts][data-prts-background-mode="full"][data-prts-background-full] :is([data-prts-region="sessions"], [data-prts-region="operation"]) { background: transparent; }
 html[data-dsh-prts][data-dsh-prts][data-prts-background-mode="split"][data-prts-background-sidebar] {
@@ -16,6 +20,13 @@ html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conv
 & [data-prts-region="frame"] { background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-conversation) var(--prts-protected-conversation-x, 50%) var(--prts-protected-conversation-y, 50%) / cover no-repeat; }
 & [data-prts-region="operation"] { background: transparent; }
 &:not([data-prts-background-sidebar]) [data-prts-region="sessions"] { background: transparent; }
+}
+/* One viewport-sized image keeps the iOS status area continuous with split wallpaper. */
+@media (pointer: coarse) {
+html[data-dsh-prts][data-prts-background-mode="split"][data-prts-background-conversation] {
+& body { background: linear-gradient(var(--prts-background-wash), var(--prts-background-wash)), var(--prts-background-conversation) var(--prts-protected-conversation-x, 50%) var(--prts-protected-conversation-y, 50%) / cover no-repeat, var(--prts-background-base) var(--prts-browser-chrome-color, var(--prts-canvas)); }
+& [data-prts-region="frame"] { background: transparent; }
+}
 }
 /* The native right dock paints an opaque tab host over the frame wallpaper. */
 html[data-dsh-prts]:is([data-prts-background-mode="full"][data-prts-background-full],[data-prts-background-mode="split"][data-prts-background-conversation]) [data-prts-region="auxiliary"] { background: transparent; }

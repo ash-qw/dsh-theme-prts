@@ -1,6 +1,7 @@
 import { applySpineColors } from './spine-colors.js'
 import { applyCardHeights } from './card-heights.js'
 import { createCursorAdapter } from './cursor-adapter.js'
+import { createMobileViewport } from './mobile-viewport.js'
 import { normalizePreferences } from './preferences.js'
 
 export const SCHEME_COMMIT_PROGRESS = .15
@@ -84,6 +85,7 @@ export function createThemeController({ document, window, cssText, service, curs
   }
 
   const cursor = createCursorAdapter({ document, window, assets: cursorAssets })
+  const mobileViewport = createMobileViewport({ document, window })
   const root = document.documentElement
   let style
   let disposed = false
@@ -120,6 +122,7 @@ export function createThemeController({ document, window, cssText, service, curs
   }
 
   function clearThemeState() {
+    mobileViewport.dispose()
     root.removeAttribute('data-prts-baker-loading')
     root.style.removeProperty('--prts-background-shade')
     for (const name of ['sidebar', 'rail', 'baker']) root.style.removeProperty(`--prts-${name}-opacity`)
@@ -160,6 +163,7 @@ export function createThemeController({ document, window, cssText, service, curs
     if (disposed) return
     const next = resolveScheme(value)
     root.dataset.prtsScheme = next
+    mobileViewport.sync(next)
     onSchemeChange(next)
     return next
   }
