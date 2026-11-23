@@ -117,9 +117,11 @@ html[data-dsh-prts] [data-menu-material]:is([data-prts-floating-glass="menu"], [
     width: 24px;
     height: auto;
     border-right: 1px solid rgba(194, 208, 208, .12);
+    /* The 112px SVG has 42px of spare space below the lettering and its bottom margin. */
+    /* Move the lettering up on short cards; only grow the barcode into spare space. */
     background:
-      url("data:image/svg+xml,__PRTS_MENU_RAIL__") left 30px / 24px 112px no-repeat,
-      repeating-linear-gradient(0deg, rgba(194, 208, 208, .5) 0 1px, transparent 1px 3px, rgba(194, 208, 208, .5) 3px 5px, transparent 5px 8px) 7px calc(100% - 8px) / 10px 24px no-repeat,
+      url("data:image/svg+xml,__PRTS_MENU_RAIL__") left clamp(0px, calc(100% + 42px), 30px) / 24px 112px no-repeat,
+      repeating-linear-gradient(0deg, rgba(194, 208, 208, .5) 0 1px, transparent 1px 3px, rgba(194, 208, 208, .5) 3px 5px, transparent 5px 8px) 7px calc(100% - 8px) / 10px clamp(0px, calc(100% - 104px), 24px) no-repeat,
       var(--prts-menu-card-rail);
     pointer-events: none;
   }

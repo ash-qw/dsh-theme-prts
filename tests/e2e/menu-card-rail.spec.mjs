@@ -53,6 +53,30 @@ async function mountMenu(page, scheme, zoom = 1, category = '') {
   return page.locator('[data-menu-material]')
 }
 
+for (const scheme of ['dark', 'light']) for (const density of [1, 2]) {
+  test(`short credential rails keep every glyph clear of the barcode (${scheme}, DPR ${density})`, async ({ browser }, testInfo) => {
+    const context = await browser.newContext({ viewport: { width: 395, height: 320 }, deviceScaleFactor: density })
+    try {
+      const page = await context.newPage()
+      const menu = await mountMenu(page, scheme)
+      const lettering = async top => sharp(await page.screenshot({ scale: 'device' })).extract({
+        left: 25 * density, top: (16 + top + 8) * density, width: 14 * density, height: 52 * density,
+      }).raw().toBuffer()
+      const reference = await lettering(30)
+      // The native one-option account menu is 76px tall, including its borders.
+      for (const height of [76, 96, 112, 128, 200, 76]) {
+        await page.setViewportSize({ width: 395, height: height <= 128 ? 203 : 320 })
+        await menu.evaluate((node, value) => { node.style.height = `${value}px` }, height)
+        const top = Math.max(0, Math.min(height - 70, 30))
+        expect((await lettering(top)).equals(reference), `complete unobscured lettering at ${height}px`).toBe(true)
+        if (height === 76) await page.screenshot({ path: testInfo.outputPath('short-menu.png'), scale: 'device' })
+      }
+    } finally {
+      await context.close()
+    }
+  })
+}
+
 for (const scheme of ['dark', 'light']) {
   test(`sidebar panel actions classify dynamic native slot content without text or class hashes (${scheme})`, async ({ page }) => {
     const menu = await mountMenu(page, scheme)
