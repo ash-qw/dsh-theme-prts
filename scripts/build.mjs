@@ -67,6 +67,7 @@ const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, f
   )),
 ])
 const menuCardCss = applyMenuLettering(rawMenuCardCss)
+const missionDispatchCss = await readFile(resolve(root, 'src/styles/mission-dispatch.css'), 'utf8')
 
 function compactCss(source) {
   return source
@@ -106,7 +107,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
-const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${questionRecordCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
+const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${questionRecordCss}\n${missionDispatchCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const settingsEmblem = 'data:image/png;base64,' + (await sharp(factionEmblemBytes[0]).png().toBuffer()).toString('base64')
 const factionEmblems = factionEmblemDefinitions.map(definition => ({
@@ -168,6 +169,7 @@ const clientModulePaths = [
   'src/client/particle-field-adapter.js',
   'src/client/to-bottom-adapter.js',
   'src/client/conversation-control-adapter.js',
+  'src/client/mission-dispatch-adapter.js',
   'src/client/layout-stability-diagnostics.js',
   'src/client/facility-geometry.js',
   'src/client/session-lifeline.js',

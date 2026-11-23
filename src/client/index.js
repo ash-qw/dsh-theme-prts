@@ -21,6 +21,7 @@ import { createThemeController } from './theme-controller-v2.js'
 import { createParticleFieldAdapter } from './particle-field-adapter.js'
 import { createToBottomAdapter } from './to-bottom-adapter.js'
 import { createConversationControlAdapter } from './conversation-control-adapter.js'
+import { createMissionDispatchAdapter } from './mission-dispatch-adapter.js'
 import { createLayoutStabilityDiagnostics } from './layout-stability-diagnostics.js'
 import { createSidebarControlAdapter } from './sidebar-control-adapter.js'
 import { createFloatingGlassAdapter } from './floating-glass-adapter.js'
@@ -101,6 +102,7 @@ export function applyPrtsPlugin(ctx, environment) {
   })
   const toBottom = createToBottomAdapter({ document, window })
   const conversationControls = createConversationControlAdapter({ document, window })
+  const missionDispatch = createMissionDispatchAdapter({ document, window, emblemImage: assets.settingsEmblem })
   const layoutDiagnostics = createLayoutStabilityDiagnostics({ document, window })
   const sidebarControls = createSidebarControlAdapter({
     document,
@@ -193,6 +195,7 @@ export function applyPrtsPlugin(ctx, environment) {
     assistantGlass.dispose()
     toBottom.dispose()
     conversationControls.dispose()
+    missionDispatch.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
     composerSurface.dispose()
@@ -288,6 +291,7 @@ export function applyPrtsPlugin(ctx, environment) {
     else assistantGlass.dispose()
     toBottom.start()
     conversationControls.start()
+    missionDispatch.start()
     layoutDiagnostics.start()
     sidebarControls.start(preferences)
     if (preferences.composerGlass || preferences.backgroundMode !== 'off') composerSurface.start()
@@ -396,6 +400,7 @@ export function applyPrtsPlugin(ctx, environment) {
     assistantGlass.dispose()
     toBottom.dispose()
     conversationControls.dispose()
+    missionDispatch.dispose()
     layoutDiagnostics.dispose()
     sidebarControls.dispose()
     composerSurface.dispose()
