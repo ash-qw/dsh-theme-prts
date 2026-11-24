@@ -1,0 +1,265 @@
+/* Punched terminal tape. Paint paper around the holes, without a mask. */
+html[data-dsh-prts] {
+  --prts-engineering-surface: rgb(212 209 173 / .96);
+  --prts-engineering-solid: #d4d1ad;
+  --prts-engineering-ink: #27312f;
+  --prts-engineering-muted: #35402f;
+  --prts-engineering-added: #005d2b;
+  --prts-engineering-deleted: #a11720;
+  --prts-engineering-edge: #344038;
+  --prts-engineering-caption: "ENGINEERING LOG";
+}
+html[data-dsh-prts]:lang(zh) { --prts-engineering-caption: "工程记录"; }
+html[data-dsh-prts][data-prts-scheme="light"] {
+  --prts-engineering-surface: rgb(224 220 186 / .96);
+  --prts-engineering-solid: #e0dcba;
+}
+html[data-dsh-prts][data-prts-glass="soft"] { --prts-engineering-surface: rgb(212 209 173 / .98); }
+html[data-dsh-prts][data-prts-glass="soft"][data-prts-scheme="light"] { --prts-engineering-surface: rgb(224 220 186 / .98); }
+html[data-dsh-prts][data-prts-glass="clear"] {
+  --prts-engineering-surface: rgb(212 209 173 / .82);
+  /* Keep saturated count ink readable when dark wallpaper shows through. */
+  --prts-engineering-added: #00491e;
+  --prts-engineering-deleted: #800b13;
+}
+html[data-dsh-prts][data-prts-glass="clear"][data-prts-scheme="light"] { --prts-engineering-surface: rgb(224 220 186 / .82); }
+html[data-dsh-prts][data-prts-glass="off"] {
+  --prts-engineering-surface: var(--prts-engineering-solid);
+}
+
+html[data-dsh-prts] [data-changed-files]:has([class*="_titles"] > [class*="_title"]) {
+  --dsw-alias-state-success-primary: var(--prts-engineering-added);
+  --dsw-alias-state-error-primary: var(--prts-engineering-deleted);
+  position: relative;
+  isolation: isolate;
+  container: prts-engineering / inline-size;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px 28px 14px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--prts-engineering-ink);
+  overflow: visible;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  &::before { content: none !important; pointer-events: none; }
+  &::after {
+    content: "" !important;
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    inset: 0;
+    /* The side strips have unpainted circles; only the middle is continuous.
+       No underlying fill or backdrop filter may cover those transparent pixels. */
+    background:
+      radial-gradient(circle at 10px 10px, transparent 4px, var(--prts-engineering-surface) 4.6px) left top / 20px 20px repeat-y,
+      linear-gradient(var(--prts-engineering-surface), var(--prts-engineering-surface)) center / calc(100% - 40px) 100% no-repeat,
+      radial-gradient(circle at 10px 10px, transparent 4px, var(--prts-engineering-surface) 4.6px) right top / 20px 20px repeat-y;
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), 97% 100%, 94% calc(100% - 6px), 91% 100%, 88% calc(100% - 6px), 85% 100%, 82% calc(100% - 6px), 79% 100%, 76% calc(100% - 6px), 73% 100%, 70% calc(100% - 6px), 67% 100%, 64% calc(100% - 6px), 61% 100%, 58% calc(100% - 6px), 55% 100%, 52% calc(100% - 6px), 49% 100%, 46% calc(100% - 6px), 43% 100%, 40% calc(100% - 6px), 37% 100%, 34% calc(100% - 6px), 31% 100%, 28% calc(100% - 6px), 25% 100%, 22% calc(100% - 6px), 19% 100%, 16% calc(100% - 6px), 13% 100%, 10% calc(100% - 6px), 7% 100%, 4% calc(100% - 6px), 0 100%);
+  }
+
+  & [class*="_header"] {
+    position: relative;
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    grid-template-rows: 9px 18px auto;
+    column-gap: 9px;
+    row-gap: 0;
+    min-height: 40px;
+    height: auto;
+    padding: 0 0 6px;
+    border: 0;
+    border-bottom: 1px solid var(--prts-engineering-edge);
+    border-radius: 0;
+    background: transparent !important;
+    color: var(--prts-engineering-ink);
+    backdrop-filter: none;
+
+    &::before {
+      content: "ENGINEERING LOG" / "";
+      grid-column: 2;
+      grid-row: 1;
+      color: var(--prts-engineering-muted);
+      font: 7px/9px var(--prts-mono);
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
+    &::after {
+      content: var(--prts-engineering-caption) / "";
+      grid-column: 2;
+      grid-row: 2;
+      color: var(--prts-engineering-ink);
+      font: 500 13px/18px var(--prts-body);
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
+  }
+  & [class*="_tile"] {
+    position: relative;
+    display: none;
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+    justify-self: start;
+    width: 17px;
+    height: 18px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--prts-engineering-ink);
+    & > svg { width: 17px; height: 17px; }
+  }
+  &[data-single="true"] [class*="_tile"] {
+    display: flex;
+    grid-row: 2;
+    align-items: center;
+    gap: 7px;
+    width: max-content;
+    max-width: 100%;
+    /* Let the caption and native icon flow together, including translated captions. */
+    &::before {
+      content: var(--prts-engineering-caption) / "";
+      color: var(--prts-engineering-ink);
+      font: 500 13px/18px var(--prts-body);
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
+    & > svg { flex: none; width: 15px; height: 15px; }
+  }
+  &[data-single="true"] [class*="_header"]::after { display: none; }
+  & [class*="_titles"] {
+    display: contents;
+    /* Keep the record's identity independent of the native file-type icon. */
+    &::before {
+      content: "RIIC" / "";
+      grid-column: 1;
+      grid-row: 2 / 4;
+      align-self: stretch;
+      display: grid;
+      place-items: center;
+      background: var(--prts-engineering-edge);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      color: var(--prts-engineering-solid);
+      font: 8px/1 var(--prts-mono);
+      letter-spacing: 1.5px;
+      pointer-events: none;
+    }
+  }
+  & [class*="_titles"] > [class*="_title"] {
+    grid-column: 2;
+    grid-row: 3;
+    min-width: 0;
+    color: inherit;
+    font: 500 12px/18px var(--prts-body);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  & [class*="_stat"]:not([class*="_statCounts"]) {
+    grid-column: 3;
+    grid-row: 3;
+    align-self: end;
+    justify-content: end;
+    max-width: 140px;
+    color: var(--prts-engineering-muted);
+    font: 11px/18px var(--prts-body);
+  }
+  & [class*="_statCounts"] { gap: 10px; font: 600 12px/18px var(--prts-mono); }
+  & > ul {
+    margin: 0;
+    padding: 4px 0 0;
+    border: 0;
+    counter-reset: prts-engineering-file;
+    list-style: none;
+    & > li {
+      position: relative;
+      counter-increment: prts-engineering-file;
+      &::before {
+        content: counter(prts-engineering-file, decimal-leading-zero) / "";
+        position: absolute;
+        top: 6px;
+        left: 0;
+        color: var(--prts-engineering-muted);
+        font: 9px/18px var(--prts-mono);
+        pointer-events: none;
+      }
+    }
+  }
+  & [class*="_row"] {
+    min-height: 30px;
+    padding: 6px 0 6px 23px;
+    gap: 12px;
+    border-bottom: 1px dashed color-mix(in srgb, var(--prts-engineering-muted) 34%, transparent);
+    border-radius: 0;
+    color: var(--prts-engineering-ink);
+    font: 11px/18px var(--prts-mono);
+  }
+  & [class*="_path"] {
+    font: 12px/18px var(--prts-body);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  & [class*="_counts"] {
+    align-self: start;
+    gap: 12px;
+    color: var(--prts-engineering-muted);
+    font: 600 11px/18px var(--prts-mono);
+  }
+  & [class*="_toggle"] {
+    padding: 6px 0 0 23px;
+    border: 0;
+    border-radius: 0;
+    color: var(--prts-engineering-muted);
+    font: 11px/18px var(--prts-body);
+  }
+  & button:is(:hover, :focus-visible) {
+    background: color-mix(in srgb, var(--prts-engineering-edge) 8%, transparent) !important;
+  }
+  & button:focus-visible { box-shadow: inset 0 0 0 2px var(--prts-engineering-edge) !important; }
+}
+
+@container prts-engineering (max-width: 440px) {
+  html[data-dsh-prts] [data-changed-files]:has([class*="_titles"] > [class*="_title"]) {
+    & [class*="_tile"] > svg { width: 15px; height: 15px; }
+    & [class*="_titles"] > [class*="_title"] { font-size: 12px; line-height: 19px; }
+    & [class*="_statCounts"] { gap: 7px; font-size: 11px; }
+    & [class*="_stat"]:not([class*="_statCounts"]) { max-width: 86px; font-size: 10px; }
+    & [class*="_row"] { gap: 8px; }
+    & [class*="_path"] { font-size: 11px; }
+    & [class*="_counts"] { gap: 7px; font-size: 10px; }
+  }
+}
+@media (pointer: coarse) {
+  html[data-dsh-prts] [data-changed-files]:has([class*="_titles"] > [class*="_title"]) :is([class*="_row"], [class*="_toggle"]) { min-height: 44px; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  html[data-dsh-prts] {
+    --prts-engineering-surface: var(--prts-engineering-solid) !important;
+  }
+}
+@media (forced-colors: active) {
+  html[data-dsh-prts] [data-changed-files]:has([class*="_titles"] > [class*="_title"]) {
+    border: 1px solid CanvasText !important;
+    &::before, &::after { display: none; }
+    & [class*="_titles"]::before { display: none; }
+    & [class*="_tile"], &[data-single="true"] [class*="_tile"] {
+      grid-column: 1;
+      grid-row: 3;
+      display: flex;
+      width: 17px;
+    }
+    &[data-single="true"] [class*="_tile"]::before { display: none; }
+    &[data-single="true"] [class*="_header"]::after { display: block; }
+    & button:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+  }
+}

@@ -17,6 +17,8 @@ The Baker conversation theme is inspired by the messenger in Arknights: Endfield
 
 Recorded answers to AI questions use a shared archive card with an index tab, open corner brackets, and numbered question–answer pairs. Classic and Baker conversations share the same card, without a user avatar or user-bubble materials. The compact translucent card follows the global day/night palette and glass mode while preserving complete native questions and answers, copy, multiple selections, custom answers, and skipped questions.
 
+Turn file-change summaries use a punched terminal tape with a compact heading, transparent perforations on both sides, and a serrated tear edge. Classic and Baker share the same day/night and glass-aware paper, with dark text and line counts. Native single-file icons, folding, complete paths, hover comparisons, and per-file review actions remain available without additional runtime scanning.
+
 Execution requests use a mission-dispatch card with a category tab, blue action area, and Rhodes Island emblem. The three-row notification is approximately 50px tall and grows naturally for long titles. The card and expanded content follow day/night palettes, retaining native titles, timestamps, and keyboard controls. Interruptible expand/collapse transitions respect reduced-motion preferences. In Baker conversations, each execution request starts a new avatar group: the first nonempty assistant reply shows an avatar again, while expanding or collapsing the request does not trigger an extra avatar scan.
 
 ## Compatibility
