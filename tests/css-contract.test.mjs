@@ -58,7 +58,7 @@ test('styles the host frame without taking ownership of the shared details colum
   assert.doesNotMatch(css, /grid-template-columns:[^;]*--prts-frame-details/)
   assert.doesNotMatch(css, /transition:[^;]*grid-template-columns/)
   assert.doesNotMatch(css, /TACTICAL OVERVIEW|data-prts-tactical|data-prts-overview[^\n]*\{[^}]*grid/s)
-  assert.ok(Buffer.byteLength(css + addedCss) < 323_500, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 323.5 kB (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials and the responsive native settings dossier shell, colored paper bookmarks, reduced-motion-aware page drawing and the static Rhodes Island file-jacket frame)')
+  assert.ok(Buffer.byteLength(css + addedCss) < 323_500 + 4 * 1024, 'theme stylesheets including the background and right sidebar materials and replacement dialog and sticky process headers and body corner feedback and corner color picker must stay below 323.5 kB plus 4 KiB for touch input gating, stationary action targets and selected-session pickup states (including page-rendered menus, color editors, cursor descriptions and avatar confirmation) (including the experimental cursor layer, compact mode selector and predeclared resize cursor) (including independent day/night palette controls and themed color editor and persistent native pinned-session indicators and isolated inline quotes and nested popup materials and independent day/night spine palette controls and explicit settings group hierarchy, full-width title bands and the separate AI permission card and grouped preview controls and responsive card-height mode choices and the continuous status preview tray with shared frosted preview materials and the responsive native settings dossier shell, colored paper bookmarks, reduced-motion-aware page drawing and the static Rhodes Island file-jacket frame)')
 })
 
 test('restored card focus stays idle without hiding focused menu buttons or touching native focus', () => {
@@ -103,7 +103,7 @@ test('models the facility card as one notched face and one notched side spine', 
 test('keeps the spine left edge fixed and moves the facility face to the right on expansion', () => {
   assert.match(css, /\[data-slot="sidebar\.workspaces"\] \[role="tree"\][^{]*\{[^}]*overflow-x:\s*hidden;/s)
   assert.match(css, /\[data-prts-(?:workspace|session)-row\]::before\s*\{[\s\S]*?inset:\s*0 auto 0 0;[\s\S]*?width:\s*var\(--prts-spine-width\);[\s\S]*?transform-origin:\s*left center;/)
-  assert.match(css, /:is\(:hover, :focus-visible:not\(\[data-dsh-automatic-focus\]\), :has\(:focus-visible\), \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/)
+  assert.match(css, /:is\(:hover, :focus-visible:not\(\[data-dsh-automatic-focus\]\), :has\(:focus-visible\), \[data-prts-row-menu-open\]\)\s*\{\s*--prts-row-shift:\s*var\(--prts-row-spine-travel, var\(--prts-spine-travel\)\);/)
   assert.doesNotMatch(css, /\[data-prts-(?:workspace|session)-row\][^{]*:is\(:hover, :focus-within, /)
   assert.match(css, /:focus-within:not\(:focus:is\(\[data-dsh-automatic-focus\], :not\(:focus-visible\)\), :has\(:focus:not\(:focus-visible\)\)\)/)
   assert.match(css, /\[data-prts-facility-face\][^{]*\{[^}]*transform:\s*translate3d\(var\(--prts-row-shift\), 0, 0\)/s)
@@ -452,9 +452,9 @@ test('preserves native composer metrics and uses continuous empty-session geomet
 })
 
 test('keeps each expanded workspace spine open without promoting projection or actions', () => {
-  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*\{\s*--prts-row-shift:\s*var\(--prts-spine-travel\);/s)
-  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\]::before[^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
-  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\] > \[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(1\);/s)
+  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*\{\s*--prts-row-shift:\s*var\(--prts-row-spine-travel, var\(--prts-spine-travel\)\);/s)
+  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\]::before[^{]*\{[^}]*transform:\s*scaleX\(var\(--prts-row-spine-active, 1\)\);/s)
+  assert.match(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\] > \[data-prts-facility-spine\][^{]*\{[^}]*transform:\s*scaleX\(var\(--prts-row-spine-active, 1\)\);/s)
   assert.doesNotMatch(css, /\[data-prts-workspace-row\]\[aria-expanded="true"\][^{]*(?:\[data-prts-row-projection\]|\[data-prts-workspace-actions\])/s)
 })
 

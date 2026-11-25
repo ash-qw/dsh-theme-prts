@@ -23,6 +23,7 @@
 - `src/assets/faction-emblems/*.png`：从鹰角网络公开的[明日方舟官方网站](https://ak.hypergryph.com/) 获取的透明阵营标识原图，未经修改，包括罗德岛、龙门、企鹅物流、莱茵生命和整合运动。源文件可公开访问，本身并不授予再利用或再分发权利；
 - `src/assets/rhodes-dsh.svg`：基于具有可识别特征的罗德岛徽记重新绘制的衍生图形，用于 P.R.T.S. 顶栏；
 - `src/assets/prts-original-avatar.png`：从 [Arknights Wiki 对应页面](https://arknights.wiki.gg/wiki/File:PRTS.png) 获取的 180×180 P.R.T.S. 头像原图。该 Wiki 页面的合理使用标注仅适用于其页面，并不授予本包或其用户再利用、再分发该图像的许可；
+- `src/assets/task-stamp.png`：PRTS [任务印章文件页](https://prts.wiki/w/文件:任务_印章.png)收录的 39×39 蓝色任务印章原图，于 2026-11-25 从 `https://media.prts.wiki/1/1f/任务_印章.png` 获取，未修改。仅用于任务清单抬头装饰，不向 DSH 添加游戏奖励印章的功能；
 - 为呈现同人主题而使用的、具有作品识别特征的名称标签及界面视觉元素。
 
 P.R.T.S. 头像、阵营标识及衍生徽记仅收录于个人、非商业同人主题构建中，不作重新授权。免费或非商业使用本身不意味着已经获得权利人许可。

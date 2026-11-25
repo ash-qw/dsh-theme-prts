@@ -23,6 +23,7 @@ The following packaged material is expressly excluded from the MIT License:
 - `src/assets/faction-emblems/*.png` — unmodified transparent faction marks obtained from Hypergryph's public Arknights official page (`https://ak.hypergryph.com/`) for Rhodes Island, Lungmen, Penguin Logistics, Rhine Lab, and Reunion. Public accessibility of the source files does not itself grant reuse or redistribution rights;
 - `src/assets/rhodes-dsh.svg` — a derivative redraw based on the recognizable Rhodes Island emblem and used by the P.R.T.S. top bar;
 - `src/assets/prts-original-avatar.png` — the original 180×180 P.R.T.S. avatar obtained from the referenced Arknights Wiki page at `https://arknights.wiki.gg/wiki/File:PRTS.png`. The wiki page's fair-use designation is specific to that page and does not grant this package or its users permission to reuse or redistribute the image;
+- `src/assets/task-stamp.png` — the unmodified 39×39 blue mission-stamp asset indexed at `https://prts.wiki/w/文件:任务_印章.png` and retrieved from `https://media.prts.wiki/1/1f/任务_印章.png` on 2026-11-25. Used only as the task-register heading decoration; the game's reward-stamp semantics are not added to DSH;
 - franchise-identifying labels and UI motifs used to create the fan-theme presentation.
 
 The P.R.T.S. avatar, faction marks, and derivative emblem are included only in the personal, non-commercial fan-theme build and are not relicensed. Free or non-commercial use does not itself establish permission from a rights holder.

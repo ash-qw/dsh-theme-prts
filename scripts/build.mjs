@@ -69,6 +69,8 @@ const [rawCssText, stabilizationCss, refinementCss, themeSettingsWorkbenchCss, f
 const menuCardCss = applyMenuLettering(rawMenuCardCss)
 const missionDispatchCss = await readFile(resolve(root, 'src/styles/mission-dispatch.css'), 'utf8')
 const engineeringRecordCss = await readFile(resolve(root, 'src/styles/engineering-record.css'), 'utf8')
+const taskRegisterCss = (await readFile(resolve(root, 'src/styles/task-register.css'), 'utf8'))
+  .replaceAll('__PRTS_TASK_STAMP__', `data:image/png;base64,${(await readFile(resolve(root, 'src/assets/task-stamp.png'))).toString('base64')}`)
 
 function compactCss(source) {
   return source
@@ -108,7 +110,7 @@ const cursorCss = (await readFile(resolve(root, 'src/styles/cursor.css'), 'utf8'
   .replaceAll('__PRTS_GRABBING__', await cursorImage('prts-grabbing.png'))
   .replaceAll('__PRTS_NOT_ALLOWED__', await cursorImage('prts-not-allowed.png'))
 const glassSurfaceCss = await readFile(resolve(root, 'src/vendor/react-bits/GlassSurface.css'), 'utf8')
-const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${questionRecordCss}\n${missionDispatchCss}\n${engineeringRecordCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
+const cssText = indexCssSelectors(compactCss(`${rawCssText}\n${stabilizationCss}\n${refinementCss}\n${themeSettingsWorkbenchCss}\n${facilityVectorCss}\n${startupSequenceCss}\n${rightSidebarCss}\n${backgroundCss}\n${menuCardCss}\n${questionRecordCss}\n${missionDispatchCss}\n${engineeringRecordCss}\n${taskRegisterCss}\n${cursorCss}\n[data-prts-composer-glass-surface] { ${glassSurfaceCss} }`))
 const prtsEmblem = `data:image/png;base64,${prtsEmblemBytes.toString('base64')}`
 const settingsEmblem = 'data:image/png;base64,' + (await sharp(factionEmblemBytes[0]).png().toBuffer()).toString('base64')
 const factionEmblems = factionEmblemDefinitions.map(definition => ({

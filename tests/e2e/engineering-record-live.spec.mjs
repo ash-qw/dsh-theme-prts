@@ -73,8 +73,9 @@ async function openRecord(page, { scheme = 'dark', style = 'native', width = 144
     await expect(workspace).toBeVisible()
     if (await workspace.getAttribute('aria-expanded') === 'false') await workspace.click()
     await page.locator('[data-row-key="session:session-e08df2a5-057c-4fa1-bb48-c6e91f426b95"]').click()
-    const record = page.locator('[data-changed-files]').last()
-    await expect(page.locator('[data-changed-files]')).toHaveCount(2, { timeout: 15_000 })
+    // Keep targeting the second recovered record when later turns add more summaries.
+    const record = page.locator('[data-changed-files]').nth(1)
+    await expect.poll(() => page.locator('[data-changed-files]').count(), { timeout: 15_000 }).toBeGreaterThanOrEqual(2)
     await expect(record).toBeVisible()
     // Match the user's 1265px-wide card, beyond the host's default 920px column.
     if (width === 1963) await record.evaluate(node => { node.style.width = '1265px'; node.style.maxWidth = 'none' })
